@@ -7,17 +7,17 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
     <loc>https://andneo.github.io/authors/</loc>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://andneo.github.io/categories/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://andneo.github.io/</loc>
     <priority>0</priority>
   </url>
   
