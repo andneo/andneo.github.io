@@ -12,12 +12,12 @@
     
     
     <item>
-      <title>My Article Name</title>
+      <title>Test Post</title>
       <link>https://andneo.github.io/post/my-article-name/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
       <guid>https://andneo.github.io/post/my-article-name/</guid>
-      <description></description>
+      <description>This is test blog post I&amp;rsquo;m uploading as I learn how to use the Hugo framework</description>
     </item>
     
   </channel>

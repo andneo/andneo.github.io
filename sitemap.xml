@@ -3,11 +3,6 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://andneo.github.io/post/my-article-name/</loc>
-    <lastmod>2019-06-02T12:53:27+01:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://andneo.github.io/</loc>
     <lastmod>2019-06-02T12:53:27+01:00</lastmod>
     <priority>0</priority>
@@ -15,6 +10,11 @@
   
   <url>
     <loc>https://andneo.github.io/post/</loc>
+    <lastmod>2019-06-02T12:53:27+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://andneo.github.io/post/my-article-name/</loc>
     <lastmod>2019-06-02T12:53:27+01:00</lastmod>
   </url>
   
