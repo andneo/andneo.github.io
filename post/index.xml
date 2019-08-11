@@ -12,6 +12,15 @@
     
     
     <item>
+      <title>Building A Neural Network from Scratch</title>
+      <link>https://andneo.github.io/post/python_nueral_net_one/</link>
+      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/post/python_nueral_net_one/</guid>
+      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
+    </item>
+    
+    <item>
       <title>Test Post</title>
       <link>https://andneo.github.io/post/my-article-name/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
