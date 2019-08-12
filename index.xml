@@ -12,11 +12,21 @@
     
     
     <item>
-      <title>Building A Neural Network from Scratch</title>
-      <link>https://andneo.github.io/post/python_nueral_net_one/</link>
+      <title>Building A Neural Network</title>
+      <link>https://andneo.github.io/post/photonic_crystals_one/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
-      <guid>https://andneo.github.io/post/python_nueral_net_one/</guid>
+      <guid>https://andneo.github.io/post/photonic_crystals_one/</guid>
+      <description>&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Building A Neural Network</title>
+      <link>https://andneo.github.io/post/python_neural_net_one/</link>
+      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/post/python_neural_net_one/</guid>
       <description>&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.&lt;/p&gt;
 </description>
     </item>
@@ -29,6 +39,16 @@
       <guid>https://andneo.github.io/post/my-article-name/</guid>
       <description>&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 $$\left [ – \frac{\hbar^2}{2 m} \frac{\partial^2}{\partial x^2} + V \right ] \Psi = i \hbar \frac{\partial}{\partial t} \Psi$$&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>The Ising Model</title>
+      <link>https://andneo.github.io/post/ising_model_one/</link>
+      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/post/ising_model_one/</guid>
+      <description>&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.&lt;/p&gt;
 </description>
     </item>
     
