@@ -12,48 +12,12 @@
     
     
     <item>
-      <title>Building A Neural Network</title>
-      <link>https://andneo.github.io/post/photonic_crystals_one/</link>
+      <title>What is Entropy and Temperature?</title>
+      <link>https://andneo.github.io/post/statphys1/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
-      <guid>https://andneo.github.io/post/photonic_crystals_one/</guid>
-      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
-    </item>
-    
-    <item>
-      <title>Building A Neural Network</title>
-      <link>https://andneo.github.io/post/python_neural_net_one/</link>
-      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/post/python_neural_net_one/</guid>
-      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
-    </item>
-    
-    <item>
-      <title>Test Post</title>
-      <link>https://andneo.github.io/post/my-article-name/</link>
-      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/post/my-article-name/</guid>
-      <description>This is test blog post I&amp;rsquo;m uploading as I learn how to use the Hugo framework</description>
-    </item>
-    
-    <item>
-      <title>The Basics of Statistical Mechanics</title>
-      <link>https://andneo.github.io/post/post1/</link>
-      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/post/post1/</guid>
-      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
-    </item>
-    
-    <item>
-      <title>The Ising Model</title>
-      <link>https://andneo.github.io/post/ising_model_one/</link>
-      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/post/ising_model_one/</guid>
-      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
+      <guid>https://andneo.github.io/post/statphys1/</guid>
+      <description>This is the first in a series of posts where I&amp;rsquo;ll try to explain the key concepts of Statistical Mechanics.</description>
     </item>
     
   </channel>
