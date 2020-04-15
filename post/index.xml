@@ -39,6 +39,15 @@
     </item>
     
     <item>
+      <title>The Basics of Statistical Mechanics</title>
+      <link>https://andneo.github.io/post/post1/</link>
+      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/post/post1/</guid>
+      <description>This is the first in a series of posts where I&amp;rsquo;ll take you though building a basic neural network from scratch using Python.</description>
+    </item>
+    
+    <item>
       <title>The Ising Model</title>
       <link>https://andneo.github.io/post/ising_model_one/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
