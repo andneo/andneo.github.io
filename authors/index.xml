@@ -6,9 +6,55 @@
     <description>Recent content in Authors on Neo A.</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://andneo.github.io/authors/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Andreas Neophytou</title>
+      <link>https://andneo.github.io/authors/andreas-neophytou/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/authors/andreas-neophytou/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Binbin Luo</title>
+      <link>https://andneo.github.io/authors/binbin-luo/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/authors/binbin-luo/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Dwaipayan Chakrabarti</title>
+      <link>https://andneo.github.io/authors/dwaipayan-chakrabarti/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/authors/dwaipayan-chakrabarti/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Qian Chen</title>
+      <link>https://andneo.github.io/authors/qian-chen/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/authors/qian-chen/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Zihao Ou</title>
+      <link>https://andneo.github.io/authors/zihao-ou/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/authors/zihao-ou/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title></title>
@@ -16,7 +62,7 @@
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://andneo.github.io/authors/admin/</guid>
-      <description>My random walk through life has somehow led me to pursue a PhD in Chemistry, where my research interests broadly lie in the study of self-organising systems. I am particularly interested in understanding why systems spontaneously order themselves (or in some cases why they don&amp;rsquo;t). I do this mainly from the comfort of my desk chair, where I develop code to perform numerical simulations and try to apply principles from statistical mechanics.</description>
+      <description></description>
     </item>
     
   </channel>

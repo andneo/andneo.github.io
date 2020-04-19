@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Introducing Statistical Mechanics on Neo A.</title>
+    <link>https://andneo.github.io/notes/statistical_mechanics/</link>
+    <description>Recent content in Introducing Statistical Mechanics on Neo A.</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 18 Apr 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://andneo.github.io/notes/statistical_mechanics/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Probability, Ensembles and Entropy</title>
+      <link>https://andneo.github.io/notes/statistical_mechanics/1-probability/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/notes/statistical_mechanics/1-probability/</guid>
+      <description>Before right now I&amp;rsquo;ve never really asked myself what really are the chances? What do probabilities describe? Michael Bulmer calls these the the two concepts of probability in his very carefully and well written book.1 There are Probabilities describe incomplete knowledge, we don&amp;rsquo;t know for certain whether it will rain tomorrow but we know the chance it will. $$S = k_{\text{B}}\ln(\Omega)$$
+ Michael G. Bulmer. (1979). Principles of statistics. Courier Corporation.</description>
+    </item>
+    
+    <item>
+      <title>Temperature and Equilibrium</title>
+      <link>https://andneo.github.io/notes/statistical_mechanics/2-temperature/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://andneo.github.io/notes/statistical_mechanics/2-temperature/</guid>
+      <description>$$\dfrac{1}{T} = \bigg(\dfrac{\partial S}{\partial E}\bigg)_{N,V}$$</description>
+    </item>
+    
+  </channel>
+</rss>
