@@ -1,68 +1,49 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Neo A.</title>
+    <title>Andreas Neophytou</title>
     <link>https://andneo.github.io/</link>
-    <description>Recent content on Neo A.</description>
+    <description>Recent content on Andreas Neophytou</description>
     <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 02 Jun 2019 12:53:27 +0100</lastBuildDate>
+    <lastBuildDate>Tue, 21 Jul 2020 14:00:00 +0100</lastBuildDate>
     
 	    <atom:link href="https://andneo.github.io/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Probability, Ensembles and Entropy</title>
-      <link>https://andneo.github.io/notes/statistical_mechanics/1-probability/</link>
-      <pubDate>Sun, 05 May 2019 00:00:00 +0000</pubDate>
+      <title>Recent &amp; Upcoming Talks</title>
+      <link>https://andneo.github.io/talk/</link>
+      <pubDate>Tue, 21 Jul 2020 14:00:00 +0100</pubDate>
       
-      <guid>https://andneo.github.io/notes/statistical_mechanics/1-probability/</guid>
-      <description>&lt;p&gt;Before right now I&amp;rsquo;ve never really asked myself &lt;strong&gt;&lt;em&gt;what really are the chances&lt;/em&gt;&lt;/strong&gt;?
-What do probabilities describe?
-Michael Bulmer calls these the &lt;strong&gt;&lt;em&gt;the two concepts of probability&lt;/em&gt;&lt;/strong&gt; in his very carefully and well written book.&lt;sup class=&#34;footnote-ref&#34; id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;
-There are
-Probabilities describe incomplete knowledge, we don&amp;rsquo;t know for certain whether it will rain tomorrow but we know the &lt;em&gt;chance&lt;/em&gt; it will.
-$$S = k_{\text{B}}\ln(\Omega)$$&lt;/p&gt;
-
-&lt;!---[^1]: Simon Saunders. (2005). What is probability?. In Quo vadis quantum mechanics? (pp. 209-238). Springer, Berlin, Heidelberg.---&gt;
-&lt;div class=&#34;footnotes&#34;&gt;
-
-&lt;hr /&gt;
-
-&lt;ol&gt;
-&lt;li id=&#34;fn:1&#34;&gt;Michael G. Bulmer. (1979). Principles of statistics. Courier Corporation.
- &lt;a class=&#34;footnote-return&#34; href=&#34;#fnref:1&#34;&gt;&lt;sup&gt;^&lt;/sup&gt;&lt;/a&gt;&lt;/li&gt;
-&lt;/ol&gt;
-&lt;/div&gt;
-</description>
+      <guid>https://andneo.github.io/talk/</guid>
+      <description></description>
     </item>
     
     <item>
-      <title>Temperature and Equilibrium</title>
-      <link>https://andneo.github.io/notes/statistical_mechanics/2-temperature/</link>
-      <pubDate>Sun, 05 May 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://andneo.github.io/notes/statistical_mechanics/2-temperature/</guid>
-      <description>&lt;p&gt;$$\dfrac{1}{T} = \bigg(\dfrac{\partial S}{\partial E}\bigg)_{N,V}$$&lt;/p&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>Test Post</title>
-      <link>https://andneo.github.io/post/test/</link>
+      <title>Posts</title>
+      <link>https://andneo.github.io/post/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
-      <guid>https://andneo.github.io/post/test/</guid>
-      <description>&lt;p&gt;$$\left [ – \frac{\hbar^2}{2 m} \frac{\partial^2}{\partial x^2} + V \right ] \Psi = i \hbar \frac{\partial}{\partial t} \Psi$$&lt;/p&gt;
-</description>
+      <guid>https://andneo.github.io/post/</guid>
+      <description></description>
     </item>
     
     <item>
-      <title>Synthesis and Self-Assembly of Janus and Triblock Patchy Particles</title>
-      <link>https://andneo.github.io/publication/ou-2019-synthesis/</link>
+      <title>Notes</title>
+      <link>https://andneo.github.io/notes/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/notes/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Publications</title>
+      <link>https://andneo.github.io/publication/</link>
       <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
       
-      <guid>https://andneo.github.io/publication/ou-2019-synthesis/</guid>
+      <guid>https://andneo.github.io/publication/</guid>
       <description></description>
     </item>
     

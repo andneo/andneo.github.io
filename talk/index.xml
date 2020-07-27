@@ -1,14 +1,24 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Recent &amp; Upcoming Talks on Neo A.</title>
+    <title>Recent &amp; Upcoming Talks on Andreas Neophytou</title>
     <link>https://andneo.github.io/talk/</link>
-    <description>Recent content in Recent &amp; Upcoming Talks on Neo A.</description>
+    <description>Recent content in Recent &amp; Upcoming Talks on Andreas Neophytou</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Tue, 21 Jul 2020 14:00:00 +0100</lastBuildDate>
     
 	<atom:link href="https://andneo.github.io/talk/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Facilitating the Formation of Colloidal Photonic Crystals via Hierarchical Self-Assembly</title>
+      <link>https://andneo.github.io/talk/acsn_hsa/</link>
+      <pubDate>Tue, 21 Jul 2020 14:00:00 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/talk/acsn_hsa/</guid>
+      <description>UK Colloids 2020 Online Flash Presentation</description>
+    </item>
     
   </channel>
 </rss>

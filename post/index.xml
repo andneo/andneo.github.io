@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on Neo A.</title>
+    <title>Posts on Andreas Neophytou</title>
     <link>https://andneo.github.io/post/</link>
-    <description>Recent content in Posts on Neo A.</description>
+    <description>Recent content in Posts on Andreas Neophytou</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 02 Jun 2019 12:53:27 +0100</lastBuildDate>
@@ -12,11 +12,11 @@
     
     
     <item>
-      <title>Test Post</title>
-      <link>https://andneo.github.io/post/test/</link>
+      <title>Hard-Disk Monte Carlo</title>
+      <link>https://andneo.github.io/post/_test/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
-      <guid>https://andneo.github.io/post/test/</guid>
+      <guid>https://andneo.github.io/post/_test/</guid>
       <description>This is a test.</description>
     </item>
     

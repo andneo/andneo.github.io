@@ -106,9 +106,9 @@
   
   <meta property="twitter:card" content="summary">
   
-  <meta property="og:site_name" content="Neo A.">
+  <meta property="og:site_name" content="Andreas Neophytou">
   <meta property="og:url" content="https://andneo.github.io/post/test/">
-  <meta property="og:title" content="Test Post | Neo A.">
+  <meta property="og:title" content="Hard-Disk Monte Carlo | Andreas Neophytou">
   <meta property="og:description" content="This is a test."><meta property="og:image" content="https://andneo.github.io/img/icon-192.png">
   <meta property="og:locale" content="en-us">
   
@@ -121,7 +121,7 @@
 
   
 
-  <title>Test Post | Neo A.</title>
+  <title>Hard-Disk Monte Carlo | Andreas Neophytou</title>
 
 </head>
 <body id="top" data-spy="scroll" data-target="#TableOfContents" data-offset="71" class="dark">
@@ -162,7 +162,7 @@
   <div class="container">
 
     
-      <a class="navbar-brand" href="/">Neo A.</a>
+      <a class="navbar-brand" href="/">Andreas Neophytou</a>
       
       <button type="button" class="navbar-toggler" data-toggle="collapse"
               data-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -378,10 +378,10 @@
   
   
 <div class="article-container pt-3">
-  <h1 itemprop="name">Test Post</h1>
+  <h1 itemprop="name">Hard-Disk Monte Carlo</h1>
 
   
-  <p class="page-subtitle">Testing 1, 2, 3</p>
+  <p class="page-subtitle">2D Monte Carlo Simulation in Javascript</p>
   
 
   
@@ -482,6 +482,47 @@
 
 
 
+<div class="btn-links mb-3">
+  
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  
+    
+  
+<a class="btn btn-outline-primary my-1 mr-1" href="https://editor.p5js.org/AndrewNeo/sketches/oo-NewVZl" target="_blank" rel="noopener">
+  Code
+</a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
 
   
 </div>
@@ -491,7 +532,45 @@
   <div class="article-container">
 
     <div class="article-style" itemprop="articleBody">
-      <p>$$\left [ – \frac{\hbar^2}{2 m} \frac{\partial^2}{\partial x^2} + V \right ] \Psi = i \hbar \frac{\partial}{\partial t} \Psi$$</p>
+      
+
+<h2 id="background-theory">Background Theory</h2>
+
+<p>\begin{equation}
+    \langle X\rangle = \dfrac{\int\text{d}q^{N}\exp\big[-\beta\mathcal{V}(q^{N})\big]X(q^{N})}{\int\text{d}q^{N}~\exp\big[-\beta\mathcal{V}(q^{N})\big]}
+\end{equation}</p>
+
+<h3 id="metropolis-criterion">Metropolis Criterion</h3>
+
+<p>This can be alternatively written down as:
+\begin{equation}
+    \text{acc}(o\rightarrow n)=\min\bigg(1,\exp\bigg[-\beta\big(\mathcal{V}(n)-\mathcal{V}(o)\big)\bigg]\bigg)
+\end{equation}</p>
+
+<h2 id="the-code">The Code</h2>
+
+<p>We want to build a Monte Carlo package in javascript using object-oriented programming</p>
+
+<h3 id="setting-up-the-system">Setting up the System</h3>
+
+<pre><code class="language-javascript">class System {
+  // set initial system parameters
+  constructor(){
+    this.npart     = 100; // number of particles in the system
+    this.density   = 0.4; // density of the system
+    this.area      = (this.npart*20**2)/this.density; // area of the simulation box
+    this.box_x     = Math.sqrt(this.area); // length of the box along the x-axis
+    this.box_y     = this.box_x; // length of the box along the y-axis
+    this.particles = []; // list of particles in the system
+  }
+}
+</code></pre>
+
+<h2 id="final-result">Final Result</h2>
+
+<div class="embed p5js script" >
+    <iframe src="https://editor.p5js.org/AndrewNeo/embed/oo-NewVZl" width="320" height="320"></iframe>
+</div>
 
     </div>
 
