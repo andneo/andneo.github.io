@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Publications on Andreas Neophytou</title>
-    <link>https://andneo.github.io/publication/</link>
-    <description>Recent content in Publications on Andreas Neophytou</description>
+    <title>2 on Andreas Neophytou</title>
+    <link>https://andneo.github.io/publication_types/2/</link>
+    <description>Recent content in 2 on Andreas Neophytou</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 28 Jul 2020 08:52:11 +0100</lastBuildDate>
     
-	<atom:link href="https://andneo.github.io/publication/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://andneo.github.io/publication_types/2/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -17,15 +17,6 @@
       <pubDate>Tue, 28 Jul 2020 08:52:11 +0100</pubDate>
       
       <guid>https://andneo.github.io/publication/acsnano-2020-rsn/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Synthesis and Self-Assembly of Janus and Triblock Patchy Particles</title>
-      <link>https://andneo.github.io/publication/ou-2019-synthesis/</link>
-      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://andneo.github.io/publication/ou-2019-synthesis/</guid>
       <description></description>
     </item>
     

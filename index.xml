@@ -6,10 +6,19 @@
     <description>Recent content on Andreas Neophytou</description>
     <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 21 Jul 2020 14:00:00 +0100</lastBuildDate>
+    <lastBuildDate>Tue, 28 Jul 2020 08:52:11 +0100</lastBuildDate>
     
 	    <atom:link href="https://andneo.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Publications</title>
+      <link>https://andneo.github.io/publication/</link>
+      <pubDate>Tue, 28 Jul 2020 08:52:11 +0100</pubDate>
+      
+      <guid>https://andneo.github.io/publication/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>Recent &amp; Upcoming Talks</title>
@@ -35,15 +44,6 @@
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
       
       <guid>https://andneo.github.io/notes/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Publications</title>
-      <link>https://andneo.github.io/publication/</link>
-      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://andneo.github.io/publication/</guid>
       <description></description>
     </item>
     
