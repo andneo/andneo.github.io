@@ -13,11 +13,11 @@
     
     <item>
       <title>Hard-Disk Monte Carlo</title>
-      <link>https://andneo.github.io/post/test/</link>
+      <link>https://andneo.github.io/post/hs_mc/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
       
-      <guid>https://andneo.github.io/post/test/</guid>
-      <description>This is a test.</description>
+      <guid>https://andneo.github.io/post/hs_mc/</guid>
+      <description>Performing particle simulations in the browser sing javascript.</description>
     </item>
     
   </channel>
