@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Photonic Crystals | Andreas Neophytou</title>
+    <link>https://andneo.github.io/tag/photonic-crystals/</link>
+      <atom:link href="https://andneo.github.io/tag/photonic-crystals/index.xml" rel="self" type="application/rss+xml" />
+    <description>Photonic Crystals</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Tue, 21 Jul 2020 14:00:00 +0100</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>Photonic Crystals</title>
+      <link>https://andneo.github.io/tag/photonic-crystals/</link>
+    </image>
+    
+    <item>
+      <title>Facilitating the Formation of Colloidal Photonic Crystals via Hierarchical Self-Assembly</title>
+      <link>https://andneo.github.io/talk/acsn_hsa/</link>
+      <pubDate>Tue, 21 Jul 2020 14:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/talk/acsn_hsa/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

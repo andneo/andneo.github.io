@@ -1,64 +1,109 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Overview on Andreas Neophytou</title>
+    <title>Introduction to these Notes | Andreas Neophytou</title>
     <link>https://andneo.github.io/notes/deep_learning/</link>
-    <description>Recent content in Overview on Andreas Neophytou</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Sun, 09 Sep 2018 00:00:00 +0000</lastBuildDate>
+      <atom:link href="https://andneo.github.io/notes/deep_learning/index.xml" rel="self" type="application/rss+xml" />
+    <description>Introduction to these Notes</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Sun, 09 Sep 2018 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>Introduction to these Notes</title>
+      <link>https://andneo.github.io/notes/deep_learning/</link>
+    </image>
     
-	<atom:link href="https://andneo.github.io/notes/deep_learning/index.xml" rel="self" type="application/rss+xml" />
-    
+    <item>
+      <title>Optimisation Algorithms</title>
+      <link>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</guid>
+      <description>&lt;p&gt;A key component of neural networks is an optimisation algorithm.
+These are usually iterative algorithms used to minimise the error our neural network model makes.
+Usually, in books and notes that I&amp;rsquo;ve read, this is introduced after a big picture style introduction.&lt;/p&gt;
+&lt;p&gt;But these algorithms are tools to be used to build a neural network, and I personally prefer to understand how they work first.
+So I am starting these notes off with an introduction to gradient-based optimisation algorithms and automatic differentiation.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Gradient-Based Optimisation</title>
-      <link>https://andneo.github.io/notes/deep_learning/01_steepest_descent/</link>
+      <link>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/deep_learning/01_steepest_descent/</guid>
-      <description>In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:
-Tip 1 </description>
+      <guid>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</guid>
+      <description>&lt;h4 id=&#34;defining-a-function&#34;&gt;Defining a function&lt;/h4&gt;
+&lt;p&gt;
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Test_functions_for_optimization&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;test functions&lt;/a&gt; for optimisation algorithms
+\begin{equation}
+f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2}
+\end{equation}&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;f  = lambda x, y: (1.5 - x + x*y)**2 + (2.25 - x + x*y**2)**2 + (2.625 - x + x*y**3)**2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&#34;calculating-the-gradient&#34;&gt;Calculating the gradient&lt;/h4&gt;
+&lt;p&gt;\begin{equation}
+\dfrac{\partial f(x,y)}{\partial x} = 2(1.5-x+xy)(y-1) + 2(2.25-x+xy^{2})(y^{2}-1) + 2(2.625-x+xy^{3})(y^{3}-1)
+\end{equation}
+\begin{equation}
+\dfrac{\partial f(x,y)}{\partial y} = 2(1.5-x+xy)x + 2(2.25-x+xy^{2})(2xy) + 2(2.625-x+xy^{3})(3xy^{2})
+\end{equation}&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;g  = lambda x, y: [(2*(1.5 - x + x*y)*(y-1)) + (2*(2.25 - x + x*y**2)*(y**2-1)) + (2*(2.625 - x + x*y**3)*(y**3-1)),
+                   (2*(1.5 - x + x*y)*x) + (2*(2.25 - x + x*y**2)*(2*x*y)) + (2*(2.625 - x + x*y**3)*(3*x*y**2))]
+&lt;/code&gt;&lt;/pre&gt;
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+&lt;video controls &gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/linesearch.mp4&#34; type=&#34;video/mp4&#34;&gt;
+&lt;/video&gt;
+</description>
     </item>
     
     <item>
-      <title>Conjugate Gradient Algorithms</title>
-      <link>https://andneo.github.io/notes/deep_learning/02_conjugate_gradient/</link>
+      <title>Automatic Differentiation</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_introduction/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/deep_learning/02_conjugate_gradient/</guid>
-      <description>In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:
-Tip 1 </description>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_introduction/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
     </item>
     
     <item>
-      <title>Introduction to Automatic Differentiation</title>
-      <link>https://andneo.github.io/notes/deep_learning/11_autograd_introduction/</link>
+      <title>Forward-Mode AutoDiff</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_forward/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/deep_learning/11_autograd_introduction/</guid>
-      <description>In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:
-Tip 1 </description>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_forward/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
     </item>
     
     <item>
-      <title>Forward-Mode Automatic Differentiation</title>
-      <link>https://andneo.github.io/notes/deep_learning/12_autograd_forward/</link>
+      <title>Reverse-Mode AutoDiff</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_backward/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/deep_learning/12_autograd_forward/</guid>
-      <description>In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:
-Tip 1 </description>
-    </item>
-    
-    <item>
-      <title>Reverse-Mode Automatic Differentiation</title>
-      <link>https://andneo.github.io/notes/deep_learning/13_autograd_backward/</link>
-      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/deep_learning/13_autograd_backward/</guid>
-      <description>In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:
-Tip 1 </description>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_backward/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
     </item>
     
   </channel>

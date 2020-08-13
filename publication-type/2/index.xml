@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>2 | Andreas Neophytou</title>
+    <link>https://andneo.github.io/publication-type/2/</link>
+      <atom:link href="https://andneo.github.io/publication-type/2/index.xml" rel="self" type="application/rss+xml" />
+    <description>2</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Tue, 28 Jul 2020 08:52:11 +0100</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>2</title>
+      <link>https://andneo.github.io/publication-type/2/</link>
+    </image>
+    
+    <item>
+      <title>Leveraging Hierarchical Self Assembly Pathways for Realizing Colloidal Photonic Crystals</title>
+      <link>https://andneo.github.io/publication/acsnano-2020-rsn/</link>
+      <pubDate>Tue, 28 Jul 2020 08:52:11 +0100</pubDate>
+      <guid>https://andneo.github.io/publication/acsnano-2020-rsn/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

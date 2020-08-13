@@ -3,17 +3,12 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://andneo.github.io/notes/deep_learning/01_steepest_descent/</loc>
-    <lastmod>2019-05-05T00:00:00+01:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://andneo.github.io/notes/solid_state/</loc>
     <lastmod>2018-09-09T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/notes/deep_learning/02_conjugate_gradient/</loc>
+    <loc>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</loc>
     <lastmod>2019-05-05T00:00:00+01:00</lastmod>
   </url>
   
@@ -23,22 +18,27 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/notes/deep_learning/11_autograd_introduction/</loc>
+    <loc>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</loc>
     <lastmod>2019-05-05T00:00:00+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/notes/deep_learning/12_autograd_forward/</loc>
+    <loc>https://andneo.github.io/notes/deep_learning/autograd_introduction/</loc>
     <lastmod>2019-05-05T00:00:00+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/notes/deep_learning/13_autograd_backward/</loc>
+    <loc>https://andneo.github.io/notes/deep_learning/autograd_forward/</loc>
     <lastmod>2019-05-05T00:00:00+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/publication_types/2/</loc>
+    <loc>https://andneo.github.io/notes/deep_learning/autograd_backward/</loc>
+    <lastmod>2019-05-05T00:00:00+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://andneo.github.io/publication-type/2/</loc>
     <lastmod>2020-07-28T08:52:11+01:00</lastmod>
   </url>
   
@@ -63,7 +63,7 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/tags/colloidal-self-assembly/</loc>
+    <loc>https://andneo.github.io/tag/colloidal-self-assembly/</loc>
     <lastmod>2020-07-21T14:00:00+01:00</lastmod>
   </url>
   
@@ -73,17 +73,17 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/tags/hierarchical-self-assembly/</loc>
+    <loc>https://andneo.github.io/tag/hierarchical-self-assembly/</loc>
     <lastmod>2020-07-21T14:00:00+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/tags/patchy-particles/</loc>
+    <loc>https://andneo.github.io/tag/patchy-particles/</loc>
     <lastmod>2020-07-21T14:00:00+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/tags/photonic-crystals/</loc>
+    <loc>https://andneo.github.io/tag/photonic-crystals/</loc>
     <lastmod>2020-07-21T14:00:00+01:00</lastmod>
   </url>
   
@@ -113,12 +113,12 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/publication_types/6/</loc>
+    <loc>https://andneo.github.io/publication-type/6/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/andreas-neophytou/</loc>
+    <loc>https://andneo.github.io/author/andreas-neophytou/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
@@ -128,17 +128,17 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/binbin-luo/</loc>
+    <loc>https://andneo.github.io/author/binbin-luo/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/dwaipayan-chakrabarti/</loc>
+    <loc>https://andneo.github.io/author/dwaipayan-chakrabarti/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/qian-chen/</loc>
+    <loc>https://andneo.github.io/author/qian-chen/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
@@ -148,12 +148,12 @@
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/zihao-ou/</loc>
+    <loc>https://andneo.github.io/author/zihao-ou/</loc>
     <lastmod>2019-01-01T00:00:00+00:00</lastmod>
   </url>
   
   <url>
-    <loc>https://andneo.github.io/authors/admin/</loc>
+    <loc>https://andneo.github.io/author/</loc>
   </url>
   
   <url>

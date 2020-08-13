@@ -1,23 +1,51 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on Andreas Neophytou</title>
+    <title>Posts | Andreas Neophytou</title>
     <link>https://andneo.github.io/post/</link>
-    <description>Recent content in Posts on Andreas Neophytou</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Sun, 02 Jun 2019 12:53:27 +0100</lastBuildDate>
-    
-	<atom:link href="https://andneo.github.io/post/index.xml" rel="self" type="application/rss+xml" />
-    
+      <atom:link href="https://andneo.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <description>Posts</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Sun, 02 Jun 2019 12:53:27 +0100</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>Posts</title>
+      <link>https://andneo.github.io/post/</link>
+    </image>
     
     <item>
       <title>Hard-Disk Monte Carlo</title>
       <link>https://andneo.github.io/post/hs_mc/</link>
       <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
       <guid>https://andneo.github.io/post/hs_mc/</guid>
-      <description>Performing particle simulations in the browser sing javascript.</description>
+      <description>&lt;h2 id=&#34;background-theory&#34;&gt;Background Theory&lt;/h2&gt;
+&lt;p&gt;\begin{equation}
+\langle X\rangle = \dfrac{\int\text{d}q^{N}\exp\big[-\beta\mathcal{V}(q^{N})\big]X(q^{N})}{\int\text{d}q^{N}~\exp\big[-\beta\mathcal{V}(q^{N})\big]}
+\end{equation}&lt;/p&gt;
+&lt;h3 id=&#34;metropolis-criterion&#34;&gt;Metropolis Criterion&lt;/h3&gt;
+&lt;p&gt;This can be alternatively written down as:
+\begin{equation}
+\text{acc}(o\rightarrow n)=\min\bigg(1,\exp\bigg[-\beta\big(\mathcal{V}(n)-\mathcal{V}(o)\big)\bigg]\bigg)
+\end{equation}&lt;/p&gt;
+&lt;h2 id=&#34;the-code&#34;&gt;The Code&lt;/h2&gt;
+&lt;p&gt;We want to build a Monte Carlo package in javascript using object-oriented programming&lt;/p&gt;
+&lt;h3 id=&#34;setting-up-the-system&#34;&gt;Setting up the System&lt;/h3&gt;
+&lt;pre&gt;&lt;code class=&#34;language-javascript&#34;&gt;class System {
+  // set initial system parameters
+  constructor(){
+    this.npart     = 100; // number of particles in the system
+    this.density   = 0.4; // density of the system
+    this.area      = (this.npart*20**2)/this.density; // area of the simulation box
+    this.box_x     = Math.sqrt(this.area); // length of the box along the x-axis
+    this.box_y     = this.box_x; // length of the box along the y-axis
+    this.particles = []; // list of particles in the system
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2 id=&#34;final-result&#34;&gt;Final Result&lt;/h2&gt;
+&lt;div class=&#34;embed p5js script&#34; &gt;
+    &lt;iframe src=&#34;https://editor.p5js.org/AndrewNeo/embed/oo-NewVZl&#34; width=&#34;320&#34; height=&#34;320&#34;&gt;&lt;/iframe&gt;
+&lt;/div&gt;
+</description>
     </item>
     
   </channel>

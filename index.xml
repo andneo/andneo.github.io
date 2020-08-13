@@ -3,47 +3,166 @@
   <channel>
     <title>Andreas Neophytou</title>
     <link>https://andneo.github.io/</link>
-    <description>Recent content on Andreas Neophytou</description>
-    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator>
-    <language>en-us</language>
-    <lastBuildDate>Tue, 28 Jul 2020 08:52:11 +0100</lastBuildDate>
-    
-	    <atom:link href="https://andneo.github.io/index.xml" rel="self" type="application/rss+xml" />
-    
-    
-    <item>
-      <title>Publications</title>
-      <link>https://andneo.github.io/publication/</link>
-      <pubDate>Tue, 28 Jul 2020 08:52:11 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/publication/</guid>
-      <description></description>
-    </item>
+      <atom:link href="https://andneo.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <description>Andreas Neophytou</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Tue, 28 Jul 2020 08:52:11 +0100</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>Andreas Neophytou</title>
+      <link>https://andneo.github.io/</link>
+    </image>
     
     <item>
-      <title>Recent &amp; Upcoming Talks</title>
-      <link>https://andneo.github.io/talk/</link>
-      <pubDate>Tue, 21 Jul 2020 14:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/talk/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Posts</title>
-      <link>https://andneo.github.io/post/</link>
-      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/post/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Notes</title>
-      <link>https://andneo.github.io/notes/</link>
+      <title>Optimisation Algorithms</title>
+      <link>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
-      
-      <guid>https://andneo.github.io/notes/</guid>
+      <guid>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</guid>
+      <description>&lt;p&gt;A key component of neural networks is an optimisation algorithm.
+These are usually iterative algorithms used to minimise the error our neural network model makes.
+Usually, in books and notes that I&amp;rsquo;ve read, this is introduced after a big picture style introduction.&lt;/p&gt;
+&lt;p&gt;But these algorithms are tools to be used to build a neural network, and I personally prefer to understand how they work first.
+So I am starting these notes off with an introduction to gradient-based optimisation algorithms and automatic differentiation.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Gradient-Based Optimisation</title>
+      <link>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</guid>
+      <description>&lt;h4 id=&#34;defining-a-function&#34;&gt;Defining a function&lt;/h4&gt;
+&lt;p&gt;
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Test_functions_for_optimization&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;test functions&lt;/a&gt; for optimisation algorithms
+\begin{equation}
+f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2}
+\end{equation}&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;f  = lambda x, y: (1.5 - x + x*y)**2 + (2.25 - x + x*y**2)**2 + (2.625 - x + x*y**3)**2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&#34;calculating-the-gradient&#34;&gt;Calculating the gradient&lt;/h4&gt;
+&lt;p&gt;\begin{equation}
+\dfrac{\partial f(x,y)}{\partial x} = 2(1.5-x+xy)(y-1) + 2(2.25-x+xy^{2})(y^{2}-1) + 2(2.625-x+xy^{3})(y^{3}-1)
+\end{equation}
+\begin{equation}
+\dfrac{\partial f(x,y)}{\partial y} = 2(1.5-x+xy)x + 2(2.25-x+xy^{2})(2xy) + 2(2.625-x+xy^{3})(3xy^{2})
+\end{equation}&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;g  = lambda x, y: [(2*(1.5 - x + x*y)*(y-1)) + (2*(2.25 - x + x*y**2)*(y**2-1)) + (2*(2.625 - x + x*y**3)*(y**3-1)),
+                   (2*(1.5 - x + x*y)*x) + (2*(2.25 - x + x*y**2)*(2*x*y)) + (2*(2.625 - x + x*y**3)*(3*x*y**2))]
+&lt;/code&gt;&lt;/pre&gt;
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+&lt;video controls &gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/linesearch.mp4&#34; type=&#34;video/mp4&#34;&gt;
+&lt;/video&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Automatic Differentiation</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_introduction/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_introduction/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Forward-Mode AutoDiff</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_forward/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_forward/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Reverse-Mode AutoDiff</title>
+      <link>https://andneo.github.io/notes/deep_learning/autograd_backward/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/autograd_backward/</guid>
+      <description>&lt;p&gt;In this tutorial, I&amp;rsquo;ll share my top 10 tips for getting started with Academic:&lt;/p&gt;
+&lt;h2 id=&#34;tip-1&#34;&gt;Tip 1&lt;/h2&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Leveraging Hierarchical Self Assembly Pathways for Realizing Colloidal Photonic Crystals</title>
+      <link>https://andneo.github.io/publication/acsnano-2020-rsn/</link>
+      <pubDate>Tue, 28 Jul 2020 08:52:11 +0100</pubDate>
+      <guid>https://andneo.github.io/publication/acsnano-2020-rsn/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Facilitating the Formation of Colloidal Photonic Crystals via Hierarchical Self-Assembly</title>
+      <link>https://andneo.github.io/talk/acsn_hsa/</link>
+      <pubDate>Tue, 21 Jul 2020 14:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/talk/acsn_hsa/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Hard-Disk Monte Carlo</title>
+      <link>https://andneo.github.io/post/hs_mc/</link>
+      <pubDate>Sun, 02 Jun 2019 12:53:27 +0100</pubDate>
+      <guid>https://andneo.github.io/post/hs_mc/</guid>
+      <description>&lt;h2 id=&#34;background-theory&#34;&gt;Background Theory&lt;/h2&gt;
+&lt;p&gt;\begin{equation}
+\langle X\rangle = \dfrac{\int\text{d}q^{N}\exp\big[-\beta\mathcal{V}(q^{N})\big]X(q^{N})}{\int\text{d}q^{N}~\exp\big[-\beta\mathcal{V}(q^{N})\big]}
+\end{equation}&lt;/p&gt;
+&lt;h3 id=&#34;metropolis-criterion&#34;&gt;Metropolis Criterion&lt;/h3&gt;
+&lt;p&gt;This can be alternatively written down as:
+\begin{equation}
+\text{acc}(o\rightarrow n)=\min\bigg(1,\exp\bigg[-\beta\big(\mathcal{V}(n)-\mathcal{V}(o)\big)\bigg]\bigg)
+\end{equation}&lt;/p&gt;
+&lt;h2 id=&#34;the-code&#34;&gt;The Code&lt;/h2&gt;
+&lt;p&gt;We want to build a Monte Carlo package in javascript using object-oriented programming&lt;/p&gt;
+&lt;h3 id=&#34;setting-up-the-system&#34;&gt;Setting up the System&lt;/h3&gt;
+&lt;pre&gt;&lt;code class=&#34;language-javascript&#34;&gt;class System {
+  // set initial system parameters
+  constructor(){
+    this.npart     = 100; // number of particles in the system
+    this.density   = 0.4; // density of the system
+    this.area      = (this.npart*20**2)/this.density; // area of the simulation box
+    this.box_x     = Math.sqrt(this.area); // length of the box along the x-axis
+    this.box_y     = this.box_x; // length of the box along the y-axis
+    this.particles = []; // list of particles in the system
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2 id=&#34;final-result&#34;&gt;Final Result&lt;/h2&gt;
+&lt;div class=&#34;embed p5js script&#34; &gt;
+    &lt;iframe src=&#34;https://editor.p5js.org/AndrewNeo/embed/oo-NewVZl&#34; width=&#34;320&#34; height=&#34;320&#34;&gt;&lt;/iframe&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Synthesis and Self-Assembly of Janus and Triblock Patchy Particles</title>
+      <link>https://andneo.github.io/publication/ou-2019-synthesis/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0000</pubDate>
+      <guid>https://andneo.github.io/publication/ou-2019-synthesis/</guid>
       <description></description>
     </item>
     
