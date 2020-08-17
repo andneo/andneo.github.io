@@ -17,11 +17,11 @@
       <link>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
       <guid>https://andneo.github.io/notes/deep_learning/optimisation_algorithms/</guid>
-      <description>&lt;p&gt;A key component of neural networks is an optimisation algorithm.
-These are usually iterative algorithms used to minimise the error our neural network model makes.
-Usually, in books and notes that I&amp;rsquo;ve read, this is introduced after a big picture style introduction.&lt;/p&gt;
-&lt;p&gt;But these algorithms are tools to be used to build a neural network, and I personally prefer to understand how they work first.
-So I am starting these notes off with an introduction to gradient-based optimisation algorithms and automatic differentiation.&lt;/p&gt;
+      <description>&lt;p&gt;Optimisation is a ubiquitous process, people do it everyday. A classic example would be: &lt;em&gt;How do I get somewhere as (&lt;strong&gt;fast, cheap, environmentally friendly&lt;/strong&gt;) as possible?&lt;/em&gt;
+Nature optimises too, a big part of what I do in my PhD is finding out how systems of particles optimise their potential energy.&lt;/p&gt;
+&lt;p&gt;Needless to say optimisation is an important process, and quite a bit of effort has been dedicated to developing algorithms that do it well.
+Optimisation algorithms form a key component of neural networks, as we will see.
+The first section of these notes introduce gradient-based optimisation algorithms, and how to implement in Python.&lt;/p&gt;
 </description>
     </item>
     
@@ -30,24 +30,98 @@ So I am starting these notes off with an introduction to gradient-based optimisa
       <link>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</link>
       <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
       <guid>https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/</guid>
-      <description>&lt;h4 id=&#34;defining-a-function&#34;&gt;Defining a function&lt;/h4&gt;
-&lt;p&gt;
-&lt;a href=&#34;https://en.wikipedia.org/wiki/Test_functions_for_optimization&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;test functions&lt;/a&gt; for optimisation algorithms
+      <description>&lt;p&gt;First we need to introduce some notation:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;$\textbf{x}$: the $n$-dimensional vector of parameters to be optimised.&lt;/li&gt;
+&lt;li&gt;$f(\textbf{x})$: the objective function.&lt;/li&gt;
+&lt;li&gt;$\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Formally an optimisation problem can be written as:
 \begin{equation}
-f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2}
+\min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
 \end{equation}&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;f  = lambda x, y: (1.5 - x + x*y)**2 + (2.25 - x + x*y**2)**2 + (2.625 - x + x*y**3)**2
-&lt;/code&gt;&lt;/pre&gt;
-&lt;h4 id=&#34;calculating-the-gradient&#34;&gt;Calculating the gradient&lt;/h4&gt;
-&lt;p&gt;\begin{equation}
-\dfrac{\partial f(x,y)}{\partial x} = 2(1.5-x+xy)(y-1) + 2(2.25-x+xy^{2})(y^{2}-1) + 2(2.625-x+xy^{3})(y^{3}-1)
+&lt;p&gt;Optimisation algorithms iteratively update an initial guess for $\textbf{x}$ until they satisfy the above condition.
+The difference between them comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.&lt;/p&gt;
+&lt;h2 id=&#34;line-search-strategies&#34;&gt;Line Search Strategies&lt;/h2&gt;
+&lt;p&gt;We are going to focus on line search strategies &amp;ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$ where $f(\textbf{x}_{i}) &amp;lt; f(\textbf{x}_{i+1})$. We write this as:
+\begin{equation}
+\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}
 \end{equation}
-\begin{equation}
-\dfrac{\partial f(x,y)}{\partial y} = 2(1.5-x+xy)x + 2(2.25-x+xy^{2})(2xy) + 2(2.625-x+xy^{3})(3xy^{2})
-\end{equation}&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;g  = lambda x, y: [(2*(1.5 - x + x*y)*(y-1)) + (2*(2.25 - x + x*y**2)*(y**2-1)) + (2*(2.625 - x + x*y**3)*(y**3-1)),
-                   (2*(1.5 - x + x*y)*x) + (2*(2.25 - x + x*y**2)*(2*x*y)) + (2*(2.625 - x + x*y**3)*(3*x*y**2))]
+Therefore, we have two tasks at each iteration:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Determine $\textbf{d}_{i}$&lt;/li&gt;
+&lt;li&gt;Determine $\alpha_{i}$ (the step length).&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;We want to write some Python code that can optimise arbitrary functions.
+The first step is to define a &lt;code&gt;Class&lt;/code&gt;:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;class Optimise:
+    def __init__(self, X, function, gradient, err, method):
+    #   Initialise input parameters for the optimisation algorithms
+        self.X      = X         # Initial coordinates.
+        self.f      = function  # Function to be optimised.
+        self.g      = gradient  # Gradient of the function.
+        self.err    = err       # Threshold convergence value
 &lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This &lt;code&gt;Class&lt;/code&gt; has three key attributes:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;X&lt;/code&gt;: The initial coordinates from which to optimise from, $\textbf{x}_{i=0}$.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;f&lt;/code&gt;: The objective function to be optimised, $f(\textbf{x})$.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;g&lt;/code&gt;: The gradient of the objective function, $\textbf{g}(\textbf{x})$.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;There are two more parameters, &lt;code&gt;err&lt;/code&gt; and &lt;code&gt;method&lt;/code&gt;, which we&amp;rsquo;ll discuss later.&lt;/p&gt;
+&lt;h3 id=&#34;deciding-the-search-direction&#34;&gt;Deciding the Search Direction&lt;/h3&gt;
+&lt;p&gt;Different line search algorithms use different search directions, and the &lt;code&gt;method&lt;/code&gt; variable will let our program know which to use.&lt;/p&gt;
+&lt;p&gt;We are going to focus on two methods:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt; method=1&lt;/code&gt;: Steepest Descent&lt;/li&gt;
+&lt;li&gt;&lt;code&gt; method=2&lt;/code&gt;: Conjugate Gradient&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Which we will call them from the &lt;code&gt;__init__&lt;/code&gt; method:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#   Perform local optimisation.
+    if(method==1):
+        self.steepest_descent()
+    elif(method==2):
+        self.conjugate_gradient()
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&#34;steepest-descent&#34;&gt;Steepest Descent&lt;/h4&gt;
+&lt;p&gt;The steepest descent direction of a function is given by $-\textbf{g}(\textbf{x})$, and so is the most obvious choice for a search direction.&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;def steepest_descent(x0,errsq):
+    xi = x0
+#   Compute the gradient and the square of its magnitude at i=0
+    gi = np.array( g(*xi) )
+    gd = np.dot(gi,gi)
+#   Iteratively update the coordinates using the Steepest Descent algorithm
+#   until the convergence criterion is met.
+    while gd &amp;gt; errsq:
+#   Update the coordinates using the negative gradient
+        xi = xi - a*gi
+#   Calculate the gradient and the square of its magnitude at the new coordinates
+        gi = np.array( g(*xi) )
+        gd = np.dot(gi,gi)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&#34;conjugate-gradients&#34;&gt;Conjugate Gradients&lt;/h4&gt;
+&lt;h3 id=&#34;deciding-the-step-length&#34;&gt;Deciding the Step Length&lt;/h3&gt;
+&lt;h4 id=&#34;backtracking&#34;&gt;Backtracking&lt;/h4&gt;
+&lt;h2 id=&#34;testing-our-optimisation-algorithms&#34;&gt;Testing our Optimisation Algorithms&lt;/h2&gt;
+&lt;p&gt;
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Test_functions_for_optimization&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;test functions&lt;/a&gt; for optimisation algorithms&lt;/p&gt;
+&lt;h3 id=&#34;defining-a-function-in-python&#34;&gt;Defining a function in Python&lt;/h3&gt;
+&lt;h4 id=&#34;bethe-function&#34;&gt;Bethe function&lt;/h4&gt;
+&lt;p&gt;$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;f = lambda x,y: (1.5-x+x*y)**2 + (2.25-x+x*y**2)**2 + (2.625-x+x*y**3)**2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;\begin{align}
+\dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\&lt;br&gt;
+&amp;amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}&lt;/p&gt;
+&lt;p&gt;\begin{align}
+\dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\&lt;br&gt;
+&amp;amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;g = lambda x,y: [2*( (1.5-x+x*y)*(y-1) + (2.25-x+x*y**2)*(y**2-1) + (2.625-x+x*y**3)*(y**3-1)   ),
+                 2*( (1.5-x+x*y)*x     + (2.25-x+x*y**2)*(2*x*y)  + (2.625-x+x*y**3)*(3*x*y**2) )]
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2 id=&#34;comparing-the-different-algorithms&#34;&gt;Comparing the different algorithms&lt;/h2&gt;
 
 
 

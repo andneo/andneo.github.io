@@ -30,8 +30,8 @@
   
     
   
-  <meta name="description" content="Defining a function  test functions for optimisation algorithms \begin{equation} f(x,y) = (1.5-x&#43;xy)^{2} &#43; (2.25-x&#43;xy^{2})^{2} &#43; (2.625-x&#43;xy^{3})^{2} \end{equation}
-f = lambda x, y: (1.5 - x &#43; x*y)**2 &#43; (2.25 - x &#43; x*y**2)**2 &#43; (2.">
+  <meta name="description" content="First we need to introduce some notation:
+ $\textbf{x}$: the $n$-dimensional vector of parameters to be optimised. $f(\textbf{x})$: the objective function. $\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.  Formally an optimisation problem can be written as: \begin{equation} \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x}) \end{equation}">
 
   
   <link rel="alternate" hreflang="en-us" href="https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/">
@@ -253,8 +253,8 @@ f = lambda x, y: (1.5 - x &#43; x*y)**2 &#43; (2.25 - x &#43; x*y**2)**2 &#43; (
   <meta property="og:site_name" content="Andreas Neophytou">
   <meta property="og:url" content="https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/">
   <meta property="og:title" content="Gradient-Based Optimisation | Andreas Neophytou">
-  <meta property="og:description" content="Defining a function  test functions for optimisation algorithms \begin{equation} f(x,y) = (1.5-x&#43;xy)^{2} &#43; (2.25-x&#43;xy^{2})^{2} &#43; (2.625-x&#43;xy^{3})^{2} \end{equation}
-f = lambda x, y: (1.5 - x &#43; x*y)**2 &#43; (2.25 - x &#43; x*y**2)**2 &#43; (2."><meta property="og:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
+  <meta property="og:description" content="First we need to introduce some notation:
+ $\textbf{x}$: the $n$-dimensional vector of parameters to be optimised. $f(\textbf{x})$: the objective function. $\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.  Formally an optimisation problem can be written as: \begin{equation} \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x}) \end{equation}"><meta property="og:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
   <meta property="twitter:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="en-us">
   
     
@@ -605,11 +605,18 @@ f = lambda x, y: (1.5 - x &#43; x*y)**2 &#43; (2.25 - x &#43; x*y**2)**2 &#43; (
 
       <nav id="TableOfContents">
   <ul>
-    <li>
+    <li><a href="#line-search-strategies">Line Search Strategies</a>
       <ul>
-        <li></li>
+        <li><a href="#deciding-the-search-direction">Deciding the Search Direction</a></li>
+        <li><a href="#deciding-the-step-length">Deciding the Step Length</a></li>
       </ul>
     </li>
+    <li><a href="#testing-our-optimisation-algorithms">Testing our Optimisation Algorithms</a>
+      <ul>
+        <li><a href="#defining-a-function-in-python">Defining a function in Python</a></li>
+      </ul>
+    </li>
+    <li><a href="#comparing-the-different-algorithms">Comparing the different algorithms</a></li>
   </ul>
 </nav>
 
@@ -625,24 +632,98 @@ f = lambda x, y: (1.5 - x &#43; x*y)**2 &#43; (2.25 - x &#43; x*y**2)**2 &#43; (
           <h1>Gradient-Based Optimisation</h1>
 
           <div class="article-style">
-            <h4 id="defining-a-function">Defining a function</h4>
-<p>
-<a href="https://en.wikipedia.org/wiki/Test_functions_for_optimization" target="_blank" rel="noopener">test functions</a> for optimisation algorithms
+            <p>First we need to introduce some notation:</p>
+<ul>
+<li>$\textbf{x}$: the $n$-dimensional vector of parameters to be optimised.</li>
+<li>$f(\textbf{x})$: the objective function.</li>
+<li>$\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.</li>
+</ul>
+<p>Formally an optimisation problem can be written as:
 \begin{equation}
-f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2}
+\min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
 \end{equation}</p>
-<pre><code class="language-python">f  = lambda x, y: (1.5 - x + x*y)**2 + (2.25 - x + x*y**2)**2 + (2.625 - x + x*y**3)**2
-</code></pre>
-<h4 id="calculating-the-gradient">Calculating the gradient</h4>
-<p>\begin{equation}
-\dfrac{\partial f(x,y)}{\partial x} = 2(1.5-x+xy)(y-1) + 2(2.25-x+xy^{2})(y^{2}-1) + 2(2.625-x+xy^{3})(y^{3}-1)
+<p>Optimisation algorithms iteratively update an initial guess for $\textbf{x}$ until they satisfy the above condition.
+The difference between them comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.</p>
+<h2 id="line-search-strategies">Line Search Strategies</h2>
+<p>We are going to focus on line search strategies &ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$ where $f(\textbf{x}_{i}) &lt; f(\textbf{x}_{i+1})$. We write this as:
+\begin{equation}
+\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}
 \end{equation}
-\begin{equation}
-\dfrac{\partial f(x,y)}{\partial y} = 2(1.5-x+xy)x + 2(2.25-x+xy^{2})(2xy) + 2(2.625-x+xy^{3})(3xy^{2})
-\end{equation}</p>
-<pre><code class="language-python">g  = lambda x, y: [(2*(1.5 - x + x*y)*(y-1)) + (2*(2.25 - x + x*y**2)*(y**2-1)) + (2*(2.625 - x + x*y**3)*(y**3-1)),
-                   (2*(1.5 - x + x*y)*x) + (2*(2.25 - x + x*y**2)*(2*x*y)) + (2*(2.625 - x + x*y**3)*(3*x*y**2))]
+Therefore, we have two tasks at each iteration:</p>
+<ol>
+<li>Determine $\textbf{d}_{i}$</li>
+<li>Determine $\alpha_{i}$ (the step length).</li>
+</ol>
+<p>We want to write some Python code that can optimise arbitrary functions.
+The first step is to define a <code>Class</code>:</p>
+<pre><code class="language-python">class Optimise:
+    def __init__(self, X, function, gradient, err, method):
+    #   Initialise input parameters for the optimisation algorithms
+        self.X      = X         # Initial coordinates.
+        self.f      = function  # Function to be optimised.
+        self.g      = gradient  # Gradient of the function.
+        self.err    = err       # Threshold convergence value
 </code></pre>
+<p>This <code>Class</code> has three key attributes:</p>
+<ol>
+<li><code>X</code>: The initial coordinates from which to optimise from, $\textbf{x}_{i=0}$.</li>
+<li><code>f</code>: The objective function to be optimised, $f(\textbf{x})$.</li>
+<li><code>g</code>: The gradient of the objective function, $\textbf{g}(\textbf{x})$.</li>
+</ol>
+<p>There are two more parameters, <code>err</code> and <code>method</code>, which we&rsquo;ll discuss later.</p>
+<h3 id="deciding-the-search-direction">Deciding the Search Direction</h3>
+<p>Different line search algorithms use different search directions, and the <code>method</code> variable will let our program know which to use.</p>
+<p>We are going to focus on two methods:</p>
+<ul>
+<li><code> method=1</code>: Steepest Descent</li>
+<li><code> method=2</code>: Conjugate Gradient</li>
+</ul>
+<p>Which we will call them from the <code>__init__</code> method:</p>
+<pre><code class="language-python">#   Perform local optimisation.
+    if(method==1):
+        self.steepest_descent()
+    elif(method==2):
+        self.conjugate_gradient()
+</code></pre>
+<h4 id="steepest-descent">Steepest Descent</h4>
+<p>The steepest descent direction of a function is given by $-\textbf{g}(\textbf{x})$, and so is the most obvious choice for a search direction.</p>
+<pre><code class="language-python">def steepest_descent(x0,errsq):
+    xi = x0
+#   Compute the gradient and the square of its magnitude at i=0
+    gi = np.array( g(*xi) )
+    gd = np.dot(gi,gi)
+#   Iteratively update the coordinates using the Steepest Descent algorithm
+#   until the convergence criterion is met.
+    while gd &gt; errsq:
+#   Update the coordinates using the negative gradient
+        xi = xi - a*gi
+#   Calculate the gradient and the square of its magnitude at the new coordinates
+        gi = np.array( g(*xi) )
+        gd = np.dot(gi,gi)
+</code></pre>
+<h4 id="conjugate-gradients">Conjugate Gradients</h4>
+<h3 id="deciding-the-step-length">Deciding the Step Length</h3>
+<h4 id="backtracking">Backtracking</h4>
+<h2 id="testing-our-optimisation-algorithms">Testing our Optimisation Algorithms</h2>
+<p>
+<a href="https://en.wikipedia.org/wiki/Test_functions_for_optimization" target="_blank" rel="noopener">test functions</a> for optimisation algorithms</p>
+<h3 id="defining-a-function-in-python">Defining a function in Python</h3>
+<h4 id="bethe-function">Bethe function</h4>
+<p>$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$</p>
+<pre><code class="language-python">f = lambda x,y: (1.5-x+x*y)**2 + (2.25-x+x*y**2)**2 + (2.625-x+x*y**3)**2
+</code></pre>
+<p>\begin{align}
+\dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\<br>
+&amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}</p>
+<p>\begin{align}
+\dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\<br>
+&amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}</p>
+<pre><code class="language-python">g = lambda x,y: [2*( (1.5-x+x*y)*(y-1) + (2.25-x+x*y**2)*(y**2-1) + (2.625-x+x*y**3)*(y**3-1)   ),
+                 2*( (1.5-x+x*y)*x     + (2.25-x+x*y**2)*(2*x*y)  + (2.625-x+x*y**3)*(3*x*y**2) )]
+</code></pre>
+<h2 id="comparing-the-different-algorithms">Comparing the different algorithms</h2>
 
 
 
