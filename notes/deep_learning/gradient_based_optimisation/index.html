@@ -30,8 +30,7 @@
   
     
   
-  <meta name="description" content="First we need to introduce some notation:
- $\textbf{x}$: the $n$-dimensional vector of parameters to be optimised. $f(\textbf{x})$: the objective function. $\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.  Formally an optimisation problem can be written as: \begin{equation} \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x}) \end{equation}">
+  <meta name="description" content="Before getting stuck into optimisation algorithms, we should first introduce some notation. First, and maybe most important, is the objective function. This function should provide some quantitative description of our process of interest (think of it as a measure of success).">
 
   
   <link rel="alternate" hreflang="en-us" href="https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/">
@@ -68,10 +67,8 @@
     
       
       
-        
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin="anonymous" title="hl-light" disabled>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark">
-        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/monokai-sublime.min.css" crossorigin="anonymous" title="hl-light">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/monokai-sublime.min.css" crossorigin="anonymous" title="hl-dark" disabled>
       
     
 
@@ -253,8 +250,7 @@
   <meta property="og:site_name" content="Andreas Neophytou">
   <meta property="og:url" content="https://andneo.github.io/notes/deep_learning/gradient_based_optimisation/">
   <meta property="og:title" content="Gradient-Based Optimisation | Andreas Neophytou">
-  <meta property="og:description" content="First we need to introduce some notation:
- $\textbf{x}$: the $n$-dimensional vector of parameters to be optimised. $f(\textbf{x})$: the objective function. $\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.  Formally an optimisation problem can be written as: \begin{equation} \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x}) \end{equation}"><meta property="og:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
+  <meta property="og:description" content="Before getting stuck into optimisation algorithms, we should first introduce some notation. First, and maybe most important, is the objective function. This function should provide some quantitative description of our process of interest (think of it as a measure of success)."><meta property="og:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
   <meta property="twitter:image" content="https://andneo.github.io/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="en-us">
   
     
@@ -605,15 +601,17 @@
 
       <nav id="TableOfContents">
   <ul>
+    <li><a href="#optimisation-problems">Optimisation Problems</a></li>
     <li><a href="#line-search-strategies">Line Search Strategies</a>
       <ul>
-        <li><a href="#deciding-the-search-direction">Deciding the Search Direction</a></li>
+        <li><a href="#steepest-descent">Steepest Descent</a></li>
+        <li><a href="#conjugate-gradient">Conjugate Gradient</a></li>
         <li><a href="#deciding-the-step-length">Deciding the Step Length</a></li>
       </ul>
     </li>
     <li><a href="#testing-our-optimisation-algorithms">Testing our Optimisation Algorithms</a>
       <ul>
-        <li><a href="#defining-a-function-in-python">Defining a function in Python</a></li>
+        <li><a href="#beale-function">Beale function</a></li>
       </ul>
     </li>
     <li><a href="#comparing-the-different-algorithms">Comparing the different algorithms</a></li>
@@ -632,28 +630,63 @@
           <h1>Gradient-Based Optimisation</h1>
 
           <div class="article-style">
-            <p>First we need to introduce some notation:</p>
-<ul>
-<li>$\textbf{x}$: the $n$-dimensional vector of parameters to be optimised.</li>
-<li>$f(\textbf{x})$: the objective function.</li>
-<li>$\nabla f(\textbf{x})\equiv\textbf{g}(\textbf{x})$: the gradient of the objective function.</li>
-</ul>
+            <p>Before getting stuck into optimisation algorithms, we should first introduce some notation.
+First, and maybe most important, is the <span class="markup-quote">objective function</span>.
+This function should provide some quantitative description of our process of interest (think of it as a measure of success).
+We denote the objective function as $f(\textbf{x})$, where $\textbf{x}$ is an $n$-dimensional vector of parameters.</p>
+<p>Consider, for now, the following arbitrary function where $\textbf{x}=(x,y)^{T}$:
+$$
+z = f(x,y) = x^2 - y^2
+$$
+I have plotted this function for $x,y\in[-2,2]$ below, and we can see (from the 3D representation on the left) it has a saddle shape.
+When $\textbf{x}=(0,0)^{T}$, $f(x,y)$ is at a <em>minimum</em> in the xz-plane and at a <em>maximum</em> in the yz-plane.
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+<figure >
+
+
+  <a data-fancybox="" href="/media/deep_learning/images/gradient.png" >
+
+
+  <img src="/media/deep_learning/images/gradient.png" alt=""  >
+</a>
+
+
+
+</figure>
+</p>
+<p>On the right I&rsquo;ve shown a 2D 
+<a href="https://www.statisticshowto.com/contour-plots/" target="_blank" rel="noopener">contour plot</a> of the same function, as well as the <em><em>gradient</em></em>.
+The gradient for this function is given by:
+\begin{align}
+\textbf{g}(\textbf{x}) \equiv \nabla f(x,y) &amp;= \Big(\dfrac{\partial f}{\partial x}, \dfrac{\partial f}{\partial y}\Big)^{T} \\<br>
+&amp;= \Big(2x, -2y\Big)^{T}
+\end{align}
+The gradient defines a vector field, which points in the direction of maximum rate of increase for the corresponding function.
+This is an important property of the gradient which we are going to exploit.</p>
+<h2 id="optimisation-problems">Optimisation Problems</h2>
 <p>Formally an optimisation problem can be written as:
-\begin{equation}
+$$
 \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
-\end{equation}</p>
-<p>Optimisation algorithms iteratively update an initial guess for $\textbf{x}$ until they satisfy the above condition.
+$$
+In reality, they iteratively update an initial guess for $\textbf{x}$ until they satisfy some termination condition.
 The difference between them comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.</p>
-<h2 id="line-search-strategies">Line Search Strategies</h2>
-<p>We are going to focus on line search strategies &ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$ where $f(\textbf{x}_{i}) &lt; f(\textbf{x}_{i+1})$. We write this as:
-\begin{equation}
-\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}
-\end{equation}
-Therefore, we have two tasks at each iteration:</p>
-<ol>
-<li>Determine $\textbf{d}_{i}$</li>
-<li>Determine $\alpha_{i}$ (the step length).</li>
-</ol>
 <p>We want to write some Python code that can optimise arbitrary functions.
 The first step is to define a <code>Class</code>:</p>
 <pre><code class="language-python">class Optimise:
@@ -663,6 +696,7 @@ The first step is to define a <code>Class</code>:</p>
         self.f      = function  # Function to be optimised.
         self.g      = gradient  # Gradient of the function.
         self.err    = err       # Threshold convergence value
+        self.method = method    # ID of the line search method
 </code></pre>
 <p>This <code>Class</code> has three key attributes:</p>
 <ol>
@@ -670,58 +704,180 @@ The first step is to define a <code>Class</code>:</p>
 <li><code>f</code>: The objective function to be optimised, $f(\textbf{x})$.</li>
 <li><code>g</code>: The gradient of the objective function, $\textbf{g}(\textbf{x})$.</li>
 </ol>
-<p>There are two more parameters, <code>err</code> and <code>method</code>, which we&rsquo;ll discuss later.</p>
-<h3 id="deciding-the-search-direction">Deciding the Search Direction</h3>
-<p>Different line search algorithms use different search directions, and the <code>method</code> variable will let our program know which to use.</p>
-<p>We are going to focus on two methods:</p>
-<ul>
-<li><code> method=1</code>: Steepest Descent</li>
-<li><code> method=2</code>: Conjugate Gradient</li>
-</ul>
-<p>Which we will call them from the <code>__init__</code> method:</p>
-<pre><code class="language-python">#   Perform local optimisation.
+<p>There are two more parameters, <code>err</code> and <code>method</code>.
+We use the <code>err</code> parameter to define our termination condition, and the <code>method</code> variable to decide which method to use:</p>
+<pre><code class="language-python">#   Initialise parameters describing the convergence of the optimisation algorithms
+    self.nsteps = 0
+    self.path   = []
+    self.steps  = []
+#   Perform local optimisation.
     if(method==1):
         self.steepest_descent()
     elif(method==2):
         self.conjugate_gradient()
+#   Extract the coordinates of the local minimum and the path taken to it.
+    self.minimum = self.path[-1]
+    self.path    = np.array(self.path).T
 </code></pre>
-<h4 id="steepest-descent">Steepest Descent</h4>
-<p>The steepest descent direction of a function is given by $-\textbf{g}(\textbf{x})$, and so is the most obvious choice for a search direction.</p>
-<pre><code class="language-python">def steepest_descent(x0,errsq):
-    xi = x0
+<p>We have also created some new variables which we are going to use to monitor the path the algorithms take to the minimum, and their convergence properties.</p>
+<h2 id="line-search-strategies">Line Search Strategies</h2>
+<p>We are going to focus on <em>line search strategies</em> &ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$ where $f(\textbf{x}_{i}) &lt; f(\textbf{x}_{i+1})$ (i.e., a descent direction). We write this as:
+$$
+\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}, \quad i=0, 1, 2, &hellip;
+$$
+Therefore, we have two tasks at each iteration:</p>
+<ol>
+<li>Determine $\textbf{d}_{i}$</li>
+<li>Determine $\alpha_{i}$ (the step length).</li>
+</ol>
+<h3 id="steepest-descent">Steepest Descent</h3>
+<p>Using Taylor&rsquo;s theorem we know that for any $\textbf{d}_{i}$ and $\alpha_{i}$ we have:
+$$
+f(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i}) = f(\textbf{x}_{i}) + \alpha_{i}\textbf{d}_{i}^{T}\textbf{g}(\textbf{x}_{i}) + \mathcal{O}(\alpha^{2}_{i})
+$$
+If we look at this second term a bit more closely we can define a condition for $\textbf{d}_{i}$ to be a descent direction:
+$$
+\textbf{d}_{i}^{T}\textbf{g}(\textbf{x}_{i}) = ||\textbf{d}_{i}^{T}||\cdot||\textbf{g}(\textbf{x}_{i})||\cos\theta_{i} &lt; 0
+$$
+where $\theta_{i}$ is the angle between $\textbf{d}_{i}$ and $\textbf{g}_{i}$.
+It should be easy to see that the steepest descent direction of a function is given by $\textbf{d}_{i}=-\textbf{g}_{i}$ (i.e., when $\cos\theta_{i}=-1$).</p>
+<p>This is the most obvious choice for a search direction, and forms the basis of our entry level optimisation algorithm:</p>
+<pre><code class="language-python">def steepest_descent(self):
+#   Define the initial coordinates for iteration i=0
+    x0 = self.X; xi = x0
 #   Compute the gradient and the square of its magnitude at i=0
-    gi = np.array( g(*xi) )
-    gd = np.dot(gi,gi)
+    gi = np.array(self.g(*xi)); gd = np.dot(gi,gi)
+#   Add the initial coordinates the path to the local minimum.
+    self.path.append(xi)
+#   Calculate the square of the convergence threshold.
+    errsq = self.err**2
 #   Iteratively update the coordinates using the Steepest Descent algorithm
 #   until the convergence criterion is met.
     while gd &gt; errsq:
-#   Update the coordinates using the negative gradient
+#   Determine the step size for this iteration using the backtracking algorithm.
+        a = self.backtrack(xi=xi,gi=gi,di=-gi, a0=1)
+#   Update the coordinates
         xi = xi - a*gi
 #   Calculate the gradient and the square of its magnitude at the new coordinates
-        gi = np.array( g(*xi) )
-        gd = np.dot(gi,gi)
+        gi = np.array(self.g(*xi)); gd = np.dot(gi,gi)
+#   Update parameters describing the convergence of the optimisation algorithm.
+        self.path.append(xi); self.nsteps += 1; self.steps.append(a)
 </code></pre>
-<h4 id="conjugate-gradients">Conjugate Gradients</h4>
+<p>One issue with this method is that it becomes very inefficient near the minimum where the magnitude of the gradient is very small.</p>
+<h3 id="conjugate-gradient">Conjugate Gradient</h3>
+<p>The conjugate gradient method has proved to be quite a successful optimisation algorithm and doesn&rsquo;t suffer from the same inefficiencies near the minimum as the steepest descent method.
+The principle is exactly the same as the steepest descent method, but now we replace $\textbf{d}_{i}=-\textbf{g}_{i}$ with:
+$$
+\textbf{d}_{i} =
+\begin{cases}
+-\textbf{g}(\textbf{x}_{i}) &amp; \text{if } i=0 \\<br>
+-\textbf{g}(\textbf{x}_{i})+\dfrac{\textbf{g}(\textbf{x}_{i})^{T}\textbf{g}(\textbf{x}_{i})}{\textbf{g}(\textbf{x}_{i-1})^{T}\textbf{g}(\textbf{x}_{i-1})}\textbf{d}_{i-1} &amp; \text{otherwise}
+\end{cases}
+$$
+We can see that we now have some history in our search direction.</p>
+<pre><code class="language-python">def conjugate_gradient(self):
+#   Define the initial coordinates for iteration i=0  
+    x0 = self.X; xi = x0
+#   Compute the gradient and the square of its magnitude at i=0
+    gi = np.array(self.g(*xi)); gd = np.dot(gi,gi)
+#   Compute the search direction, taking it to be equal to the negative of the 
+#   gradient at iteration i=0.
+    di = -gi
+#   Add the initial coordinates the path to the local minimum.
+    self.path.append(xi)
+#   Calculate the square of the convergence threshold.
+    errsq = self.err**2
+#   Iteratively update the coordinates using the Conjugate Gradient algorithm
+#   until the convergence criterion is met.    
+    while gd &gt; errsq:
+#   Determine the step size for this iteration using the backtracking algorithm.
+        a = self.backtrack(xi=xi,gi=gi,di=di,a0=1)
+#   Update the coordinates
+        xi = xi + a*di
+#   Save the old gradient and search direction, which will be used to calculate 
+#   the search direction for the next iteration.
+        gj  = gi; gdj = gd; dj  = di
+#   Calculate the gradient and the square of its magnitude at the new coordinates
+        gi = np.array(self.g(*xi)); gd = np.dot(gi,gi)
+#   Calculate the search direction for the next iteration.
+        di = dj*np.dot(gi,(gi-gj))/gdj - gi
+#   Update parameters describing the convergence of the optimisation algorithm.
+        self.path.append(xi); self.nsteps += 1; self.steps.append(a)
+</code></pre>
+<p>The layout of the two optimisation algorithms are identical, the only difference with the conjugate gradient method is that we need to save the gradient and search direction at each iteration to use in the next one.</p>
 <h3 id="deciding-the-step-length">Deciding the Step Length</h3>
+<p>Now that we know how to extract a search direction which points towards the minimum, we need to figure out how far we want to travel in that direction.</p>
+<p>You may have noticed in the code snippets above for the steepest descent and conjugate gradient methods a third method is called: <code>backtrack(xi=xi,gi=gi,di=di,a0=1)</code>.
+This is the method we use to determine our step size $\alpha_{i}$.</p>
 <h4 id="backtracking">Backtracking</h4>
+<p>When computing $\alpha_{i}$ we face a tradeoff: We want $\alpha_{i}$ to make a substantial decrease in $f(\textbf{x}_{i})$, but we also don&rsquo;t want to waste a lot of time choosing its value.
+In practise we try out a number of candidate $\alpha_{i}$ values, and choose the first one which satisfies some conditions.
+We are going to use the <em>sufficient decrease</em> condition:
+$$
+f(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i}) \leq f(\textbf{x}_{i}) + c_{1}\alpha_{i}\textbf{g}(\textbf{x}_{i})^{T}\textbf{d}_{i}, \quad c_{1}\in(0,1)
+$$
+One issue with this inequality is that is satisfied for all sufficiently small values $\alpha_{i}$.
+This issue can be avoided though by choosing the candidate $\alpha_{i}$ values appropriately.
+We do this using the <em>backtracking</em> approach:</p>
+<pre><code class="language-python">def backtrack(self, xi, gi, di, a0, c1=0.5, tau=0.5):
+#   Calculate the value of the function at the coordinates for the 
+#   current iteration of the optimisation algorithm.
+    fi = self.f(*xi)
+#   Calculate the dot product of the gradient and the search direction,
+#   to be used to evaluate the Armijo condition.  
+    gi = np.dot(gi, di)
+    ai = a0
+#   While the step size does not provide a sufficient decrease in the function f(X),
+#   adjust the step size using the contraction factor tau.
+    while( self.f( *(xi+ai*di) ) &gt; (fi + c1*ai*gi) ):
+        ai *= tau
+
+    return ai
+</code></pre>
+<p>We select an initial guess for $\alpha^{0}_{i}$ (which we just set to 1 by default) and iteratively decrease its size by the factor $\tau\in(0,1)$ until the sufficient decrease condition is satisfied.</p>
 <h2 id="testing-our-optimisation-algorithms">Testing our Optimisation Algorithms</h2>
-<p>
-<a href="https://en.wikipedia.org/wiki/Test_functions_for_optimization" target="_blank" rel="noopener">test functions</a> for optimisation algorithms</p>
-<h3 id="defining-a-function-in-python">Defining a function in Python</h3>
-<h4 id="bethe-function">Bethe function</h4>
-<p>$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$</p>
+<p>Now that we&rsquo;ve built our optimiser we are ready to test it out.
+There are a set of canonical 
+<a href="https://en.wikipedia.org/wiki/Test_functions_for_optimization" target="_blank" rel="noopener">test functions</a> for optimisation algorithms, which we&rsquo;ll use to be absolutely sure our code works.</p>
+<h3 id="beale-function">Beale function</h3>
+<p>We&rsquo;ll start of with the 2D Beale function:
+$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$
+which has the minimum $f(3,0.5) = 0$.</p>
+<p>Fist we need to define our function in Python, which we can do really easily using a 
+<a href="https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions" target="_blank" rel="noopener">Lambda expression</a>:</p>
 <pre><code class="language-python">f = lambda x,y: (1.5-x+x*y)**2 + (2.25-x+x*y**2)**2 + (2.625-x+x*y**3)**2
 </code></pre>
-<p>\begin{align}
+<p>Similarly, we need to define our gradient vector:
+$$
+\textbf{g}(x,y) = \Bigg(\dfrac{\partial f(x,y)}{\partial x}, \dfrac{\partial f(x,y)}{\partial y}\Bigg)^{T}
+$$
+where we have:
+\begin{align}
 \dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\<br>
 &amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
 \end{align}</p>
 <p>\begin{align}
 \dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\<br>
 &amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
-\end{align}</p>
+\end{align}
+Again, we can do this using a 
+<a href="https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions" target="_blank" rel="noopener">Lambda expression</a> that returns a list:</p>
 <pre><code class="language-python">g = lambda x,y: [2*( (1.5-x+x*y)*(y-1) + (2.25-x+x*y**2)*(y**2-1) + (2.625-x+x*y**3)*(y**3-1)   ),
                  2*( (1.5-x+x*y)*x     + (2.25-x+x*y**2)*(2*x*y)  + (2.625-x+x*y**3)*(3*x*y**2) )]
+</code></pre>
+<p>Now we need to import our <code>Optimise Class</code> (which I have saved in a file called optimiser.py) and call it using the different <code>method</code> IDs:</p>
+<pre><code class="language-python">import optimiser
+# Optimise using the Steepest Descent method
+sd = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=1)
+print(sd.minimum, sd.nsteps)
+# Optimise using the Conjugate Gradient algorithm
+cg = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=2)
+print(cg.minimum, cg.nsteps)
+</code></pre>
+<p>Now if we run this we should get something like this:</p>
+<pre><code class="language-console">aneo@computer:~$ python test_function.py
+[3.  0.5] 1118
+[3.  0.5] 50
 </code></pre>
 <h2 id="comparing-the-different-algorithms">Comparing the different algorithms</h2>
 
@@ -852,6 +1008,8 @@ The first step is to define a <code>Class</code>:</p>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin="anonymous"></script>
         
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/languages/r.min.js"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/languages/fortran.min.js"></script>
         
       
 
