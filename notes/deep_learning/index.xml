@@ -38,8 +38,11 @@ We denote the objective function as $f(\textbf{x})$, where $\textbf{x}$ is an $n
 $$
 z = f(x,y) = x^2 - y^2
 $$
-I have plotted this function for $x,y\in[-2,2]$ below, and we can see (from the 3D representation on the left) it has a saddle shape.
-When $\textbf{x}=(0,0)^{T}$, $f(x,y)$ is at a &lt;em&gt;minimum&lt;/em&gt; in the xz-plane and at a &lt;em&gt;maximum&lt;/em&gt; in the yz-plane.
+I have plotted this function for $x,y\in[-2,2]$ below, and we can see (from the 3D representation on the left) it has a 
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Saddle_point&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;saddle&lt;/a&gt; shape.
+When $\textbf{x}=(0,0)^{T}$, $f(x,y)$ is at a 
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Maxima_and_minima&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;minimum&lt;/a&gt; in the xz-plane and at a 
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Maxima_and_minima&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;maximum&lt;/a&gt; in the yz-plane.
 
 
 
@@ -78,16 +81,21 @@ The gradient for this function is given by:
 \textbf{g}(\textbf{x}) \equiv \nabla f(x,y) &amp;amp;= \Big(\dfrac{\partial f}{\partial x}, \dfrac{\partial f}{\partial y}\Big)^{T} \\&lt;br&gt;
 &amp;amp;= \Big(2x, -2y\Big)^{T}
 \end{align}
-The gradient defines a vector field, which points in the direction of maximum rate of increase for the corresponding function.
+The gradient defines a 
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Vector_field&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;vector field&lt;/a&gt;, which points in the 
+&lt;a href=&#34;http://mathonline.wikidot.com/the-maximum-rate-of-change-at-a-point-on-a-function-of-sever&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;direction of maximum rate of increase&lt;/a&gt; for its corresponding function.
 This is an important property of the gradient which we are going to exploit.&lt;/p&gt;
 &lt;h2 id=&#34;optimisation-problems&#34;&gt;Optimisation Problems&lt;/h2&gt;
-&lt;p&gt;Formally an optimisation problem can be written as:
+&lt;p&gt;We are interested in solving the general optimisation problem:
 $$
 \min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
 $$
-In reality, they iteratively update an initial guess for $\textbf{x}$ until they satisfy some termination condition.
-The difference between them comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.&lt;/p&gt;
-&lt;p&gt;We want to write some Python code that can optimise arbitrary functions.
+In other words, we want to find a set of coordinates which correspond to a 
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Maxima_and_minima&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;minimum&lt;/a&gt; of the function $f(\textbf{x})$.
+We are going to do this using an optimisation algorithm.
+There are different algorithms to choose from, but they all follow the same general process: iteratively update an initial guess for $\textbf{x}$ until some termination condition is satisified.&lt;/p&gt;
+&lt;p&gt;The difference between different algorithms comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.
+We want to write some Python code that can optimise arbitrary functions using different optimisation algorithms.
 The first step is to define a &lt;code&gt;Class&lt;/code&gt;:&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;class Optimise:
     def __init__(self, X, function, gradient, err, method):
