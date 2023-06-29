@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<!-- This site was created with Wowchemy. https://www.wowchemy.com -->
+<!-- Last Published: June 29, 2023 --><html lang="en-gb" >
+
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  
+  
+  
+    <meta name="generator" content="Wowchemy 5.7.0 for Hugo" />
+  
+
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  
+
+  
+  
+  
+    
+      
+      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Mono&family=Roboto:wght@400;700&display=swap">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Mono&family=Roboto:wght@400;700&display=swap" media="print" onload="this.media='all'">
+    
+  
+
+  
+  
+
+  
+  
+    
+    <script src="/js/mathjax-config.js"></script>
+  
+
+  
+
+  <link rel="stylesheet" href="/css/vendor-bundle.min.047268c6dd09ad74ba54a0ba71837064.css" media="print" onload="this.media='all'">
+
+  
+  
+  
+    
+    
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/academicons@1.9.2/css/academicons.min.css" integrity="sha512-KlJCpRsLf+KKu2VQa5vmRuClRFjxc5lXO03ixZt82HZUk41+1I0bD8KBSA0fY290ayMfWYI9udIqeOWSu1/uZg==" crossorigin="anonymous" media="print" onload="this.media='all'">
+    
+
+    
+    
+    
+    
+      
+      
+    
+    
+    
+
+    
+    
+    
+
+    
+
+    
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" integrity="" crossorigin="anonymous" async></script>
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+  
+
+  
+  
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/wowchemy.b4ea0c6f4d3aca59b93c864b208d0ff1.css" />
+
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+    
+    
+    <link rel="stylesheet" href="/css/libs/chroma/dracula.min.css" title="hl-light" media="print" onload="this.media='all'" >
+    <link rel="stylesheet" href="/css/libs/chroma/dracula.min.css" title="hl-dark" media="print" onload="this.media='all'" disabled>
+  
+
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+
+
+
+
+  <meta name="author" content="Andreas Neophytou" />
+
+
+
+
+
+  
+
+<meta name="description" content="A brief overview on the theory underpinning gradient-based optimisation algorithms (steepest descent and conjugate gradients) and their implemention." />
+
+
+
+<link rel="alternate" hreflang="en-gb" href="https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/" />
+<link rel="canonical" href="https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/" />
+
+
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+
+
+<link rel="icon" type="image/png" href="/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_32x32_fill_lanczos_center_3.png" />
+<link rel="apple-touch-icon" type="image/png" href="/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_180x180_fill_lanczos_center_3.png" />
+
+<meta name="theme-color" content="#e83e8c" />
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+<meta property="twitter:card" content="summary" />
+<meta property="twitter:image" content="https://andneo.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png" />
+<meta property="og:site_name" content="Andreas Neophytou" />
+<meta property="og:url" content="https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/" />
+<meta property="og:title" content="Gradient-Based Optimisation | Andreas Neophytou" />
+<meta property="og:description" content="A brief overview on the theory underpinning gradient-based optimisation algorithms (steepest descent and conjugate gradients) and their implemention." /><meta property="og:image" content="https://andneo.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png" /><meta property="og:locale" content="en-gb" />
+
+  
+    <meta
+      property="article:published_time"
+      content="2023-06-29T00:00:00&#43;01:00"
+    />
+  
+  
+    <meta property="article:modified_time" content="2023-06-29T00:00:00&#43;01:00">
+  
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+  
+  
+
+  
+  
+
+  
+
+
+  
+  <title>Gradient-Based Optimisation | Andreas Neophytou</title>
+
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+  
+    
+      
+      
+      
+    
+  
+
+
+
+
+</head>
+
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class="page-wrapper   " data-wc-page-id="8a9a1864a4e8e97c403d24578be326e2" >
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <script src="/js/wowchemy-init.min.74aedfae60bb49ca67a368a90c9bbab5.js"></script>
+
+  
+
+
+<aside class="search-modal" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Search</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#" aria-label="Close"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Search..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search" class="form-control"
+        aria-label="Search...">
+        
+      </div>
+
+      
+      
+
+      
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+
+  <div class="page-header header--fixed">
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<header>
+  <nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+    <div class="container-xl">
+
+      
+
+      
+      <button type="button" class="navbar-toggler" data-toggle="collapse"
+              data-target="#navbar-content" aria-controls="navbar-content" aria-expanded="false" aria-label="Toggle navigation">
+      <span><i class="fas fa-bars"></i></span>
+      </button>
+      
+
+      
+
+      
+      
+      <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+        
+        <ul class="navbar-nav d-md-inline-flex">
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+              
+              
+              
+                
+              
+              
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link " href="/#about"><span>Home</span></a>
+          </li>
+
+          
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+              
+              
+              
+                
+              
+              
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link " href="/#posts"><span>Posts</span></a>
+          </li>
+
+          
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+              
+              
+              
+                
+              
+              
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link " href="/#publications"><span>Publications</span></a>
+          </li>
+
+          
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+              
+              
+              
+                
+              
+              
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link " href="/#talks"><span>Talks</span></a>
+          </li>
+
+          
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+              
+              
+              
+                
+              
+              
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link " href="/#contact"><span>Contact</span></a>
+          </li>
+
+          
+          
+
+          
+
+          
+          
+          
+            
+          
+
+          
+
+          
+          
+          
+          
+
+          
+            
+              
+              
+            
+            
+          
+
+          <li class="nav-item">
+            <a class="nav-link  active" href="/notes"><span>Notes</span></a>
+          </li>
+
+          
+          
+
+        
+
+          
+        </ul>
+      </div>
+
+      <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+
+        
+        
+          
+        
+
+        
+        
+        
+        <li class="nav-item">
+          <a class="nav-link js-search" href="#" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></a>
+        </li>
+        
+
+        
+        
+        
+        <li class="nav-item dropdown theme-dropdown">
+          <a href="#" class="nav-link" data-toggle="dropdown" aria-haspopup="true" aria-label="Display preferences">
+            <i class="fas fa-moon" aria-hidden="true"></i>
+          </a>
+          <div class="dropdown-menu">
+            <a href="#" class="dropdown-item js-set-theme-light">
+              <span>Light</span>
+            </a>
+            <a href="#" class="dropdown-item js-set-theme-dark">
+              <span>Dark</span>
+            </a>
+            <a href="#" class="dropdown-item js-set-theme-auto">
+              <span>Automatic</span>
+            </a>
+          </div>
+        </li>
+        
+
+        
+        
+
+      </ul>
+
+    </div>
+  </nav>
+</header>
+
+
+  </div>
+
+  <div class="page-body">
+    
+    
+    
+
+    
+
+
+
+
+<div class="container-fluid docs">
+  <div class="row flex-xl-nowrap">
+    <div class="col-12 col-md-3 col-xl-2 docs-sidebar">
+      <form class="docs-search d-flex align-items-center">
+  <button class="btn docs-toggle d-md-none p-0 mr-md-3 w-100" type="button" data-toggle="collapse" data-target="#docs-nav" aria-controls="docs-nav" aria-expanded="false" aria-label="Toggle section navigation">
+    <div class="d-flex">
+      <span class="d-md-none pl-1 flex-grow-1 text-left overflow-hidden">
+        
+        
+          Numerical Optimisation
+        
+      </span>
+      <span><i class="fas fa-chevron-down"></i></span>
+    </div>
+  </button>
+
+  
+  <button class="form-control sidebar-search js-search d-none d-md-flex">
+    <i class="fas fa-search pr-2"></i>
+    <span class="sidebar-search-text">Search...</span>
+    <span class="sidebar-search-shortcut">/</span>
+  </button>
+  
+</form>
+
+<nav class="collapse docs-links" id="docs-nav">
+  
+  
+  
+  
+  
+  
+
+  
+  
+    
+
+    
+      
+
+      <ul class="nav docs-sidenav">
+        <li><a href="/notes/"><i class="fas fa-arrow-left pr-1"></i>Notes</a></li>
+      </ul>
+
+      
+      
+        
+          
+        
+      
+
+
+  
+    
+    
+    
+    
+      
+    
+    
+
+    
+      <div class="docs-toc-item">
+        <a class="docs-toc-link " href="/notes/deep_learning/">Deep Learning</a>
+    
+      
+        <ul class="nav docs-sidenav">
+      
+
+
+  <li class=""><a href="/notes/deep_learning/00_introduction/">Introduction</a></li>
+
+
+
+  
+    
+    
+    
+    
+      
+    
+    
+
+    
+      <div class="docs-toc-item">
+        <a class="docs-toc-link " href="/notes/deep_learning/01_numerical_optimisation/">Numerical Optimisation</a>
+    
+      
+        <ul class="nav docs-sidenav">
+      
+
+
+  <li class="active"><a href="/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/">Gradient-Based Algorithms</a></li>
+
+
+
+  <li class=""><a href="/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods/">Quasi-Newton Methods</a></li>
+
+
+
+  <li class=""><a href="/notes/deep_learning/01_numerical_optimisation/03_autograd_forward/">Forward-Mode Automatic Differentiation</a></li>
+
+
+
+  <li class=""><a href="/notes/deep_learning/01_numerical_optimisation/04_autograd_backward/">Reverse-Mode Automatic Differentiation</a></li>
+
+
+
+  <li class=""><a href="/notes/deep_learning/01_numerical_optimisation/05_linear_regression/">Putting it all Together: Linear Regression</a></li>
+
+      
+        </ul>
+      
+    
+
+    
+      </div>
+    
+
+      
+        </ul>
+      
+    
+
+    
+      </div>
+    
+
+    
+  
+</nav>
+
+    </div>
+
+    
+    
+    <div class="d-none d-xl-block col-xl-2 docs-toc">
+      
+
+
+
+
+
+
+
+
+
+
+
+
+      <ul class="nav toc-top">
+        <li><a href="#" id="back_to_top" class="docs-toc-title">Contents</a></li>
+      </ul>
+
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#some-background-maths">Some Background Maths</a></li>
+    <li><a href="#optimisation-problems">Optimisation Problems</a></li>
+    <li><a href="#gradient-descent">Gradient Descent</a>
+      <ul>
+        <li><a href="#deciding-the-step-length">Deciding the Step Length</a></li>
+        <li><a href="#testing-out-our-code">Testing out our Code</a></li>
+        <li><a href="#issues-with-gradient-descent">Issues with Gradient Descent</a></li>
+      </ul>
+    </li>
+    <li><a href="#conjugate-gradient">Conjugate Gradient</a></li>
+  </ul>
+</nav>
+
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+    
+
+    <main class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 docs-content" role="main">
+
+      <article class="article">
+
+        <div class="docs-article-container">
+          
+        </div>
+
+        
+        
+
+        <div class="docs-article-container">
+          
+          <h1>Gradient-Based Optimisation</h1>
+
+          
+            <div class="btn-links mb-3">
+              <a class="btn btn-outline-primary btn-page-header" href="https://github.com/andneo/andneo_code/tree/master/deep_learning/optimisation_algorithms" target="_blank" rel="noopener">
+                Code
+              </a>
+            </div>
+          
+
+          <div class="article-style">
+
+            
+            
+
+            <h2 id="introduction">Introduction</h2>
+<p>Optimisation is a ubiquitous process, people do it everyday. A classic example would be: <em>How do I get somewhere as</em> (<em><strong>fast, cheap, environmentally friendly, &hellip;</strong></em>) <em>as possible?</em>  Nature optimises too, a big part of what I did in my PhD was finding out how systems of particles optimise their potential energy.
+Needless to say, optimisation is an important process, and quite a bit of effort has been dedicated to developing algorithms that do it well.
+As we will see, optimisation algorithms form a key component of neural networks.
+The first section of these notes introduce some of the theory underpinning these optimisation algorithms, and how to implement them in Python.</p>
+<h2 id="some-background-maths">Some Background Maths</h2>
+<p>Before getting stuck into optimisation algorithms, we should first introduce some of the maths needed to understand the algorithms and the notation we&rsquo;ll use.
+First, and maybe most important, is the 
+
+<mark>objective function</mark>.
+This function should provide some quantitative description of our process of interest (think of it as a measure of success).</p>
+<p>For instance, in our above example of getting to some destination the objective function could be some mathematical expression which involves the time or cost of the journey.
+We denote the objective function as $f(\textbf{x})$, where $\textbf{x}$ is an $n$-dimensional vector of parameters.
+So in our journey example, $\textbf{x}$ would be a 2d vector where the first parameter ($x_{0}$) would be time and the second parameter ($x_{1}$) would be cost.
+We could therefore write $\textbf{x}=(x_{0},x_{1})^{T}$ (where the $^{T}$ means we are dealing with a <a href="https://en.wikipedia.org/wiki/Row_and_column_vectors" target="_blank" rel="noopener">row vector</a>).
+Our objective function will then involve some combination of these parameters, for instance this could be:
+$$
+f(\textbf{x}) = x_{0}^2 + x_{1}^2
+$$
+I have plotted this function for $x_{0},x_{1}\in[-10,10]$ below, and we can see (from the 3D representation on the left) it has a bowl-like shape (actually we would call this a <a href="https://en.wikipedia.org/wiki/Paraboloid" target="_blank" rel="noopener">paraboloid</a>).
+We can also see that when $\textbf{x}=(0,0)^{T}$, $f(x_{0},x_{1})=0$. We would say that this point corresponds to the <a href="https://en.wikipedia.org/wiki/Maxima_and_minima" target="_blank" rel="noopener">minimum</a> of the function $f(\textbf{x})$.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<figure  >
+  <div class="d-flex justify-content-center">
+    <div class="w-100" ><img src="/media/deep_learning/images/gradient.svg" alt="" loading="lazy" data-zoomable /></div>
+  </div></figure>
+</p>
+<p>On the right I&rsquo;ve shown a 2D <a href="https://www.statisticshowto.com/contour-plots/" target="_blank" rel="noopener">contour plot</a> of the same function, as well as the <a href="https://en.wikipedia.org/wiki/Gradient" target="_blank" rel="noopener"><em><em>gradient</em></em></a>.
+The gradient for this function is given by:
+\begin{align}
+\textbf{g}(\textbf{x}) \equiv \nabla f(x_{0},x_{1}) &amp;= \Big(\dfrac{\partial f}{\partial x_{0}}, \dfrac{\partial f}{\partial x_{1}}\Big)^{T} = \Big(2x_{0}, 2x_{1}\Big)^{T}
+\end{align}
+The gradient defines a <a href="https://en.wikipedia.org/wiki/Vector_field" target="_blank" rel="noopener">vector field</a>, which points in the <a href="http://mathonline.wikidot.com/the-maximum-rate-of-change-at-a-point-on-a-function-of-sever" target="_blank" rel="noopener">direction of maximum rate of increase</a> for its corresponding function.
+This is an important property of the gradient which we are going to exploit.
+If none of this is familiar to you I would suggest going through a course like <a href="https://ocw.mit.edu/courses/18-02sc-multivariable-calculus-fall-2010/pages/syllabus/" target="_blank" rel="noopener">this one</a>.</p>
+<h2 id="optimisation-problems">Optimisation Problems</h2>
+<p>We are interested in solving the general optimisation problem:
+$$
+\min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
+$$
+In other words, we want to find a set of coordinates which correspond to a <a href="https://en.wikipedia.org/wiki/Maxima_and_minima" target="_blank" rel="noopener">minimum</a> of the function $f(\textbf{x})$.
+We are going to do this using an optimisation algorithm.
+There are different algorithms to choose from, but they all follow the same general process: iteratively update an initial guess for $\textbf{x}$ until some termination condition is satisified.</p>
+<p>The difference between different algorithms comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.
+We want to write some Python code that can optimise arbitrary functions using different optimisation algorithms.
+The first step is to define a <code>Class</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln">1</span><span class="cl"><span class="k">class</span> <span class="nc">Optimise</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">2</span><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">3</span><span class="cl">    <span class="c1">#   Initialise input parameters for the optimisation algorithms</span>
+</span></span><span class="line"><span class="ln">4</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">X</span>      <span class="o">=</span> <span class="n">X</span>         <span class="c1"># Coordinates of the function.</span>
+</span></span><span class="line"><span class="ln">5</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">f</span>      <span class="o">=</span> <span class="n">function</span>  <span class="c1"># Function to be optimised.</span>
+</span></span><span class="line"><span class="ln">6</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">g</span>      <span class="o">=</span> <span class="n">gradient</span>  <span class="c1"># Gradient of the function.</span>
+</span></span><span class="line"><span class="ln">7</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">err</span>    <span class="o">=</span> <span class="n">err</span>       <span class="c1"># Threshold convergence value</span>
+</span></span><span class="line"><span class="ln">8</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>    <span class="c1"># ID of the line search method</span>
+</span></span></code></pre></div><p>This <code>Class</code> has three key attributes:</p>
+<ol>
+<li><code>X</code>: The coordinates which we are to optimise, $\textbf{x}$.</li>
+<li><code>f</code>: The objective function to be optimised, $f(\textbf{x})$.</li>
+<li><code>g</code>: The gradient of the objective function, $\textbf{g}(\textbf{x})$.</li>
+</ol>
+<p>There are two more parameters, <code>err</code> and <code>method</code>.
+We use the <code>err</code> parameter to define our termination condition, and the <code>method</code> variable to decide which method to use. For now we&rsquo;ll just include the steepest descent algorithm.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 9</span><span class="cl"><span class="c1">#   Initialise parameters describing the convergence of the optimisation algorithms</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">nsteps</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">path</span>   <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">steps</span>  <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="c1">#   Perform local optimisation.</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">    <span class="k">if</span><span class="p">(</span><span class="n">method</span><span class="o">==</span><span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">steepest_descent</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl"><span class="c1">#   Extract the coordinates of the local minimum and the path taken to it.</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">minimum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">path</span>    <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span></span></code></pre></div><p>We have also created some new variables which we are going to use to monitor the path the algorithms take to the minimum, and their convergence properties. Also, on line 18 we use a function from <a href="https://numpy.org/" target="_blank" rel="noopener">NumPy</a> which we&rsquo;ll be using a lot more of later on when we actually start to code our optimisation algorithms.</p>
+<h2 id="gradient-descent">Gradient Descent</h2>
+<p>In this section we are going to focus on <em>line search strategies</em> &ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$:
+$$
+\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}, \quad i=0, 1, 2, &hellip;
+$$
+where $f(\textbf{x}_{i+1}) &lt; f(\textbf{x}_{i})$ and so we refer to $\textbf{d}_{i}$ as a descent direction. Therefore, we have two tasks at each iteration of our optimisation algorithm:</p>
+<ol>
+<li>Determine $\textbf{d}_{i}$ (the step direction)</li>
+<li>Determine $\alpha_{i}$ (the step length)</li>
+</ol>
+<p>If we look back at the 2D contour plot of $f(\textbf{x})$ above (specifically focusing on the gradient field) an obvious choice for $\textbf{d}_{i}$ is staring us in the face. Maybe the most obvious choice for a descent direction of any (differentiable) function is given by $\textbf{d}_{i}=-\textbf{g}_{i}$, and forms the basis of our entry level optimisation algorithm:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln">19</span><span class="cl"><span class="k">def</span> <span class="nf">gradient_descent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl"><span class="c1">#   Define the initial coordinates for iteration i=0</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">    <span class="n">xi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl"><span class="c1">#   Add the initial coordinates the path to the local minimum.</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">    <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl"><span class="c1">#   Calculate the square of the convergence threshold.</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl">    <span class="n">errsq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">**</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">    <span class="n">gd</span> <span class="o">=</span> <span class="mf">1.</span> <span class="c1"># Initialise the squared gradient to 1</span>
+</span></span><span class="line"><span class="ln">27</span><span class="cl"><span class="c1">#   Iteratively update the coordinates using the Steepest Descent algorithm</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl"><span class="c1">#   until the convergence criterion is met.</span>
+</span></span><span class="line"><span class="ln">29</span><span class="cl">    <span class="k">while</span> <span class="n">gd</span> <span class="o">&gt;</span> <span class="n">errsq</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">30</span><span class="cl"><span class="c1">#   Calculate the gradient and the square of its magnitude at the new coordinates</span>
+</span></span><span class="line"><span class="ln">31</span><span class="cl">        <span class="n">gi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">(</span><span class="o">*</span><span class="n">xi</span><span class="p">);</span> <span class="n">gd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gi</span><span class="p">,</span><span class="n">gi</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">32</span><span class="cl"><span class="c1">#   Set the step direction to be the negative of the gradient</span>
+</span></span><span class="line"><span class="ln">33</span><span class="cl">        <span class="n">di</span> <span class="o">=</span> <span class="o">-</span><span class="n">gi</span>
+</span></span><span class="line"><span class="ln">34</span><span class="cl"><span class="c1">#   Determine the step size for this iteration using the backtracking algorithm.</span>
+</span></span><span class="line"><span class="ln">35</span><span class="cl">        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backtrack</span><span class="p">(</span><span class="n">xi</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span><span class="n">gi</span><span class="o">=</span><span class="n">gi</span><span class="p">,</span><span class="n">di</span><span class="o">=</span><span class="n">di</span><span class="p">,</span><span class="n">a0</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl"><span class="c1">#   Update the coordinates</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl">        <span class="n">xi</span> <span class="o">=</span> <span class="n">xi</span> <span class="o">+</span> <span class="n">a</span><span class="o">*</span><span class="n">di</span>
+</span></span><span class="line"><span class="ln">38</span><span class="cl"><span class="c1">#   Update parameters describing the convergence of the optimisation algorithm.</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">nsteps</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xi</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</span></span></code></pre></div><p>You&rsquo;ll see in the code snippet we call a function <code>backtrack()</code> on line 35, this function chooses an appropriate step length $\alpha_{i}$ which we&rsquo;ll go over in the next <a href="./#deciding-the-step-length">section</a>. But in just a few lines of code we&rsquo;ve written a function which should optimise any function we give it!</p>
+<h3 id="deciding-the-step-length">Deciding the Step Length</h3>
+<p>Now that we know how to extract a search direction which points towards the minimum, we need to figure out how far we want to travel in that direction.</p>
+<p>You may have noticed in the code snippets above for the steepest descent and conjugate gradient methods a third method is called: <code>backtrack(xi=xi,gi=gi,di=di,a0=1)</code>.
+This is the method we use to determine our step size $\alpha_{i}$.</p>
+<h4 id="backtracking">Backtracking</h4>
+<p>When computing $\alpha_{i}$ we face a tradeoff: We want $\alpha_{i}$ to make a substantial decrease in $f(\textbf{x}_{i})$, but we also don&rsquo;t want to waste a lot of time choosing its value.
+In practise we try out a number of candidate $\alpha_{i}$ values, and choose the first one which satisfies some conditions.
+We are going to use the <em>sufficient decrease</em> condition:
+$$
+f(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i}) \leq f(\textbf{x}_{i}) + c_{1}\alpha_{i}\textbf{g}(\textbf{x}_{i})^{T}\textbf{d}_{i}, \quad c_{1}\in(0,1)
+$$
+One issue with this inequality is that it&rsquo;s satisfied for all sufficiently small values $\alpha_{i}$.
+This issue can be avoided though by choosing the candidate $\alpha_{i}$ values appropriately.
+We do this using the <em>backtracking</em> approach:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln">40</span><span class="cl"><span class="k">def</span> <span class="nf">backtrack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">gi</span><span class="p">,</span> <span class="n">di</span><span class="p">,</span> <span class="n">a0</span><span class="p">,</span> <span class="n">c1</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl"><span class="c1">#   Calculate the value of the function at the coordinates for the </span>
+</span></span><span class="line"><span class="ln">42</span><span class="cl"><span class="c1">#   current iteration of the optimisation algorithm.</span>
+</span></span><span class="line"><span class="ln">43</span><span class="cl">    <span class="n">fi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">xi</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl"><span class="c1">#   Calculate the dot product of the gradient and the search direction,</span>
+</span></span><span class="line"><span class="ln">45</span><span class="cl"><span class="c1">#   to be used to evaluate the Armijo condition.  </span>
+</span></span><span class="line"><span class="ln">46</span><span class="cl">    <span class="n">gi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gi</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">47</span><span class="cl">    <span class="n">ai</span> <span class="o">=</span> <span class="n">a0</span>
+</span></span><span class="line"><span class="ln">48</span><span class="cl"><span class="c1">#   While the step size does not provide a sufficient decrease in the function f(X),</span>
+</span></span><span class="line"><span class="ln">49</span><span class="cl"><span class="c1">#   adjust the step size using the contraction factor tau.</span>
+</span></span><span class="line"><span class="ln">50</span><span class="cl">    <span class="k">while</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">(</span> <span class="o">*</span><span class="p">(</span><span class="n">xi</span><span class="o">+</span><span class="n">ai</span><span class="o">*</span><span class="n">di</span><span class="p">)</span> <span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">fi</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="n">ai</span><span class="o">*</span><span class="n">gi</span><span class="p">)</span> <span class="p">):</span>
+</span></span><span class="line"><span class="ln">51</span><span class="cl">        <span class="n">ai</span> <span class="o">*=</span> <span class="n">tau</span>
+</span></span><span class="line"><span class="ln">52</span><span class="cl">
+</span></span><span class="line"><span class="ln">53</span><span class="cl">    <span class="k">return</span> <span class="n">ai</span>
+</span></span></code></pre></div><p>We select an initial guess for $\alpha^{0}_{i}$ (which we just set to 1 by default) and iteratively decrease its size by the factor $\tau\in(0,1)$ until the sufficient decrease condition is satisfied. We&rsquo;ll introduce more sophisticated algorithms for choosing the step size when we get to <a href="/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods">quasi-Newton methods</a>, but for now this does the job.</p>
+<h3 id="testing-out-our-code">Testing out our Code</h3>
+<p>Now that we&rsquo;ve built our optimiser we are ready to test it out.
+There are a set of canonical <a href="https://en.wikipedia.org/wiki/Test_functions_for_optimization" target="_blank" rel="noopener">test functions</a> for optimisation algorithms, which we&rsquo;ll use to be absolutely sure our code works.</p>
+<!-- ### Beale function -->
+<p>We&rsquo;ll start of with the 2D Beale function:
+$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$
+which has the minimum $f(3,0.5) = 0$.</p>
+<p>Fist we need to define our function in Python, which we can do really easily using a <a href="https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions" target="_blank" rel="noopener">Lambda expression</a>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">f</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="mf">1.5</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.25</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.625</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+</span></span></code></pre></div><p>Similarly, we need to define our gradient vector:
+$$
+\textbf{g}(x,y) = \Bigg(\dfrac{\partial f(x,y)}{\partial x}, \dfrac{\partial f(x,y)}{\partial y}\Bigg)^{T}
+$$
+where we have:
+\begin{align}
+\dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\
+&amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}</p>
+<p>\begin{align}
+\dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\
+&amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}
+Again, we can do this using a <a href="https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions" target="_blank" rel="noopener">Lambda expression</a> that returns a list:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">g</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span> <span class="p">(</span><span class="mf">1.5</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.25</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">2.625</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="o">**</span><span class="mi">3</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>   <span class="p">),</span>
+</span></span><span class="line"><span class="cl">                 <span class="mi">2</span><span class="o">*</span><span class="p">(</span> <span class="p">(</span><span class="mf">1.5</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="n">x</span>     <span class="o">+</span> <span class="p">(</span><span class="mf">2.25</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">)</span>  <span class="o">+</span> <span class="p">(</span><span class="mf">2.625</span><span class="o">-</span><span class="n">x</span><span class="o">+</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="p">)]</span>
+</span></span></code></pre></div><p>Now we need to import our <code>Optimise Class</code> (which I have saved in a file called optimiser.py) and call it using the different <code>method</code> IDs:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">optimiser</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Optimise using the Steepest Descent method</span>
+</span></span><span class="line"><span class="cl"><span class="n">sd</span> <span class="o">=</span> <span class="n">optimiser</span><span class="o">.</span><span class="n">Optimise</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="p">[</span><span class="mf">3.</span><span class="p">,</span><span class="mf">4.</span><span class="p">],</span><span class="n">function</span><span class="o">=</span><span class="n">f</span><span class="p">,</span><span class="n">gradient</span><span class="o">=</span><span class="n">g</span><span class="p">,</span><span class="n">err</span><span class="o">=</span><span class="mf">1.e-9</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">minimum</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">nsteps</span><span class="p">)</span>
+</span></span></code></pre></div><p>Now if we run this we should get something like this:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">aneo@computer:~$ python test_function.py
+</span></span><span class="line"><span class="cl"><span class="o">[</span>3.  0.5<span class="o">]</span> <span class="m">205</span>
+</span></span></code></pre></div><p>It works! We can even watch an animation of our optimisation algorithm at work
+<video class="video-shortcode" preload="" controls>
+  <source src="/media/deep_learning/videos/section_1/gradient_descent.mp4" type="video/mp4">
+  There should have been a video here but your browser does not seem
+  to support it.
+</video></p>
+<h3 id="issues-with-gradient-descent">Issues with Gradient Descent</h3>
+<p>Now (if you didn&rsquo;t get too excited over the success of our code) you might&rsquo;ve noticed that it took 205 iterations of our algorithm to reach the minimum. In the video we can see that almost all of those steps are taken when we get really close to the minimum (the video isn&rsquo;t longer than it needs to be it&rsquo;s just the steps being taken are so small our video doesn&rsquo;t have the resolution to see them!). There are two main reasons why this happens which we&rsquo;ll go through below.</p>
+<h4 id="crawling-behaviour-of-gradient-descent">Crawling Behaviour of Gradient Descent</h4>
+<p>Now while we call $\alpha_{i}$ our step length, technically the size of each step (which let&rsquo;s represent as $\Delta\textbf{x}_{i}$) in our optimisation algorithm is only equal to this when $||\textbf{d}_{i}||=1$ (in other words, when our step direction is a unit vector). In practice the size of our step at each iteration is given by:
+$$
+\Delta\textbf{x}_{i} = ||\textbf{x}_{i+1}-\textbf{x}_{i}|| = ||(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i})-\textbf{x}_{i}|| = \alpha_{i}||\textbf{d}_{i}||
+$$
+which means that the size of the steps we take at each iteration of the gradient descent algorithm is actually equal to $\Delta\textbf{x}_{i}=\alpha_{i}||\textbf{g}_{i}||$, and we know that as we approach the minimum $||\textbf{g}_{i}||\to 0$. So the closer we get to the minimum, the size of $\Delta\textbf{x}_{i}$ gets increasingly smaller and smaller.</p>
+<p>This is a pretty easy fix though, we can just make our step direction a unit vector instead: $\textbf{d}_{i}=-\textbf{g}_{i}/||\textbf{g}_{i}||$. In our code this would look like</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">gradient_descent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="o">.</span>
+</span></span><span class="line"><span class="cl">            <span class="o">.</span>
+</span></span><span class="line"><span class="cl">            <span class="o">.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#   Set the step direction to be the negative of the normalised gradient</span>
+</span></span><span class="line"><span class="cl">        <span class="n">di</span> <span class="o">=</span> <span class="o">-</span><span class="n">gi</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">gd</span><span class="p">)</span>
+</span></span></code></pre></div><p>and then if we rerun our code we get the following output:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">aneo@computer:~$ python test_function.py
+</span></span><span class="line"><span class="cl"><span class="o">[</span>3.  0.5<span class="o">]</span> <span class="m">174</span>
+</span></span></code></pre></div><p>We get a modest a improvement in performance, but still not great.</p>
+<!-- Another option is to use something called momentum.   -->
+<h4 id="zig-zag-behaviour-of-gradient-descent">Zig-Zag Behaviour of Gradient Descent</h4>
+<p>The second issue with gradient descent is that it can zig-zag to the minimum instead of going straight down. This was somewhat apparent for our test run above, but to really highlight this problem we&rsquo;re going to minimise the following quadratic function instead:
+$$
+f(\textbf{x}) = \textbf{x}^{T}\textbf{A}\textbf{x} + \textbf{x}^{T}\textbf{b} + c
+$$
+where we have set
+$$
+\textbf{A} = \begin{pmatrix} 1 &amp; 0 \\ 0 &amp; 10 \end{pmatrix}, \quad \textbf{b} =\begin{pmatrix} 1 \\ 1  \end{pmatrix}, \quad c=0
+$$
+The gradient for this function is given by
+$$
+\textbf{g}(\textbf{x}) = 2\textbf{x}^{T}\textbf{A} + \textbf{b}
+$$
+If we choose our initial point to $\textbf{x}_{0}=(8, -0.75)^{T}$, then our algorithm really shows this zig-zag behaviour. Below is an animation of our algorithm at work, clearly zigging and zagging to the minimum:
+<video class="video-shortcode" preload="" controls>
+  <source src="/media/deep_learning/videos/section_1/gradient_descent_zig_zag.mp4" type="video/mp4">
+  There should have been a video here but your browser does not seem
+  to support it.
+</video></p>
+<!-- Let's try and think about what moving along $-\textbf{g}\_{i}$ actually represents a little more formally. Assuming we know the value of our function $f(\textbf{x})$ at some point $\textbf{x}\_{i}$, [Taylor's theorem](https://en.wikipedia.org/wiki/Taylor%27s_theorem) tells us that the best linear approximation to our function at a new point  $\textbf{x}\_{i+1}=\textbf{x}\_{i}+\Delta\textbf{x}\_{i}$ is
+$$
+    f(\textbf{x}\_{i+1}) = f(\textbf{x}\_{i}) + \Delta\textbf{x}\_{i}^{T}\textbf{g}(\textbf{x}\_{i})
+$$
+where $\Delta\textbf{x}\_{i}$ is some displacement vector (which in our case is $\alpha\_{i}\textbf{d}\_{i}$). We want to choose $\Delta\textbf{x}\_{i}$ such that $f(\textbf{x}\_{i+1}) < f(\textbf{x}\_{i})$ (i.e., it is a descent direction). Using some basic [linear algebra](https://en.wikipedia.org/wiki/Dot_product#Geometric_definition), we can show that for $\Delta\textbf{x}\_{i}$ to represent a descent direction we must have
+$$
+    \Delta\textbf{x}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) = \|\|\Delta\textbf{x}\_{i}\|\|~\|\|\textbf{g}(\textbf{x}\_{i})\|\|\cos\theta\_{i} < 0
+$$
+where $\theta\_{i}$ is the angle between $\Delta\textbf{x}\_{i}$ and $\textbf{g}(\textbf{x}\_{i})$, and it should now be clear that the choice for $\Delta\textbf{x}\_{i}$ which will give us the most rapid decrease in this linear approximation to our function is $\Delta\textbf{x}\_{i}=-\textbf{g}(\textbf{x}\_{i})$ since $\cos\theta\_{i}=-1$ in this scenario. -->
+<!-- One issue with this method is that it becomes very inefficient near the minimum where the magnitude of the gradient is very small. This is clear in the animation below where we iteratively move through gradient descent steps to reach the minimum of some function $f(x)$. We also plot the tangent line at each point we move through along the algorithm.  -->
+<!-- 
+  
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+
+
+<div id="/media/deep_learning/plotly/test_file.json" class="plotly" style="height:600px"></div>
+<script>
+Plotly.d3.json("/media/deep_learning/plotly/test_file.json", function(err, fig) {
+    Plotly.plot('\/media\/deep_learning\/plotly\/test_file.json', fig.data, fig.layout, {responsive: true,displayModeBar: false});
+});
+</script>
+ -->
+<!-- We can show that this is actually the case. To do this, our first step is to use Taylor's theorem to approximate our function $f(\textbf{x})$ any $\textbf{d}\_{i}$ and $\alpha\_{i}$ we have:
+$$
+    f(\textbf{x}\_{i}+\alpha\_{i}\textbf{d}\_{i}) = f(\textbf{x}\_{i}) + \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) + \frac{1}{2}\alpha^{2}\_{i}\textbf{d}\_{i}^{T}\textbf{H}(\textbf{x}\_{i})\textbf{d}\_{i}
+$$
+> $\textbf{H}(\textbf{x})\equiv\nabla^{2}f(\textbf{x})$ is the [Hessian matrix](https://en.wikipedia.org/wiki/Hessian_matrix) for our function. For example, the Hessian in our journey problem above would be:
+> 
+> 
+> $$
+    \textbf{H}(x_{0},x_{1}) =
+    \begin{bmatrix} 
+    \frac{\partial^{2}f}{\partial x^{2}_{0}} & \frac{\partial^{2}f}{\partial x\_{0}x\_{1}} \\\\
+    \frac{\partial^{2}f}{\partial x\_{1}x\_{0}} & \frac{\partial^{2}f}{\partial x^{2}\_{1}}
+    \end{bmatrix}
+> $$
+> 
+The first two terms in the expansion give us a first order Taylor approximation to our function, while the above equation is a second order approximation. If $\textbf{d}\_{i}$ does actually represent a descent direction then our first order approximation says $f(\textbf{x}\_{i}+\alpha\_{i}\textbf{d}\_{i}) < f(\textbf{x}\_{i})$. That also means $f(\textbf{x}\_{i}) + \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i})<f(\textbf{x}\_{i})$. Using this, we can define a condition for $\textbf{d}\_{i}$ to be a descent direction:
+$$
+    \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) < 0
+$$
+Since $ \textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) = \|\|\textbf{d}\_{i}\|\|~\|\|\textbf{g}(\textbf{x}\_{i})\|\|\cos\theta\_{i} < 0$ (where $\theta\_{i}$ is the angle between $\textbf{d}\_{i}$ and $\textbf{g}\_{i}$) it should be easy to see that the steepest descent direction of a function is given by $\textbf{d}\_{i}=-\textbf{g}\_{i}$ (i.e., when $\cos\theta\_{i}=-1$). -->
+<h2 id="conjugate-gradient">Conjugate Gradient</h2>
+<p>The zig-zag behaviour of the gradient descent algorithm stems from the fact that consecutive search directions in the gradient descent algorithm are <a href="https://en.wikipedia.org/wiki/Orthogonality_%28mathematics%29#Euclidean_vector_spaces" target="_blank" rel="noopener">orthogonal</a> to one another (i.e., $\textbf{g}^{T}_{i+1}\textbf{g}_{i}=0$).
+One way of getting around this issue is by using the conjugate gradient method, so called because search directions are <em>conjugate</em> to one another. Explaining this deserves its own dedicated resource (which is why I made a blog post on it <a href="/posts/conjugate_gradients">here</a>).</p>
+<p>For now we&rsquo;ll just say that this method avoids the inefficiencies of gradient descent by introducing some history to our search directions.
+The principle of the method is exactly the same as the gradient descent algorithm, but now we say our search direction is $\textbf{d}_{i}=-\textbf{g}_{i} + \beta_{i}\textbf{d}_{i-1}$, where
+$$
+\beta_{i} =
+\begin{cases}
+0 &amp; \text{if } i=0 \\
+\dfrac{\textbf{g}_{i}^{T}(\textbf{g}_{i}-\textbf{g}_{i-1})}{\textbf{g}_{i-1}^{T}\textbf{g}_{i-1}} &amp; \text{otherwise}
+\end{cases}
+$$
+There are in fact many valid choices of $\beta_{i}$ to ensure consecutive search directions conjugate, but this is known as the <a href="http://www.numdam.org/article/M2AN_1969__3_1_35_0.pdf" target="_blank" rel="noopener">Polak–Ribière</a> formula (named after its developers). In practice there can be a few issues with this choice of $\beta$ meaning that it doesn&rsquo;t always result in a descent direction, but we can avoid this by using $\beta^{+}=\max${ $0,\beta$ } instead.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln">40</span><span class="cl"><span class="k">def</span> <span class="nf">conjugate_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line_method</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl">    <span class="c1">#   Define the initial coordinates for iteration i=0  </span>
+</span></span><span class="line"><span class="ln">42</span><span class="cl">        <span class="n">xi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span>
+</span></span><span class="line"><span class="ln">43</span><span class="cl">    <span class="c1">#   Add the initial coordinates the path to the local minimum.</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>  
+</span></span><span class="line"><span class="ln">45</span><span class="cl">    <span class="c1">#   Calculate the square of the convergence threshold.</span>
+</span></span><span class="line"><span class="ln">46</span><span class="cl">        <span class="n">errsq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">**</span><span class="mi">2</span>
+</span></span><span class="line"><span class="ln">47</span><span class="cl">    <span class="c1">#   Initialise variables needed for the main loop of the algorithm</span>
+</span></span><span class="line"><span class="ln">48</span><span class="cl">        <span class="n">gd</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">;</span> <span class="n">gj</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">;</span> <span class="n">dj</span> <span class="o">=</span> <span class="mf">0.</span>
+</span></span><span class="line"><span class="ln">49</span><span class="cl">    <span class="c1">#   Iteratively update the coordinates using the Conjugate Gradient algorithm</span>
+</span></span><span class="line"><span class="ln">50</span><span class="cl">    <span class="c1">#   until the convergence criterion is met.    </span>
+</span></span><span class="line"><span class="ln">51</span><span class="cl">        <span class="k">while</span> <span class="n">gd</span> <span class="o">&gt;</span> <span class="n">errsq</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">52</span><span class="cl">        <span class="c1">#   Compute the gradient and the square of its magnitude at i=0</span>
+</span></span><span class="line"><span class="ln">53</span><span class="cl">            <span class="n">gi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">(</span><span class="o">*</span><span class="n">xi</span><span class="p">))</span>
+</span></span><span class="line"><span class="ln">54</span><span class="cl">            <span class="n">gd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gi</span><span class="p">,</span><span class="n">gi</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">55</span><span class="cl">        <span class="c1">#   Calculate the search direction for the next iteration.</span>
+</span></span><span class="line"><span class="ln">56</span><span class="cl">            <span class="n">b</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gi</span><span class="p">,(</span><span class="n">gi</span><span class="o">-</span><span class="n">gj</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gj</span><span class="p">,</span><span class="n">gj</span><span class="p">)])</span>
+</span></span><span class="line"><span class="ln">57</span><span class="cl">            <span class="n">di</span> <span class="o">=</span> <span class="n">b</span><span class="o">*</span><span class="n">dj</span> <span class="o">-</span> <span class="n">gi</span>
+</span></span><span class="line"><span class="ln">58</span><span class="cl">        <span class="c1">#   Determine the step size for this iteration using the backtracking algorithm.</span>
+</span></span><span class="line"><span class="ln">59</span><span class="cl">            <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backtrack</span><span class="p">(</span><span class="n">xi</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span><span class="n">gi</span><span class="o">=</span><span class="n">gi</span><span class="p">,</span><span class="n">di</span><span class="o">=</span><span class="n">di</span><span class="p">,</span> <span class="n">a0</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">60</span><span class="cl">        <span class="c1">#   Update the coordinates</span>
+</span></span><span class="line"><span class="ln">61</span><span class="cl">            <span class="n">xi</span> <span class="o">=</span> <span class="n">xi</span> <span class="o">+</span> <span class="n">a</span><span class="o">*</span><span class="n">di</span>
+</span></span><span class="line"><span class="ln">62</span><span class="cl">        <span class="c1">#   Save the old gradient and search direction, which will be used to calculate </span>
+</span></span><span class="line"><span class="ln">63</span><span class="cl">        <span class="c1">#   the search direction for the next iteration.</span>
+</span></span><span class="line"><span class="ln">64</span><span class="cl">            <span class="n">gj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">gi</span><span class="p">);</span> <span class="n">dj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">di</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">65</span><span class="cl">        <span class="c1">#   Update parameters describing the convergence of the optimisation algorithm.</span>
+</span></span><span class="line"><span class="ln">66</span><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">nsteps</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xi</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</span></span></code></pre></div><p>The layout of the two optimisation algorithms are identical, the only difference with the conjugate gradient method is that we need to save the gradient and search direction at each iteration to use in the next one. Now if we optimise our function again using the conjugate gradient method we see that our zig-zag behaviour is greatly reduced!
+<video class="video-shortcode" preload="" controls>
+  <source src="/media/deep_learning/videos/section_1/conjugate_gradient_zig_zag.mp4" type="video/mp4">
+  There should have been a video here but your browser does not seem
+  to support it.
+</video></p>
+<p>This is a good starting point, but in the next section we&rsquo;ll implement <a href="/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods">quasi-Newton methods</a> that can have even better performance.</p>
+<!-- ## Testing our Optimisation Algorithms -->
+<!-- Now that we've built our optimiser we are ready to test it out.
+There are a set of canonical [test functions](https://en.wikipedia.org/wiki/Test_functions_for_optimization) for optimisation algorithms, which we'll use to be absolutely sure our code works.
+### Beale function
+We'll start of with the 2D Beale function:
+$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$
+which has the minimum $f(3,0.5) = 0$.
+
+Fist we need to define our function in Python, which we can do really easily using a [Lambda expression](https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions):
+```python
+f = lambda x,y: (1.5-x+x*y)**2 + (2.25-x+x*y**2)**2 + (2.625-x+x*y**3)**2
+```
+Similarly, we need to define our gradient vector:
+$$
+    \textbf{g}(x,y) = \Bigg(\dfrac{\partial f(x,y)}{\partial x}, \dfrac{\partial f(x,y)}{\partial y}\Bigg)^{T}
+$$
+where we have: 
+\begin{align}
+    \dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\\\
+    &+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}
+
+\begin{align}
+    \dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&-x+xy)x + (2.25-x+xy^{2})(2xy) \\\\
+    &+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}
+Again, we can do this using a [Lambda expression](https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions) that returns a list:
+```python
+g = lambda x,y: [2*( (1.5-x+x*y)*(y-1) + (2.25-x+x*y**2)*(y**2-1) + (2.625-x+x*y**3)*(y**3-1)   ),
+                 2*( (1.5-x+x*y)*x     + (2.25-x+x*y**2)*(2*x*y)  + (2.625-x+x*y**3)*(3*x*y**2) )]
+```
+Now we need to import our ```Optimise Class``` (which I have saved in a file called optimiser.py) and call it using the different ```method``` IDs:
+```python
+import optimiser
+# Optimise using the Steepest Descent method
+sd = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=1)
+print(sd.minimum, sd.nsteps)
+# Optimise using the Conjugate Gradient algorithm
+cg = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=2)
+print(cg.minimum, cg.nsteps)
+```
+Now if we run this we should get something like this:
+```console
+aneo@computer:~$ python test_function.py
+[3.  0.5] 1118
+[3.  0.5] 50
+```
+## Comparing the different algorithms 
+<video class="video-shortcode" preload="" controls>
+  <source src="/media/deep_learning/videos/linesearch.mp4" type="video/mp4">
+  There should have been a video here but your browser does not seem
+  to support it.
+</video> -->
+
+
+
+
+
+
+
+          </div>
+
+          
+
+
+
+          
+          
+          <div class="article-widget">
+            
+<div class="post-nav">
+  
+  
+  
+  <div class="post-nav-item">
+    <div class="meta-nav">Next</div>
+    <a href="/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods/" rel="prev">Quasi-Newton Methods</a>
+  </div>
+  
+</div>
+
+          </div>
+          
+        </div>
+
+        <div class="body-footer">
+          <p>Last updated on 29 Jun, 2023</p>
+
+          
+
+
+
+
+          
+
+
+
+
+          
+
+
+        </div>
+
+      </article>
+
+      <footer class="site-footer">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+  
+  
+    
+  
+  
+    
+  
+
+  
+
+  
+  <p class="powered-by copyright-license-text">
+    © 2023 Me. This work is licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0" rel="noopener noreferrer" target="_blank">CC BY NC ND 4.0</a>
+  </p>
+  
+
+  <p class="powered-by footer-license-icons">
+    <a href="https://creativecommons.org/licenses/by-nc-nd/4.0" rel="noopener noreferrer" target="_blank" aria-label="Creative Commons">
+      <i class="fab fa-creative-commons fa-2x" aria-hidden="true"></i>
+      <i class="fab fa-creative-commons-by fa-2x" aria-hidden="true"></i>
+      
+        <i class="fab fa-creative-commons-nc fa-2x" aria-hidden="true"></i>
+      
+      
+        <i class="fab fa-creative-commons-nd fa-2x" aria-hidden="true"></i>
+      
+    </a>
+  </p>
+
+
+
+
+
+  <p class="powered-by">
+    
+    
+    
+      
+      
+      
+      
+      
+      
+      Published with <a href="https://wowchemy.com/?utm_campaign=poweredby" target="_blank" rel="noopener">Wowchemy</a> — the free, <a href="https://github.com/wowchemy/wowchemy-hugo-themes" target="_blank" rel="noopener">open source</a> website builder that empowers creators.
+    
+  </p>
+</footer>
+
+
+    </main>
+  </div>
+</div>
+
+  </div>
+
+  <div class="page-footer">
+    
+    
+  </div>
+
+  
+
+
+<script src="/js/vendor-bundle.min.1d4346c6f7d46c340dc0a9058dd85c13.js"></script>
+
+
+
+
+  
+
+  
+  
+
+  
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/anchor-js@5.0.0/anchor.min.js" integrity="sha256-aQmOEF2ZD4NM/xt4hthzREIo/2PFkOX/g01WjxEV7Ys=" crossorigin="anonymous"></script>
+<script>
+  anchors.add();
+</script>
+
+
+
+
+
+  
+  <script id="search-hit-fuse-template" type="text/x-template">
+    <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+    </div>
+  </script>
+  
+    <script src="https://cdn.jsdelivr.net/gh/krisk/Fuse@v3.2.1/dist/fuse.min.js" integrity="sha512-o38bmzBGX+hD3JHWUFCDA09btWaqrNmoJ3RXLlrysA7PP01Kgs4UlE4MhelE1v5dJR3+cxlR4qQlotsW7jKsnw==" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/gh/julmot/mark.js@8.11.1/dist/jquery.mark.min.js" integrity="sha512-mhbv5DqBMgrWL+32MmsDOt/OAvqr/cHimk6B8y/bx/xS88MVkYGPiVv2ixKVrkywF2qHplNRUvFsAHUdxZ3Krg==" crossorigin="anonymous"></script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+<script id="page-data" type="application/json">{"use_headroom":false}</script>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+<script src="/en/js/wowchemy.min.c84202fca2a6efbbecbaf0e8358c1d51.js"></script>
+
+
+
+
+
+
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cite</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        
+        <pre><code></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Copy
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <script src="/js/wowchemy-publication.68f8d7090562ca65fc6d3cb3f8f2d2cb.js" type="module"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

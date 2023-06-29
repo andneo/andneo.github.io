@@ -1,0 +1,3 @@
+User-agent: *
+
+Sitemap: https://andneo.github.io/sitemap.xml

@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Numerical Optimisation | Andreas Neophytou</title>
+    <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/</link>
+      <atom:link href="https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/index.xml" rel="self" type="application/rss+xml" />
+    <description>Numerical Optimisation</description>
+    <generator>Wowchemy (https://wowchemy.com)</generator><language>en-gb</language><lastBuildDate>Sun, 09 Sep 2018 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://andneo.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png</url>
+      <title>Numerical Optimisation</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/</link>
+    </image>
+    
+    <item>
+      <title>Gradient-Based Optimisation</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/</link>
+      <pubDate>Thu, 29 Jun 2023 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/01_gradient_based_optimisation/</guid>
+      <description>&lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
+&lt;p&gt;Optimisation is a ubiquitous process, people do it everyday. A classic example would be: &lt;em&gt;How do I get somewhere as&lt;/em&gt; (&lt;em&gt;&lt;strong&gt;fast, cheap, environmentally friendly, &amp;hellip;&lt;/strong&gt;&lt;/em&gt;) &lt;em&gt;as possible?&lt;/em&gt;  Nature optimises too, a big part of what I did in my PhD was finding out how systems of particles optimise their potential energy.
+Needless to say, optimisation is an important process, and quite a bit of effort has been dedicated to developing algorithms that do it well.
+As we will see, optimisation algorithms form a key component of neural networks.
+The first section of these notes introduce some of the theory underpinning these optimisation algorithms, and how to implement them in Python.&lt;/p&gt;
+&lt;h2 id=&#34;some-background-maths&#34;&gt;Some Background Maths&lt;/h2&gt;
+&lt;p&gt;Before getting stuck into optimisation algorithms, we should first introduce some of the maths needed to understand the algorithms and the notation we&amp;rsquo;ll use.
+First, and maybe most important, is the 
+
+&lt;mark&gt;objective function&lt;/mark&gt;.
+This function should provide some quantitative description of our process of interest (think of it as a measure of success).&lt;/p&gt;
+&lt;p&gt;For instance, in our above example of getting to some destination the objective function could be some mathematical expression which involves the time or cost of the journey.
+We denote the objective function as $f(\textbf{x})$, where $\textbf{x}$ is an $n$-dimensional vector of parameters.
+So in our journey example, $\textbf{x}$ would be a 2d vector where the first parameter ($x_{0}$) would be time and the second parameter ($x_{1}$) would be cost.
+We could therefore write $\textbf{x}=(x_{0},x_{1})^{T}$ (where the $^{T}$ means we are dealing with a &lt;a href=&#34;https://en.wikipedia.org/wiki/Row_and_column_vectors&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;row vector&lt;/a&gt;).
+Our objective function will then involve some combination of these parameters, for instance this could be:
+$$
+f(\textbf{x}) = x_{0}^2 + x_{1}^2
+$$
+I have plotted this function for $x_{0},x_{1}\in[-10,10]$ below, and we can see (from the 3D representation on the left) it has a bowl-like shape (actually we would call this a &lt;a href=&#34;https://en.wikipedia.org/wiki/Paraboloid&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;paraboloid&lt;/a&gt;).
+We can also see that when $\textbf{x}=(0,0)^{T}$, $f(x_{0},x_{1})=0$. We would say that this point corresponds to the &lt;a href=&#34;https://en.wikipedia.org/wiki/Maxima_and_minima&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;minimum&lt;/a&gt; of the function $f(\textbf{x})$.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+&lt;figure  &gt;
+  &lt;div class=&#34;d-flex justify-content-center&#34;&gt;
+    &lt;div class=&#34;w-100&#34; &gt;&lt;img src=&#34;https://andneo.github.io/media/deep_learning/images/gradient.svg&#34; alt=&#34;&#34; loading=&#34;lazy&#34; data-zoomable /&gt;&lt;/div&gt;
+  &lt;/div&gt;&lt;/figure&gt;
+&lt;/p&gt;
+&lt;p&gt;On the right I&amp;rsquo;ve shown a 2D &lt;a href=&#34;https://www.statisticshowto.com/contour-plots/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;contour plot&lt;/a&gt; of the same function, as well as the &lt;a href=&#34;https://en.wikipedia.org/wiki/Gradient&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;&lt;em&gt;&lt;em&gt;gradient&lt;/em&gt;&lt;/em&gt;&lt;/a&gt;.
+The gradient for this function is given by:
+\begin{align}
+\textbf{g}(\textbf{x}) \equiv \nabla f(x_{0},x_{1}) &amp;amp;= \Big(\dfrac{\partial f}{\partial x_{0}}, \dfrac{\partial f}{\partial x_{1}}\Big)^{T} = \Big(2x_{0}, 2x_{1}\Big)^{T}
+\end{align}
+The gradient defines a &lt;a href=&#34;https://en.wikipedia.org/wiki/Vector_field&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;vector field&lt;/a&gt;, which points in the &lt;a href=&#34;http://mathonline.wikidot.com/the-maximum-rate-of-change-at-a-point-on-a-function-of-sever&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;direction of maximum rate of increase&lt;/a&gt; for its corresponding function.
+This is an important property of the gradient which we are going to exploit.
+If none of this is familiar to you I would suggest going through a course like &lt;a href=&#34;https://ocw.mit.edu/courses/18-02sc-multivariable-calculus-fall-2010/pages/syllabus/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;this one&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&#34;optimisation-problems&#34;&gt;Optimisation Problems&lt;/h2&gt;
+&lt;p&gt;We are interested in solving the general optimisation problem:
+$$
+\min_{\textbf{x}\in\mathbb{R}^{n}}f(\textbf{x})
+$$
+In other words, we want to find a set of coordinates which correspond to a &lt;a href=&#34;https://en.wikipedia.org/wiki/Maxima_and_minima&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;minimum&lt;/a&gt; of the function $f(\textbf{x})$.
+We are going to do this using an optimisation algorithm.
+There are different algorithms to choose from, but they all follow the same general process: iteratively update an initial guess for $\textbf{x}$ until some termination condition is satisified.&lt;/p&gt;
+&lt;p&gt;The difference between different algorithms comes from how we move from $\textbf{x}_{i}$, at iteration $i$ of our algorithm, to $\textbf{x}_{i+1}$.
+We want to write some Python code that can optimise arbitrary functions using different optimisation algorithms.
+The first step is to define a &lt;code&gt;Class&lt;/code&gt;:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;nc&#34;&gt;Optimise&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;fm&#34;&gt;__init__&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;function&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gradient&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;method&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Initialise input parameters for the optimisation algorithms&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;4&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;      &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;         &lt;span class=&#34;c1&#34;&gt;# Coordinates of the function.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;5&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;f&lt;/span&gt;      &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;function&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;# Function to be optimised.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;6&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;g&lt;/span&gt;      &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gradient&lt;/span&gt;  &lt;span class=&#34;c1&#34;&gt;# Gradient of the function.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;7&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;    &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;       &lt;span class=&#34;c1&#34;&gt;# Threshold convergence value&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;8&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;method&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;method&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;# ID of the line search method&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This &lt;code&gt;Class&lt;/code&gt; has three key attributes:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;X&lt;/code&gt;: The coordinates which we are to optimise, $\textbf{x}$.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;f&lt;/code&gt;: The objective function to be optimised, $f(\textbf{x})$.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;g&lt;/code&gt;: The gradient of the objective function, $\textbf{g}(\textbf{x})$.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;There are two more parameters, &lt;code&gt;err&lt;/code&gt; and &lt;code&gt;method&lt;/code&gt;.
+We use the &lt;code&gt;err&lt;/code&gt; parameter to define our termination condition, and the &lt;code&gt;method&lt;/code&gt; variable to decide which method to use. For now we&amp;rsquo;ll just include the steepest descent algorithm.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt; 9&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Initialise parameters describing the convergence of the optimisation algorithms&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;nsteps&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;11&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;   &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;12&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;steps&lt;/span&gt;  &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;13&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Perform local optimisation.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;14&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;k&#34;&gt;if&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;method&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;==&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;15&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;steepest_descent&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;16&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Extract the coordinates of the local minimum and the path taken to it.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;17&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;minimum&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;18&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;    &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;numpy&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;array&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;T&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;We have also created some new variables which we are going to use to monitor the path the algorithms take to the minimum, and their convergence properties. Also, on line 18 we use a function from &lt;a href=&#34;https://numpy.org/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;NumPy&lt;/a&gt; which we&amp;rsquo;ll be using a lot more of later on when we actually start to code our optimisation algorithms.&lt;/p&gt;
+&lt;h2 id=&#34;gradient-descent&#34;&gt;Gradient Descent&lt;/h2&gt;
+&lt;p&gt;In this section we are going to focus on &lt;em&gt;line search strategies&lt;/em&gt; &amp;ndash; algorithms where we select a direction $\textbf{d}_{i}$ from $\textbf{x}_{i}$, and search along that direction to find a new set of coordinates $\textbf{x}_{i+1}$:
+$$
+\textbf{x}_{i+1} = \textbf{x}_{i} + \alpha_{i}\textbf{d}_{i}, \quad i=0, 1, 2, &amp;hellip;
+$$
+where $f(\textbf{x}_{i+1}) &amp;lt; f(\textbf{x}_{i})$ and so we refer to $\textbf{d}_{i}$ as a descent direction. Therefore, we have two tasks at each iteration of our optimisation algorithm:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Determine $\textbf{d}_{i}$ (the step direction)&lt;/li&gt;
+&lt;li&gt;Determine $\alpha_{i}$ (the step length)&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;If we look back at the 2D contour plot of $f(\textbf{x})$ above (specifically focusing on the gradient field) an obvious choice for $\textbf{d}_{i}$ is staring us in the face. Maybe the most obvious choice for a descent direction of any (differentiable) function is given by $\textbf{d}_{i}=-\textbf{g}_{i}$, and forms the basis of our entry level optimisation algorithm:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;19&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;gradient_descent&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;20&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Define the initial coordinates for iteration i=0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;21&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;22&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Add the initial coordinates the path to the local minimum.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;23&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;24&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Calculate the square of the convergence threshold.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;25&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;errsq&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;26&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;1.&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;# Initialise the squared gradient to 1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;27&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Iteratively update the coordinates using the Steepest Descent algorithm&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;28&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   until the convergence criterion is met.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;29&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;k&#34;&gt;while&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;errsq&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;30&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Calculate the gradient and the square of its magnitude at the new coordinates&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;31&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;g&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;);&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dot&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;32&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Set the step direction to be the negative of the gradient&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;33&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;di&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;34&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Determine the step size for this iteration using the backtracking algorithm.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;35&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;a&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;backtrack&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;a0&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;36&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Update the coordinates&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;37&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;a&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;38&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Update parameters describing the convergence of the optimisation algorithm.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;39&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;nsteps&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;);&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;steps&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;a&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;You&amp;rsquo;ll see in the code snippet we call a function &lt;code&gt;backtrack()&lt;/code&gt; on line 35, this function chooses an appropriate step length $\alpha_{i}$ which we&amp;rsquo;ll go over in the next &lt;a href=&#34;./#deciding-the-step-length&#34;&gt;section&lt;/a&gt;. But in just a few lines of code we&amp;rsquo;ve written a function which should optimise any function we give it!&lt;/p&gt;
+&lt;h3 id=&#34;deciding-the-step-length&#34;&gt;Deciding the Step Length&lt;/h3&gt;
+&lt;p&gt;Now that we know how to extract a search direction which points towards the minimum, we need to figure out how far we want to travel in that direction.&lt;/p&gt;
+&lt;p&gt;You may have noticed in the code snippets above for the steepest descent and conjugate gradient methods a third method is called: &lt;code&gt;backtrack(xi=xi,gi=gi,di=di,a0=1)&lt;/code&gt;.
+This is the method we use to determine our step size $\alpha_{i}$.&lt;/p&gt;
+&lt;h4 id=&#34;backtracking&#34;&gt;Backtracking&lt;/h4&gt;
+&lt;p&gt;When computing $\alpha_{i}$ we face a tradeoff: We want $\alpha_{i}$ to make a substantial decrease in $f(\textbf{x}_{i})$, but we also don&amp;rsquo;t want to waste a lot of time choosing its value.
+In practise we try out a number of candidate $\alpha_{i}$ values, and choose the first one which satisfies some conditions.
+We are going to use the &lt;em&gt;sufficient decrease&lt;/em&gt; condition:
+$$
+f(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i}) \leq f(\textbf{x}_{i}) + c_{1}\alpha_{i}\textbf{g}(\textbf{x}_{i})^{T}\textbf{d}_{i}, \quad c_{1}\in(0,1)
+$$
+One issue with this inequality is that it&amp;rsquo;s satisfied for all sufficiently small values $\alpha_{i}$.
+This issue can be avoided though by choosing the candidate $\alpha_{i}$ values appropriately.
+We do this using the &lt;em&gt;backtracking&lt;/em&gt; approach:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;40&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;backtrack&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;a0&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;c1&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;0.5&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;tau&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;0.5&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;41&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Calculate the value of the function at the coordinates for the &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;42&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   current iteration of the optimisation algorithm.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;43&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;fi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;44&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Calculate the dot product of the gradient and the search direction,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;45&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   to be used to evaluate the Armijo condition.  &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;46&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dot&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;47&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;n&#34;&gt;ai&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;a0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;48&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   While the step size does not provide a sufficient decrease in the function f(X),&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;49&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   adjust the step size using the contraction factor tau.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;50&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;k&#34;&gt;while&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;ai&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;fi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;c1&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;ai&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;51&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;ai&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;*=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;tau&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;52&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;53&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;ai&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;We select an initial guess for $\alpha^{0}_{i}$ (which we just set to 1 by default) and iteratively decrease its size by the factor $\tau\in(0,1)$ until the sufficient decrease condition is satisfied. We&amp;rsquo;ll introduce more sophisticated algorithms for choosing the step size when we get to &lt;a href=&#34;https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods&#34;&gt;quasi-Newton methods&lt;/a&gt;, but for now this does the job.&lt;/p&gt;
+&lt;h3 id=&#34;testing-out-our-code&#34;&gt;Testing out our Code&lt;/h3&gt;
+&lt;p&gt;Now that we&amp;rsquo;ve built our optimiser we are ready to test it out.
+There are a set of canonical &lt;a href=&#34;https://en.wikipedia.org/wiki/Test_functions_for_optimization&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;test functions&lt;/a&gt; for optimisation algorithms, which we&amp;rsquo;ll use to be absolutely sure our code works.&lt;/p&gt;
+&lt;!-- ### Beale function --&gt;
+&lt;p&gt;We&amp;rsquo;ll start of with the 2D Beale function:
+$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$
+which has the minimum $f(3,0.5) = 0$.&lt;/p&gt;
+&lt;p&gt;Fist we need to define our function in Python, which we can do really easily using a &lt;a href=&#34;https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;Lambda expression&lt;/a&gt;:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;n&#34;&gt;f&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;lambda&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;1.5&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.25&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.625&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Similarly, we need to define our gradient vector:
+$$
+\textbf{g}(x,y) = \Bigg(\dfrac{\partial f(x,y)}{\partial x}, \dfrac{\partial f(x,y)}{\partial y}\Bigg)^{T}
+$$
+where we have:
+\begin{align}
+\dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\
+&amp;amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}&lt;/p&gt;
+&lt;p&gt;\begin{align}
+\dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\
+&amp;amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}
+Again, we can do this using a &lt;a href=&#34;https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;Lambda expression&lt;/a&gt; that returns a list:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;n&#34;&gt;g&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;lambda&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;1.5&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.25&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.625&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;   &lt;span class=&#34;p&#34;&gt;),&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                 &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;1.5&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;     &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.25&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;  &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;2.625&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;+&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;x&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;y&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;)]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Now we need to import our &lt;code&gt;Optimise Class&lt;/code&gt; (which I have saved in a file called optimiser.py) and call it using the different &lt;code&gt;method&lt;/code&gt; IDs:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;kn&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;nn&#34;&gt;optimiser&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;# Optimise using the Steepest Descent method&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;n&#34;&gt;sd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;optimiser&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;Optimise&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;3.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;4.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;],&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;function&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gradient&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;g&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;1.e-9&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;method&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;nb&#34;&gt;print&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;sd&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;minimum&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;sd&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;nsteps&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Now if we run this we should get something like this:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;aneo@computer:~$ python test_function.py
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;o&#34;&gt;[&lt;/span&gt;3.  0.5&lt;span class=&#34;o&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;m&#34;&gt;205&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;It works! We can even watch an animation of our optimisation algorithm at work
+&lt;video class=&#34;video-shortcode&#34; preload=&#34;&#34; controls&gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/section_1/gradient_descent.mp4&#34; type=&#34;video/mp4&#34;&gt;
+  There should have been a video here but your browser does not seem
+  to support it.
+&lt;/video&gt;&lt;/p&gt;
+&lt;h3 id=&#34;issues-with-gradient-descent&#34;&gt;Issues with Gradient Descent&lt;/h3&gt;
+&lt;p&gt;Now (if you didn&amp;rsquo;t get too excited over the success of our code) you might&amp;rsquo;ve noticed that it took 205 iterations of our algorithm to reach the minimum. In the video we can see that almost all of those steps are taken when we get really close to the minimum (the video isn&amp;rsquo;t longer than it needs to be it&amp;rsquo;s just the steps being taken are so small our video doesn&amp;rsquo;t have the resolution to see them!). There are two main reasons why this happens which we&amp;rsquo;ll go through below.&lt;/p&gt;
+&lt;h4 id=&#34;crawling-behaviour-of-gradient-descent&#34;&gt;Crawling Behaviour of Gradient Descent&lt;/h4&gt;
+&lt;p&gt;Now while we call $\alpha_{i}$ our step length, technically the size of each step (which let&amp;rsquo;s represent as $\Delta\textbf{x}_{i}$) in our optimisation algorithm is only equal to this when $||\textbf{d}_{i}||=1$ (in other words, when our step direction is a unit vector). In practice the size of our step at each iteration is given by:
+$$
+\Delta\textbf{x}_{i} = ||\textbf{x}_{i+1}-\textbf{x}_{i}|| = ||(\textbf{x}_{i}+\alpha_{i}\textbf{d}_{i})-\textbf{x}_{i}|| = \alpha_{i}||\textbf{d}_{i}||
+$$
+which means that the size of the steps we take at each iteration of the gradient descent algorithm is actually equal to $\Delta\textbf{x}_{i}=\alpha_{i}||\textbf{g}_{i}||$, and we know that as we approach the minimum $||\textbf{g}_{i}||\to 0$. So the closer we get to the minimum, the size of $\Delta\textbf{x}_{i}$ gets increasingly smaller and smaller.&lt;/p&gt;
+&lt;p&gt;This is a pretty easy fix though, we can just make our step direction a unit vector instead: $\textbf{d}_{i}=-\textbf{g}_{i}/||\textbf{g}_{i}||$. In our code this would look like&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;gradient_descent&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;#   Set the step direction to be the negative of the normalised gradient&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;di&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;/&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;sqrt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;and then if we rerun our code we get the following output:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;aneo@computer:~$ python test_function.py
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;o&#34;&gt;[&lt;/span&gt;3.  0.5&lt;span class=&#34;o&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;m&#34;&gt;174&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;We get a modest a improvement in performance, but still not great.&lt;/p&gt;
+&lt;!-- Another option is to use something called momentum.   --&gt;
+&lt;h4 id=&#34;zig-zag-behaviour-of-gradient-descent&#34;&gt;Zig-Zag Behaviour of Gradient Descent&lt;/h4&gt;
+&lt;p&gt;The second issue with gradient descent is that it can zig-zag to the minimum instead of going straight down. This was somewhat apparent for our test run above, but to really highlight this problem we&amp;rsquo;re going to minimise the following quadratic function instead:
+$$
+f(\textbf{x}) = \textbf{x}^{T}\textbf{A}\textbf{x} + \textbf{x}^{T}\textbf{b} + c
+$$
+where we have set
+$$
+\textbf{A} = \begin{pmatrix} 1 &amp;amp; 0 \\ 0 &amp;amp; 10 \end{pmatrix}, \quad \textbf{b} =\begin{pmatrix} 1 \\ 1  \end{pmatrix}, \quad c=0
+$$
+The gradient for this function is given by
+$$
+\textbf{g}(\textbf{x}) = 2\textbf{x}^{T}\textbf{A} + \textbf{b}
+$$
+If we choose our initial point to $\textbf{x}_{0}=(8, -0.75)^{T}$, then our algorithm really shows this zig-zag behaviour. Below is an animation of our algorithm at work, clearly zigging and zagging to the minimum:
+&lt;video class=&#34;video-shortcode&#34; preload=&#34;&#34; controls&gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/section_1/gradient_descent_zig_zag.mp4&#34; type=&#34;video/mp4&#34;&gt;
+  There should have been a video here but your browser does not seem
+  to support it.
+&lt;/video&gt;&lt;/p&gt;
+&lt;!-- Let&#39;s try and think about what moving along $-\textbf{g}\_{i}$ actually represents a little more formally. Assuming we know the value of our function $f(\textbf{x})$ at some point $\textbf{x}\_{i}$, [Taylor&#39;s theorem](https://en.wikipedia.org/wiki/Taylor%27s_theorem) tells us that the best linear approximation to our function at a new point  $\textbf{x}\_{i+1}=\textbf{x}\_{i}+\Delta\textbf{x}\_{i}$ is
+$$
+    f(\textbf{x}\_{i+1}) = f(\textbf{x}\_{i}) + \Delta\textbf{x}\_{i}^{T}\textbf{g}(\textbf{x}\_{i})
+$$
+where $\Delta\textbf{x}\_{i}$ is some displacement vector (which in our case is $\alpha\_{i}\textbf{d}\_{i}$). We want to choose $\Delta\textbf{x}\_{i}$ such that $f(\textbf{x}\_{i+1}) &lt; f(\textbf{x}\_{i})$ (i.e., it is a descent direction). Using some basic [linear algebra](https://en.wikipedia.org/wiki/Dot_product#Geometric_definition), we can show that for $\Delta\textbf{x}\_{i}$ to represent a descent direction we must have
+$$
+    \Delta\textbf{x}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) = \|\|\Delta\textbf{x}\_{i}\|\|~\|\|\textbf{g}(\textbf{x}\_{i})\|\|\cos\theta\_{i} &lt; 0
+$$
+where $\theta\_{i}$ is the angle between $\Delta\textbf{x}\_{i}$ and $\textbf{g}(\textbf{x}\_{i})$, and it should now be clear that the choice for $\Delta\textbf{x}\_{i}$ which will give us the most rapid decrease in this linear approximation to our function is $\Delta\textbf{x}\_{i}=-\textbf{g}(\textbf{x}\_{i})$ since $\cos\theta\_{i}=-1$ in this scenario. --&gt;
+&lt;!-- One issue with this method is that it becomes very inefficient near the minimum where the magnitude of the gradient is very small. This is clear in the animation below where we iteratively move through gradient descent steps to reach the minimum of some function $f(x)$. We also plot the tangent line at each point we move through along the algorithm.  --&gt;
+&lt;!-- 
+  
+  &lt;script src=&#34;https://cdn.plot.ly/plotly-latest.min.js&#34;&gt;&lt;/script&gt;
+
+
+
+&lt;div id=&#34;/media/deep_learning/plotly/test_file.json&#34; class=&#34;plotly&#34; style=&#34;height:600px&#34;&gt;&lt;/div&gt;
+&lt;script&gt;
+Plotly.d3.json(&#34;/media/deep_learning/plotly/test_file.json&#34;, function(err, fig) {
+    Plotly.plot(&#39;\/media\/deep_learning\/plotly\/test_file.json&#39;, fig.data, fig.layout, {responsive: true,displayModeBar: false});
+});
+&lt;/script&gt;
+ --&gt;
+&lt;!-- We can show that this is actually the case. To do this, our first step is to use Taylor&#39;s theorem to approximate our function $f(\textbf{x})$ any $\textbf{d}\_{i}$ and $\alpha\_{i}$ we have:
+$$
+    f(\textbf{x}\_{i}+\alpha\_{i}\textbf{d}\_{i}) = f(\textbf{x}\_{i}) + \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) + \frac{1}{2}\alpha^{2}\_{i}\textbf{d}\_{i}^{T}\textbf{H}(\textbf{x}\_{i})\textbf{d}\_{i}
+$$
+&gt; $\textbf{H}(\textbf{x})\equiv\nabla^{2}f(\textbf{x})$ is the [Hessian matrix](https://en.wikipedia.org/wiki/Hessian_matrix) for our function. For example, the Hessian in our journey problem above would be:
+&gt; 
+&gt; 
+&gt; $$
+    \textbf{H}(x_{0},x_{1}) =
+    \begin{bmatrix} 
+    \frac{\partial^{2}f}{\partial x^{2}_{0}} &amp; \frac{\partial^{2}f}{\partial x\_{0}x\_{1}} \\\\
+    \frac{\partial^{2}f}{\partial x\_{1}x\_{0}} &amp; \frac{\partial^{2}f}{\partial x^{2}\_{1}}
+    \end{bmatrix}
+&gt; $$
+&gt; 
+The first two terms in the expansion give us a first order Taylor approximation to our function, while the above equation is a second order approximation. If $\textbf{d}\_{i}$ does actually represent a descent direction then our first order approximation says $f(\textbf{x}\_{i}+\alpha\_{i}\textbf{d}\_{i}) &lt; f(\textbf{x}\_{i})$. That also means $f(\textbf{x}\_{i}) + \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i})&lt;f(\textbf{x}\_{i})$. Using this, we can define a condition for $\textbf{d}\_{i}$ to be a descent direction:
+$$
+    \alpha\_{i}\textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) &lt; 0
+$$
+Since $ \textbf{d}\_{i}^{T}\textbf{g}(\textbf{x}\_{i}) = \|\|\textbf{d}\_{i}\|\|~\|\|\textbf{g}(\textbf{x}\_{i})\|\|\cos\theta\_{i} &lt; 0$ (where $\theta\_{i}$ is the angle between $\textbf{d}\_{i}$ and $\textbf{g}\_{i}$) it should be easy to see that the steepest descent direction of a function is given by $\textbf{d}\_{i}=-\textbf{g}\_{i}$ (i.e., when $\cos\theta\_{i}=-1$). --&gt;
+&lt;h2 id=&#34;conjugate-gradient&#34;&gt;Conjugate Gradient&lt;/h2&gt;
+&lt;p&gt;The zig-zag behaviour of the gradient descent algorithm stems from the fact that consecutive search directions in the gradient descent algorithm are &lt;a href=&#34;https://en.wikipedia.org/wiki/Orthogonality_%28mathematics%29#Euclidean_vector_spaces&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;orthogonal&lt;/a&gt; to one another (i.e., $\textbf{g}^{T}_{i+1}\textbf{g}_{i}=0$).
+One way of getting around this issue is by using the conjugate gradient method, so called because search directions are &lt;em&gt;conjugate&lt;/em&gt; to one another. Explaining this deserves its own dedicated resource (which is why I made a blog post on it &lt;a href=&#34;https://andneo.github.io/posts/conjugate_gradients&#34;&gt;here&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;For now we&amp;rsquo;ll just say that this method avoids the inefficiencies of gradient descent by introducing some history to our search directions.
+The principle of the method is exactly the same as the gradient descent algorithm, but now we say our search direction is $\textbf{d}_{i}=-\textbf{g}_{i} + \beta_{i}\textbf{d}_{i-1}$, where
+$$
+\beta_{i} =
+\begin{cases}
+0 &amp;amp; \text{if } i=0 \\
+\dfrac{\textbf{g}_{i}^{T}(\textbf{g}_{i}-\textbf{g}_{i-1})}{\textbf{g}_{i-1}^{T}\textbf{g}_{i-1}} &amp;amp; \text{otherwise}
+\end{cases}
+$$
+There are in fact many valid choices of $\beta_{i}$ to ensure consecutive search directions conjugate, but this is known as the &lt;a href=&#34;http://www.numdam.org/article/M2AN_1969__3_1_35_0.pdf&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;Polak–Ribière&lt;/a&gt; formula (named after its developers). In practice there can be a few issues with this choice of $\beta$ meaning that it doesn&amp;rsquo;t always result in a descent direction, but we can avoid this by using $\beta^{+}=\max${ $0,\beta$ } instead.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;40&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;def&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;conjugate_gradient&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;line_method&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;):&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;41&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Define the initial coordinates for iteration i=0  &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;42&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;X&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;43&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Add the initial coordinates the path to the local minimum.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;44&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;  
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;45&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Calculate the square of the convergence threshold.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;46&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;errsq&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;err&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;**&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;47&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Initialise variables needed for the main loop of the algorithm&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;48&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;1.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gj&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;1.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;dj&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;mf&#34;&gt;0.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;49&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   Iteratively update the coordinates using the Conjugate Gradient algorithm&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;50&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;#   until the convergence criterion is met.    &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;51&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;k&#34;&gt;while&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;errsq&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;52&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Compute the gradient and the square of its magnitude at i=0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;53&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;array&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;g&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;54&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;gd&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dot&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;55&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Calculate the search direction for the next iteration.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;56&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;b&lt;/span&gt;  &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;max&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;([&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;0.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dot&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gj&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;/&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dot&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gj&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gj&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)])&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;57&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;di&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;b&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;dj&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;-&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;58&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Determine the step size for this iteration using the backtracking algorithm.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;59&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;a&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;backtrack&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;a0&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;1.&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;tau&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;mf&#34;&gt;0.9&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;60&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Update the coordinates&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;61&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;a&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;62&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Save the old gradient and search direction, which will be used to calculate &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;63&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   the search direction for the next iteration.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;64&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;n&#34;&gt;gj&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;copy&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;gi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;);&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;dj&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;np&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;copy&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;di&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;65&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;        &lt;span class=&#34;c1&#34;&gt;#   Update parameters describing the convergence of the optimisation algorithm.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;ln&#34;&gt;66&lt;/span&gt;&lt;span class=&#34;cl&#34;&gt;            &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;nsteps&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;path&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;xi&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;);&lt;/span&gt; &lt;span class=&#34;bp&#34;&gt;self&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;steps&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;append&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;a&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The layout of the two optimisation algorithms are identical, the only difference with the conjugate gradient method is that we need to save the gradient and search direction at each iteration to use in the next one. Now if we optimise our function again using the conjugate gradient method we see that our zig-zag behaviour is greatly reduced!
+&lt;video class=&#34;video-shortcode&#34; preload=&#34;&#34; controls&gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/section_1/conjugate_gradient_zig_zag.mp4&#34; type=&#34;video/mp4&#34;&gt;
+  There should have been a video here but your browser does not seem
+  to support it.
+&lt;/video&gt;&lt;/p&gt;
+&lt;p&gt;This is a good starting point, but in the next section we&amp;rsquo;ll implement &lt;a href=&#34;https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods&#34;&gt;quasi-Newton methods&lt;/a&gt; that can have even better performance.&lt;/p&gt;
+&lt;!-- ## Testing our Optimisation Algorithms --&gt;
+&lt;!-- Now that we&#39;ve built our optimiser we are ready to test it out.
+There are a set of canonical [test functions](https://en.wikipedia.org/wiki/Test_functions_for_optimization) for optimisation algorithms, which we&#39;ll use to be absolutely sure our code works.
+### Beale function
+We&#39;ll start of with the 2D Beale function:
+$$ f(x,y) = (1.5-x+xy)^{2} + (2.25-x+xy^{2})^{2} + (2.625-x+xy^{3})^{2} $$
+which has the minimum $f(3,0.5) = 0$.
+
+Fist we need to define our function in Python, which we can do really easily using a [Lambda expression](https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions):
+```python
+f = lambda x,y: (1.5-x+x*y)**2 + (2.25-x+x*y**2)**2 + (2.625-x+x*y**3)**2
+```
+Similarly, we need to define our gradient vector:
+$$
+    \textbf{g}(x,y) = \Bigg(\dfrac{\partial f(x,y)}{\partial x}, \dfrac{\partial f(x,y)}{\partial y}\Bigg)^{T}
+$$
+where we have: 
+\begin{align}
+    \dfrac{\partial f(x,y)}{\partial x} = 2\big[(1.5-x&amp;+xy)(y-1) + (2.25-x+xy^{2})(y^{2}-1) \\\\
+    &amp;+ (2.625-x+xy^{3})(y^{3}-1)\big]
+\end{align}
+
+\begin{align}
+    \dfrac{\partial f(x,y)}{\partial y} = 2\big[(1.5&amp;-x+xy)x + (2.25-x+xy^{2})(2xy) \\\\
+    &amp;+ (2.625-x+xy^{3})(3xy^{2})\big]
+\end{align}
+Again, we can do this using a [Lambda expression](https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions) that returns a list:
+```python
+g = lambda x,y: [2*( (1.5-x+x*y)*(y-1) + (2.25-x+x*y**2)*(y**2-1) + (2.625-x+x*y**3)*(y**3-1)   ),
+                 2*( (1.5-x+x*y)*x     + (2.25-x+x*y**2)*(2*x*y)  + (2.625-x+x*y**3)*(3*x*y**2) )]
+```
+Now we need to import our ```Optimise Class``` (which I have saved in a file called optimiser.py) and call it using the different ```method``` IDs:
+```python
+import optimiser
+# Optimise using the Steepest Descent method
+sd = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=1)
+print(sd.minimum, sd.nsteps)
+# Optimise using the Conjugate Gradient algorithm
+cg = optimiser.Optimise(X=[3.,4.],function=f,gradient=g,err=1.e-9,method=2)
+print(cg.minimum, cg.nsteps)
+```
+Now if we run this we should get something like this:
+```console
+aneo@computer:~$ python test_function.py
+[3.  0.5] 1118
+[3.  0.5] 50
+```
+## Comparing the different algorithms 
+&lt;video class=&#34;video-shortcode&#34; preload=&#34;&#34; controls&gt;
+  &lt;source src=&#34;https://andneo.github.io/media/deep_learning/videos/linesearch.mp4&#34; type=&#34;video/mp4&#34;&gt;
+  There should have been a video here but your browser does not seem
+  to support it.
+&lt;/video&gt; --&gt;
+
+
+
+
+
+</description>
+    </item>
+    
+    <item>
+      <title>Quasi-Newton Methods</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods/</link>
+      <pubDate>Thu, 29 Jun 2023 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/02_quasi_newton_methods/</guid>
+      <description>&lt;!-- Start off with Newton&#39;s method --&gt;</description>
+    </item>
+    
+    <item>
+      <title>Forward-Mode Automatic Differentiation</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/03_autograd_forward/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/03_autograd_forward/</guid>
+      <description>
+
+
+
+
+</description>
+    </item>
+    
+    <item>
+      <title>Reverse-Mode Automatic Differentiation</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/04_autograd_backward/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/04_autograd_backward/</guid>
+      <description>
+
+
+
+
+</description>
+    </item>
+    
+    <item>
+      <title>Putting it all Together: Linear Regression</title>
+      <link>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/05_linear_regression/</link>
+      <pubDate>Fri, 05 May 2023 00:00:00 +0100</pubDate>
+      <guid>https://andneo.github.io/notes/deep_learning/01_numerical_optimisation/05_linear_regression/</guid>
+      <description>
+
+
+
+
+</description>
+    </item>
+    
+  </channel>
+</rss>
