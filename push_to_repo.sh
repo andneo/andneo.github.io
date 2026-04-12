@@ -5,7 +5,7 @@ git init
 git add .
 
 # First commit
-git commit -m "Initial commit"
+git commit -m "Updated website"
 
 # Point to your new GitHub repo
 git remote add origin https://github.com/andneo/andneo.github.io.git
