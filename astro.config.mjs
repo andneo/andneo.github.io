@@ -1,13 +1,11 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
-import sitemap from '@astrojs/sitemap';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypePrettyCode from 'rehype-pretty-code';
 
 export default defineConfig({
   site: 'https://andneo.github.io', // ← UPDATE THIS
-  // base: '/repo-name',                  // ← UNCOMMENT if deploying to a sub-path
   integrations: [mdx(), sitemap()],
   markdown: {
     remarkPlugins: [remarkMath],
