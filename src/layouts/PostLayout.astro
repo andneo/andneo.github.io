@@ -167,7 +167,7 @@ body?.querySelectorAll<HTMLElement>('h2, h3, h4').forEach(h => {
   grid-template-columns: 220px minmax(0, 1fr);
   width: 90%;
   margin: 0;
-  gap: 0;
+  gap: 0.5rem;
   padding-top: 2.5rem;
   padding-bottom: 5rem;
   padding-left: 2.5rem;
@@ -264,13 +264,19 @@ h4:hover .heading-anchor { opacity: 1; }
 .post-nav { display: flex; gap: 0.75rem; }
 
 /* ── Responsive ── */
+/* ── Code blocks mobile fix ── */
 @media (max-width: 860px) {
-  .post-layout {
-    display: block;
-    padding: 2rem 1rem 4rem;
+  pre, code, [data-rehype-pretty-code-figure] {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+    font-size: 0.8rem;
   }
-  .post-sidebar { display: none; }
-  .post-main { padding-left: 0; }
+  [data-rehype-pretty-code-figure] pre {
+    padding: 1rem 0.75rem;
+  }
 }
 @media (max-width: 480px) {
   .post-layout { padding: 1.5rem 0.75rem 3rem; }

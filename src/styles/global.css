@@ -293,5 +293,11 @@ main { flex: 1; }
 
 /* ── Mobile ── */
 @media (max-width: 640px) {
-  .container, .container--narrow { padding: 0 1rem; }
+  [data-rehype-pretty-code-figure] {
+    margin: 1rem 0;
+  }
+  [data-rehype-pretty-code-figure] pre {
+    font-size: 0.78rem;
+    padding: 0.9rem 0.75rem;
+  }
 }
