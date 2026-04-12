@@ -6,7 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypePrettyCode from 'rehype-pretty-code';
 
 export default defineConfig({
-  site: 'https://yourusername.github.io', // ← UPDATE THIS
+  site: 'https://andneo.github.io', // ← UPDATE THIS
   // base: '/repo-name',                  // ← UNCOMMENT if deploying to a sub-path
   integrations: [mdx(), sitemap()],
   markdown: {
