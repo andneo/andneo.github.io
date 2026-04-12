@@ -188,7 +188,7 @@ body?.querySelectorAll<HTMLElement>('h2, h3, h4').forEach(h => {
 }
 
 .prose {
-  max-width: clamp(680px, 80vw, 900px);
+  max-width: 100%;
 }
 
 /* ── Sidebar ── */
@@ -273,8 +273,13 @@ h4:hover .heading-anchor { opacity: 1; }
 
 /* ── Responsive ── */
 @media (max-width: 860px) {
-  .post-layout { grid-template-columns: 1fr; }
+  .post-layout {
+    grid-template-columns: 1fr;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
   .post-sidebar { display: none; }
+  .post-main { padding-left: 0; }
 }
 @media (max-width: 480px) {
   .post-layout { padding: 1.5rem 1rem 4rem; }
