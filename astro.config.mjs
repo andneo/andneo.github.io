@@ -6,7 +6,7 @@ import rehypePrettyCode from 'rehype-pretty-code';
 
 export default defineConfig({
   site: 'https://andneo.github.io', // ← UPDATE THIS
-  integrations: [mdx(), sitemap()],
+  integrations: [mdx()],
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [
