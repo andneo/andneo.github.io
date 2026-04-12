@@ -292,12 +292,9 @@ main { flex: 1; }
 }
 
 /* ── Mobile ── */
-@media (max-width: 640px) {
-  [data-rehype-pretty-code-figure] {
-    margin: 1rem 0;
-  }
-  [data-rehype-pretty-code-figure] pre {
-    font-size: 0.78rem;
-    padding: 0.9rem 0.75rem;
+@media (max-width: 860px) {
+  pre, [data-rehype-pretty-code-figure] pre {
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 }
