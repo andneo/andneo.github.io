@@ -1,0 +1,104 @@
+---
+title: "Ch.1 · Orbits in Smooth Potentials"
+description: "Constants of motion, orbit families, surfaces of section, and KAM theory."
+course: "statistical-mechanics"
+chapter: 1
+tags: ["orbits", "integrals of motion"]
+date: 2024-01-15
+---
+
+## Overview
+
+The simplest stellar dynamics problem is to follow a single star in a given, fixed,
+smooth gravitational potential $\Phi(\mathbf{x})$. Although real galaxies are lumpy and
+time-varying, smooth-potential orbit theory underlies almost everything else.
+
+## Equations of motion
+
+A star of unit mass obeys:
+
+$$
+\ddot{\mathbf{x}} = -\nabla\Phi(\mathbf{x})
+$$
+
+This is a 6-dimensional first-order system in phase space $(\mathbf{x}, \mathbf{v})$.
+The energy
+
+$$
+E = \tfrac{1}{2}|\mathbf{v}|^2 + \Phi(\mathbf{x})
+$$
+
+is always an integral of motion (conserved along any orbit) in a static potential.
+
+## Spherical potentials
+
+In a spherically symmetric potential $\Phi(r)$, the **angular momentum vector**
+$\mathbf{L} = \mathbf{x} \times \mathbf{v}$ is conserved, so motion is confined to a plane.
+Choosing the $xy$-plane, the orbit is characterised by $(E, L_z)$.
+
+The radial motion reduces to a 1D problem in the **effective potential**:
+
+$$
+\Phi_{\rm eff}(r) = \Phi(r) + \frac{L_z^2}{2r^2}
+$$
+
+Radial turning points $r_{\rm min}$ and $r_{\rm max}$ are solutions to $E = \Phi_{\rm eff}(r)$.
+
+### Numerical orbit integration
+
+```python title="orbit.py"
+import numpy as np
+from scipy.integrate import solve_ivp
+
+def hernquist_potential(r, M=1.0, a=1.0):
+    """Hernquist (1990) spherical potential."""
+    return -M / (r + a)
+
+def hernquist_force(x, M=1.0, a=1.0):
+    r = np.linalg.norm(x)
+    return -M / (r + a)**2 * x / r
+
+def eom(t, state, force_fn):
+    x, v = state[:3], state[3:]
+    return np.concatenate([v, force_fn(x)])
+
+# Initial conditions: circular orbit at r=1
+r0 = np.array([1.0, 0.0, 0.0])
+# Circular velocity: v_c = sqrt(-r dΦ/dr) at r=1 for Hernquist with a=1, M=1
+vc = np.sqrt(0.5 / (1 + 1)**2 * 1)   # ≈ 0.25
+v0 = np.array([0.0, vc, 0.0])
+
+sol = solve_ivp(
+    eom, [0, 50], np.concatenate([r0, v0]),
+    args=(hernquist_force,), dense_output=True, rtol=1e-10
+)
+print(f"Final energy drift: {abs(sol.y[:3,-1] @ sol.y[3:,-1]):.2e}")
+```
+
+## Axisymmetric potentials
+
+In an axisymmetric potential $\Phi(R, z)$, only $L_z$ is conserved.
+A third integral $I_3$ often exists (especially in nearly-oblate potentials) but cannot
+in general be written in closed form. Its existence is supported numerically and analytically
+via **KAM theory**.
+
+The effective potential in the meridional $(R, z)$ plane is:
+
+$$
+\Phi_{\rm eff}(R, z) = \Phi(R, z) + \frac{L_z^2}{2R^2}
+$$
+
+## Surfaces of section
+
+A **surface of section** (or Poincaré section) collapses a 4D energy surface to 2D by
+recording $(R, \dot{R})$ each time $z = 0$ with $\dot{z} > 0$.
+
+Regular orbits trace smooth closed curves; chaotic orbits fill regions.
+
+## Summary
+
+| Symmetry | Exact integrals | Orbit families |
+|---|---|---|
+| Spherical | $E, \mathbf{L}$ (4) | Rosette orbits |
+| Axisymmetric | $E, L_z$ (2) | Tubes, boxes |
+| Triaxial | $E$ only (1) | Boxes, tubes, bananas, fish |

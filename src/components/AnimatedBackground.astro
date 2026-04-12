@@ -1,0 +1,113 @@
+---
+// AnimatedBackground — renders a subtle, animated particle field
+// The particles drift slowly and connect when close together.
+// Respects dark mode and the site's accent colour.
+// Performance: uses requestAnimationFrame, respects prefers-reduced-motion.
+---
+
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+<script is:inline>
+(function () {
+  var canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    canvas.style.display = 'none';
+    return;
+  }
+
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, raf = 0;
+
+  var PARTICLE_COUNT = Math.min(55, Math.floor(window.innerWidth / 22));
+  var CONNECT_DIST   = 150;
+  var MAX_SPEED      = 0.3;
+  var RADIUS         = 1.5;
+
+  function getColors() {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var hue  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hue')) || 215;
+    return {
+      particle: dark ? 'hsl(' + hue + ',65%,62%)' : 'hsl(' + hue + ',65%,50%)',
+      line:     dark ? 'hsl(' + hue + ',50%,52%)' : 'hsl(' + hue + ',60%,52%)',
+      alpha:    dark ? 0.32 : 0.15
+    };
+  }
+
+  function rnd(a, b) { return Math.random() * (b - a) + a; }
+
+  function makeParticle() {
+    var spd = rnd(0.04, MAX_SPEED);
+    var ang = rnd(0, Math.PI * 2);
+    return { x: rnd(0, W), y: rnd(0, H), vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd };
+  }
+
+  var particles = [];
+
+  function init() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = Math.max(window.innerHeight, document.body.scrollHeight);
+    particles = [];
+    for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(makeParticle());
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var c = getColors();
+
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x += W; if (p.x > W) p.x -= W;
+      if (p.y < 0) p.y += H; if (p.y > H) p.y -= H;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = c.particle;
+      ctx.globalAlpha = c.alpha * 1.8;
+      ctx.fill();
+    }
+
+    ctx.lineWidth = 0.75;
+    for (var i = 0; i < particles.length; i++) {
+      for (var j = i + 1; j < particles.length; j++) {
+        var dx = particles[i].x - particles[j].x;
+        var dy = particles[i].y - particles[j].y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < CONNECT_DIST) {
+          ctx.globalAlpha = c.alpha * (1 - dist / CONNECT_DIST);
+          ctx.strokeStyle = c.line;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    raf = requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+
+  var resizeTimer;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { cancelAnimationFrame(raf); init(); draw(); }, 200);
+  }, { passive: true });
+})();
+</script>
+
+<style>
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  /* Very subtle — just enough to feel 'alive' without distracting */
+  opacity: 0.55;
+}
+</style>

@@ -1,0 +1,77 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+// Get all course index pages (chapter: 0)
+const allCoursePages = await getCollection('course').catch(() => []);
+
+// Group by course slug — find the index page (chapter: 0) for each
+const courseMap = new Map<string, any>();
+for (const page of allCoursePages) {
+  if (page.data.chapter === 0 && !page.data.draft) {
+    courseMap.set(page.data.course, page);
+  }
+}
+const courses = [...courseMap.values()];
+---
+
+<Base title="Courses">
+  <div class="container" style="max-width: 780px; padding-top: 3rem; padding-bottom: 5rem;">
+
+    <div class="page-head">
+      <h1>Courses</h1>
+      <p class="page-desc">Lecture notes and course materials. All notes include worked examples, equations, and code.</p>
+    </div>
+
+    {courses.length === 0 ? (
+      <div class="empty-msg">
+        <p>No courses yet.</p>
+        <p>Create a course index at <code>src/content/course/my-course/index.md</code> with <code>chapter: 0</code>.</p>
+      </div>
+    ) : (
+      <div class="course-grid">
+        {courses.map((c: any) => (
+          <a href={`/course/${c.data.course}/`} class="course-card fade-up">
+            <h2 class="course-card-title">{c.data.title}</h2>
+            {c.data.subtitle && <p class="course-card-sub">{c.data.subtitle}</p>}
+            {c.data.description && <p class="course-card-desc">{c.data.description}</p>}
+            <div class="course-card-tags">
+              {c.data.tags?.map((t: string) => <span class="tag">{t}</span>)}
+            </div>
+            <span class="course-card-cta">View notes →</span>
+          </a>
+        ))}
+      </div>
+    )}
+
+  </div>
+</Base>
+
+<style>
+.page-head { margin-bottom: 2.5rem; }
+.page-head h1 { margin-bottom: 0.4rem; }
+.page-desc { color: var(--text-2); font-size: 0.95rem; line-height: 1.6; }
+
+.empty-msg {
+  padding: 3rem 2rem; text-align: center; color: var(--text-3);
+  border: 1px dashed var(--border-med); border-radius: var(--r-lg); line-height: 2.2;
+}
+.course-grid { display: flex; flex-direction: column; gap: 1rem; }
+.course-card {
+  display: flex; flex-direction: column; gap: 0.45rem;
+  padding: 1.4rem 1.6rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  text-decoration: none !important; color: inherit;
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t-med);
+}
+.course-card:hover {
+  border-color: var(--accent); box-shadow: 0 3px 16px rgba(0,0,0,.06);
+  transform: translateY(-2px);
+}
+.course-card:hover .course-card-title { color: var(--accent); }
+.course-card-title { font-size: 1.05rem; font-weight: 600; transition: color var(--t); }
+.course-card-sub { font-size: 0.875rem; color: var(--accent); font-weight: 500; }
+.course-card-desc { font-size: 0.875rem; color: var(--text-2); line-height: 1.55; }
+.course-card-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.course-card-cta { font-size: 0.82rem; font-weight: 500; color: var(--accent); margin-top: 0.2rem; }
+</style>

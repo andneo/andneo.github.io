@@ -1,0 +1,134 @@
+---
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+---
+
+<div class="iplot-wrap">
+  <div id={id} class="iplot-canvas"></div>
+  <div class="iplot-controls">
+    <label class="iplot-ctrl-label">
+      Eccentricity: <strong id={`${id}-val`}>0.00</strong>
+    </label>
+    <input
+      id={`${id}-slider`}
+      type="range"
+      min="0" max="0.9" step="0.05" value="0"
+      class="iplot-slider"
+      aria-label="Orbital eccentricity"
+    />
+  </div>
+</div>
+
+<script define:vars={{ plotId: id }}>
+  function loadPlotly() {
+    return new Promise(resolve => {
+      if (window.Plotly) return resolve(window.Plotly);
+      const s = document.createElement('script');
+      s.src = 'https://cdn.plot.ly/plotly-2.32.0.min.js';
+      s.onload = () => resolve(window.Plotly);
+      document.head.appendChild(s);
+    });
+  }
+
+  function orbit(e, N = 600) {
+    const theta = Array.from({ length: N }, (_, i) => (2 * Math.PI * i) / (N - 1));
+    const p = 1 * (1 - e * e);
+    const r = theta.map(t => p / (1 + e * Math.cos(t)));
+    const T = r.map(ri => 1 / ri);         // vis-viva: KE ∝ 2/r − 1/a = 2/r − 1 for a=1; simplify to 1/r
+    const V = r.map(ri => -2 / ri);        // PE ∝ −2/r so 2⟨T⟩+⟨V⟩=0 holds visually
+    const run = arr => {
+      let s = 0; return arr.map((v, i) => { s += v; return s / (i + 1); });
+    };
+    return { theta, T, V, Tmean: run(T), Vmean: run(V) };
+  }
+
+  function accent() {
+    const s = getComputedStyle(document.documentElement);
+    const h = s.getPropertyValue('--hue').trim() || '215';
+    return `hsl(${h}, 70%, 55%)`;
+  }
+
+  function layout() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      paper_bgcolor: dark ? '#161b22' : '#ffffff',
+      plot_bgcolor:  dark ? '#0d1117' : '#f8f9fa',
+      font: { color: dark ? '#8d96a0' : '#495057', family: 'Inter, system-ui, sans-serif', size: 11.5 },
+      margin: { t: 20, b: 44, l: 48, r: 16 },
+      xaxis: { title: 'Orbital angle θ / rad', gridcolor: dark ? '#30363d' : '#dee2e6', zerolinecolor: dark ? '#3d444d' : '#adb5bd' },
+      yaxis: { title: 'Energy (G = M = a = 1)', gridcolor: dark ? '#30363d' : '#dee2e6', zerolinecolor: dark ? '#3d444d' : '#adb5bd' },
+      legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0)' },
+      hovermode: 'x unified',
+      height: 360,
+    };
+  }
+
+  async function init() {
+    const Plotly = await loadPlotly();
+    const container = document.getElementById(plotId);
+    const slider    = document.getElementById(`${plotId}-slider`);
+    const valEl     = document.getElementById(`${plotId}-val`);
+    if (!container || !slider || !valEl) return;
+
+    function render(e) {
+      const { theta, T, V, Tmean, Vmean } = orbit(e);
+      const ac = accent();
+      const traces = [
+        { x: theta, y: T, name: 'T (kinetic)',           line: { color: ac, width: 1.4 }, mode: 'lines' },
+        { x: theta, y: V, name: 'V (potential)',          line: { color: '#ef4444', width: 1.4 }, mode: 'lines' },
+        { x: theta, y: Tmean, name: '⟨T⟩',               line: { color: ac, width: 2.5, dash: 'dash' }, mode: 'lines' },
+        { x: theta, y: Vmean, name: '⟨V⟩',               line: { color: '#ef4444', width: 2.5, dash: 'dash' }, mode: 'lines' },
+      ];
+      Plotly.react(container, traces, layout(), { responsive: true, displayModeBar: false });
+    }
+
+    render(0);
+    slider.addEventListener('input', () => {
+      const e = parseFloat(slider.value);
+      valEl.textContent = e.toFixed(2);
+      render(e);
+    });
+
+    // Re-render on theme change
+    new MutationObserver(() => render(parseFloat(slider.value)))
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
+  // Lazy-init on scroll into view
+  const el = document.getElementById(plotId);
+  if (el) {
+    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { init(); io.disconnect(); } }, { threshold: 0.1 });
+    io.observe(el);
+  }
+</script>
+
+<style>
+.iplot-wrap {
+  margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+.iplot-canvas { min-height: 360px; }
+.iplot-controls {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.7rem 1.1rem; border-top: 1px solid var(--border); background: var(--bg-off);
+}
+.iplot-ctrl-label { font-size: 0.83rem; color: var(--text-2); white-space: nowrap; font-family: var(--font-sans); }
+.iplot-ctrl-label strong { color: var(--accent); }
+.iplot-slider {
+  flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px;
+  background: var(--border-med); outline: none; border: none; padding: 0; cursor: pointer;
+}
+.iplot-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.iplot-slider::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: none;
+}
+</style>

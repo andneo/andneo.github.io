@@ -1,0 +1,33 @@
+---
+title: "A Pseudo-Spectral Method for Self-Gravitating Fluid Dynamics"
+authors:
+  - "Jane Smith"
+  - "C. Mathematician"
+journal: "Journal of Computational Physics"
+year: 2023
+status: "published"
+pdf: "/files/smith2023.pdf"
+arxiv: "2309.09876"
+doi: "10.1016/j.jcp.2023.xxxxx"
+repo: "https://github.com/yourusername/spectraflow"
+abstract: "We develop a pseudo-spectral method for solving the coupled Poisson–Euler system describing self-gravitating fluid dynamics in three dimensions. The algorithm achieves spectral accuracy for smooth problems and scales as O(N log N) per timestep via fast transforms, representing a significant speedup over conventional finite-volume approaches. We validate the method on a suite of test problems including Jeans instability, soliton propagation, and collapse of a cold cloud, and demonstrate sub-percent energy conservation over hundreds of dynamical times."
+tags: ["numerical methods", "spectral methods", "hydrodynamics"]
+featured: false
+---
+
+## Key idea
+
+Spectral methods represent the solution as a truncated series of basis functions
+(here, Fourier modes on a periodic domain). The key advantage: for smooth solutions,
+the error decays *exponentially* with resolution rather than as a power law.
+
+## Why this matters for gravity
+
+The Poisson equation $\nabla^2 \Phi = 4\pi G \rho$ is trivially solved in Fourier space:
+
+$$
+\hat{\Phi}(\mathbf{k}) = -\frac{4\pi G \hat{\rho}(\mathbf{k})}{k^2}
+$$
+
+Two FFTs (forward and inverse) give the gravitational potential at $O(N \log N)$ cost —
+far cheaper than the $O(N^2)$ direct summation or $O(N \log N)$ tree codes for moderate $N$.

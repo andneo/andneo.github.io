@@ -1,0 +1,289 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { AUTHOR } from '../../config';
+
+export async function getStaticPaths() {
+  const pubs = await getCollection('publications').catch(() => []);
+  return pubs
+    .filter((p: any) => !p.data.draft)
+    .map((pub: any) => ({ params: { slug: pub.slug }, props: { pub } }));
+}
+
+const { pub } = Astro.props;
+const { Content, headings } = await pub.render();
+
+// Check if there's any body content (behind-the-scenes)
+const hasContent = (pub.body ?? '').trim().length > 10;
+---
+
+<Base title={pub.data.title} description={pub.data.abstract} noCanvas={true}>
+  <div class="pub-page-layout">
+
+    <!-- Sidebar TOC (only if body content exists) -->
+    {hasContent && (
+      <aside class="pub-sidebar" id="pub-sidebar">
+        <div class="sidebar-inner">
+          <p class="sidebar-label">Contents</p>
+          <nav class="toc" id="pub-toc"></nav>
+        </div>
+      </aside>
+    )}
+
+    <article class:list={['pub-main', { 'pub-main--wide': !hasContent }]}>
+
+      <a href="/publications/" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Publications
+      </a>
+
+      <!-- Paper header -->
+      <header class="pub-header">
+        <h1 class="pub-title">{pub.data.title}</h1>
+
+        <p class="pub-authors">
+          {pub.data.authors.map((a: string, i: number, arr: string[]) => (
+            <span class:list={[{ 'self': a === AUTHOR.name }]}>
+              {a}{i < arr.length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </p>
+
+        {pub.data.journal && (
+          <p class="pub-venue">
+            <em>{pub.data.journal}</em>
+            {pub.data.year && `, ${pub.data.year}`}
+            {pub.data.status !== 'published' && (
+              <span class="status-badge">{pub.data.status.replace('-', ' ')}</span>
+            )}
+          </p>
+        )}
+
+        <!-- Quick-access link buttons -->
+        <div class="pub-action-links">
+          {pub.data.pdf    && (
+            <a href={pub.data.pdf} target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              PDF
+            </a>
+          )}
+          {pub.data.slides && (
+            <a href={pub.data.slides} target="_blank" rel="noopener" class="btn btn-outline btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>
+              Slides
+            </a>
+          )}
+          {pub.data.arxiv  && (
+            <a href={`https://arxiv.org/abs/${pub.data.arxiv}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">arXiv:{pub.data.arxiv}</a>
+          )}
+          {pub.data.doi    && (
+            <a href={`https://doi.org/${pub.data.doi}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">DOI</a>
+          )}
+          {pub.data.repo   && (
+            <a href={pub.data.repo} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+              Code
+            </a>
+          )}
+        </div>
+
+        {pub.data.tags.length > 0 && (
+          <div class="pub-tags">
+            {pub.data.tags.map((t: string) => <span class="tag">{t}</span>)}
+          </div>
+        )}
+      </header>
+
+      <!-- Featured image -->
+      {pub.data.image && (
+        <div class="pub-image">
+          <img src={pub.data.image} alt={pub.data.title} />
+        </div>
+      )}
+
+      <!-- Abstract -->
+      {pub.data.abstract && (
+        <section class="pub-abstract-section">
+          <h2>Abstract</h2>
+          <p class="abstract-text">{pub.data.abstract}</p>
+        </section>
+      )}
+
+      <!-- Behind the scenes / additional content from MDX body -->
+      {hasContent && (
+        <section class="pub-bts-section">
+          <h2 id="behind-the-scenes">Behind the Scenes</h2>
+          <p class="bts-intro">More context, methodology notes, and supplementary material.</p>
+          <div class="prose" id="pub-body">
+            <Content />
+          </div>
+        </section>
+      )}
+
+      <!-- PDF embed (if PDF provided) -->
+      {pub.data.pdf?.endsWith('.pdf') ? (
+        <section class="pub-pdf-section">
+          <h2>Paper</h2>
+
+          <div class="pdf-embed-wrap">
+            <iframe
+              src={pub.data.pdf}
+              title={`PDF: ${pub.data.title}`}
+              class="pdf-embed"
+              loading="lazy"
+            />
+          </div>
+
+          <p class="pdf-fallback">
+            <a href={pub.data.pdf} target="_blank" rel="noopener">
+              Open PDF in a new tab →
+            </a>
+          </p>
+        </section>
+      ) : null}
+
+      <div class="pub-footer">
+        <a href="/publications/" class="btn btn-ghost btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          All publications
+        </a>
+      </div>
+
+    </article>
+  </div>
+</Base>
+
+<script>
+  // Build TOC from behind-the-scenes content
+  const body = document.getElementById('pub-body');
+  const tocEl = document.getElementById('pub-toc');
+  const sidebar = document.getElementById('pub-sidebar');
+  if (!body || !tocEl || !sidebar) {
+    if (sidebar) sidebar.style.display = 'none';
+  } else {
+    const headings = body.querySelectorAll<HTMLElement>('h2, h3');
+    if (headings.length < 1) {
+      sidebar.style.display = 'none';
+    } else {
+      headings.forEach((h, i) => {
+        if (!h.id) h.id = `bts-${i}`;
+        const a = document.createElement('a');
+        a.href = `#${h.id}`;
+        a.textContent = h.textContent ?? '';
+        a.className = `toc-link toc-${h.tagName.toLowerCase()}`;
+        tocEl.appendChild(a);
+      });
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          const link = tocEl.querySelector(`[href="#${e.target.id}"]`);
+          if (e.isIntersecting) {
+            tocEl.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+            link?.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-8% 0px -80% 0px' });
+      headings.forEach(h => io.observe(h));
+    }
+  }
+</script>
+
+<style>
+
+.pub-page-layout {
+  display: grid;
+
+  grid-template-columns:
+    var(--sidebar-w)     /* left TOC */
+    minmax(0, 1fr)       /* main content */
+    140px;    /* right spacer */
+
+  width: 100%;
+  margin: 0rem;
+  gap: clamp(0rem, 0.5vw, 0.5rem);
+
+  padding-top: 2.5rem;
+  padding-bottom: 5rem;
+
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+}
+
+/* Sidebar */
+.pub-sidebar {
+  grid-column: 1;
+  justify-self: start;
+}
+.sidebar-inner { border-left: 2px solid var(--border); padding-left: 1rem; }
+.sidebar-label {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 0.6rem;
+}
+.toc { display: flex; flex-direction: column; }
+.toc-link { font-size: 0.83rem; color: var(--text-3); padding: 0.22em 0; transition: color var(--t); text-decoration: none; line-height: 1.4; }
+.toc-link:hover { color: var(--text); }
+.toc-link.active { color: var(--accent); font-weight: 500; }
+.toc-h3 { padding-left: 0.85rem; font-size: 0.79rem; }
+
+/* Main — wide mode when no body content */
+.pub-main {
+  grid-column: 2;
+  min-width: 0;
+}
+.pub-main--wide { max-width: var(--content-w); }
+
+/* Back link */
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.3em;
+  font-size: 0.85rem; color: var(--text-3); margin-bottom: 1.5rem;
+  transition: color var(--t); text-decoration: none;
+}
+.back-link:hover { color: var(--accent); }
+
+/* Header */
+.pub-header { margin-bottom: 1.5rem; }
+.pub-title { font-size: clamp(1.35rem, 3vw, 1.9rem); line-height: 1.2; margin-bottom: 0.6rem; }
+.pub-authors { font-size: 0.9rem; color: var(--text-2); margin-bottom: 0.35rem; }
+.pub-authors .self { font-weight: 700; color: var(--text); }
+.pub-venue { font-size: 0.875rem; color: var(--text-3); margin-bottom: 0.9rem; }
+.status-badge {
+  display: inline-block; font-style: normal; font-size: 0.75rem; font-weight: 500;
+  color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-border);
+  padding: 0.1em 0.55em; border-radius: 4px; margin-left: 0.5em;
+}
+.pub-action-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.9rem; }
+.pub-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+/* Image */
+.pub-image { margin: 1.25rem 0; }
+.pub-image img { width: 100%; border-radius: var(--r-lg); border: 1px solid var(--border); max-height: 360px; object-fit: cover; }
+
+/* Abstract */
+.pub-abstract-section { margin: 2rem 0; }
+.pub-abstract-section h2 { font-size: 1.1rem; margin-bottom: 0.65rem; }
+.abstract-text { font-size: 0.95rem; color: var(--text-2); line-height: 1.75; font-family: var(--font-serif); }
+
+/* PDF embed */
+.pub-pdf-section { margin: 2rem 0; }
+.pub-pdf-section h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+.pdf-embed-wrap { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--bg-subtle); }
+.pdf-embed { width: 100%; height: 640px; border: none; display: block; }
+.pdf-fallback { padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--text-3); border-top: 1px solid var(--border); text-align: center; }
+
+/* Behind the scenes */
+.pub-bts-section { margin: 2.5rem 0; padding-top: 2rem; border-top: 1px solid var(--border); }
+.pub-bts-section > h2 { font-size: 1.25rem; margin-bottom: 0.3rem; }
+.bts-intro { font-size: 0.875rem; color: var(--text-3); margin-bottom: 1.5rem; }
+
+/* Footer */
+.pub-footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .pub-page-layout { grid-template-columns: 1fr; }
+  .pub-sidebar { display: none; }
+}
+@media (max-width: 480px) {
+  .pub-page-layout { padding: 1.5rem 1rem 4rem; }
+  .pdf-embed { height: 400px; }
+}
+</style>

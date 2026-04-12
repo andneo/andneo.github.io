@@ -1,0 +1,80 @@
+---
+import { getCollection } from 'astro:content';
+import CourseLayout from '../../../layouts/CourseLayout.astro';
+
+export async function getStaticPaths() {
+  const all = await getCollection('course').catch(() => []);
+  // Get unique course slugs
+  const slugs = [...new Set(all.map((p: any) => p.data.course))];
+  return slugs.map(slug => ({ params: { course: slug } }));
+}
+
+const { course } = Astro.params;
+const all = await getCollection('course').catch(() => []);
+
+// Index page for this course (chapter: 0)
+const indexPage = all.find((p: any) => p.data.course === course && p.data.chapter === 0);
+
+// All chapters (chapter > 0), sorted
+const chapters = all
+  .filter((p: any) => p.data.course === course && p.data.chapter > 0 && !p.data.draft)
+  .sort((a: any, b: any) => a.data.chapter - b.data.chapter)
+  .map((p: any) => {
+    // p.slug is e.g. "stellar-dynamics/01-orbits" — strip the course prefix + slash
+    const prefix = course + '/';
+    const slug = p.slug.startsWith(prefix) ? p.slug.slice(prefix.length) : p.slug;
+    return { slug, title: p.data.title, chapter: p.data.chapter };
+  });
+
+const { Content } = indexPage ? await indexPage.render() : { Content: null };
+const title    = indexPage?.data.title ?? course;
+const subtitle = indexPage?.data.subtitle;
+const desc     = indexPage?.data.description;
+---
+
+<CourseLayout
+  title={title}
+  courseTitle={title}
+  courseSlug={course}
+  chapters={chapters}
+  description={desc}
+>
+  {subtitle && <p class="course-subtitle">{subtitle}</p>}
+
+  {desc && <p class="course-intro">{desc}</p>}
+
+  {Content && <Content />}
+
+  <!-- Chapter list on the overview page -->
+  {chapters.length > 0 && (
+    <div class="chapter-list-section">
+      <h2>Chapters</h2>
+      <ol class="chapter-ol">
+        {chapters.map(ch => (
+          <li>
+            <a href={`/course/${course}/${ch.slug}/`}>
+              {ch.title.replace(/^Ch\.\d+\s*·\s*/, '')}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )}
+
+  {chapters.length === 0 && (
+    <div class="no-chapters">
+      <p>No chapters yet. Add MDX files with <code>chapter: 1</code>, <code>chapter: 2</code>, … to <code>src/content/course/{course}/</code>.</p>
+    </div>
+  )}
+</CourseLayout>
+
+<style>
+.course-subtitle { font-size: 1rem; color: var(--accent); font-weight: 500; margin-bottom: 0.5rem; }
+.course-intro { font-size: 0.95rem; color: var(--text-2); line-height: 1.7; margin-bottom: 1.5rem; max-width: 580px; }
+.chapter-list-section { margin-top: 2rem; }
+.chapter-list-section h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+.chapter-ol { list-style: decimal; padding-left: 1.5em; display: flex; flex-direction: column; gap: 0.5rem; }
+.chapter-ol li { font-size: 0.95rem; }
+.chapter-ol a { font-weight: 500; }
+.no-chapters { padding: 1.5rem; border: 1px dashed var(--border-med); border-radius: var(--r); color: var(--text-3); font-size: 0.875rem; }
+</style>

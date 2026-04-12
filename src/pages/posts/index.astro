@@ -1,0 +1,183 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('post').catch(() => []))
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const allTags = [...new Set(posts.flatMap((p: any) => p.data.tags))].sort();
+
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function readTime(body: string) {
+  return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200));
+}
+---
+
+<Base title="Posts">
+  <div class="posts-page">
+
+    <div class="page-head">
+      <h1>Posts</h1>
+      <p class="page-desc">Tutorials, explainers, and notes on science, maths, and computing — with equations, interactive figures, and code.</p>
+    </div>
+
+    <!-- Tag filter -->
+    {allTags.length > 0 && (
+      <div class="tag-filter" id="tag-filter">
+        <button class="filter-btn active" data-tag="all">All</button>
+        {allTags.map((t: string) => (
+          <button class="filter-btn" data-tag={t}>{t}</button>
+        ))}
+      </div>
+    )}
+
+    <!-- Post list -->
+    <div class="post-list" id="post-list">
+      {posts.length === 0 ? (
+        <p class="empty-msg">
+          No posts yet.<br />
+          Create your first post at <code>src/content/posts/my-post.mdx</code>
+        </p>
+      ) : (
+        posts.map((post: any) => (
+          <a
+            href={`/posts/${post.slug}/`}
+            class="post-row fade-up"
+            data-tags={post.data.tags.join(',')}
+          >
+            <div class="post-row-body">
+              <h2 class="post-row-title">{post.data.title}</h2>
+              {post.data.subtitle && (
+                <p class="post-row-subtitle">{post.data.subtitle}</p>
+              )}
+              <div class="post-row-meta">
+                <time>{fmtDate(post.data.date)}</time>
+                <span class="dot">·</span>
+                <span>{post.data.readingTime ?? readTime(post.body ?? '')} min read</span>
+                {post.data.tags?.slice(0,3).map((t: string) => (
+                  <span class="tag">{t}</span>
+                ))}
+              </div>
+            </div>
+            {post.data.image && (
+              <img src={post.data.image} alt="" class="post-row-thumb" width="120" height="80" loading="lazy" />
+            )}
+          </a>
+        ))
+      )}
+    </div>
+
+  </div>
+</Base>
+
+<script>
+  const btns = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+  const rows = document.querySelectorAll<HTMLElement>('.post-row');
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tag = btn.dataset.tag;
+      rows.forEach(row => {
+        const tags = (row.dataset.tags ?? '').split(',');
+        row.style.display = (tag === 'all' || tags.includes(tag!)) ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+<style>
+.page-head { margin-bottom: 2rem; }
+.page-head h1 { margin-bottom: 0.4rem; }
+.page-desc { color: var(--text-2); font-size: 0.95rem; line-height: 1.6; max-width: 560px; }
+
+/* Tag filter */
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.filter-btn {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.25em 0.85em;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all var(--t);
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Post list */
+.post-list { display: flex; flex-direction: column; }
+.post-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none !important;
+  color: inherit;
+  border-radius: var(--r);
+  transition: background var(--t), padding var(--t);
+}
+.post-row:first-child { border-top: 1px solid var(--border); }
+.post-row:hover { background: var(--bg-off); padding-left: 1rem; padding-right: 1rem; }
+.post-row-body { flex: 1; min-width: 0; }
+.post-row-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; transition: color var(--t); }
+.post-row:hover .post-row-title { color: var(--accent); }
+.post-row-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  margin-bottom: 0.4rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.post-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.dot { opacity: 0.5; }
+.post-row-thumb {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.empty-msg {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-3);
+  border: 1px dashed var(--border-med);
+  border-radius: var(--r-lg);
+  line-height: 2;
+}
+
+.posts-page {
+  max-width: 780px;
+  margin: 0 auto; /* 👈 THIS is what centers it */
+  padding: 3rem var(--page-pad) 5rem;
+}
+
+@media (max-width: 540px) { .post-row-thumb { display: none; } }
+</style>

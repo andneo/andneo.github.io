@@ -1,0 +1,527 @@
+---
+import Base from '../layouts/Base.astro';
+import { AUTHOR, SOCIAL, CONTACT, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
+import { getCollection } from 'astro:content';
+
+// Fetch content
+const allPosts = (await getCollection('post').catch(() => []))
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const allPubs = (await getCollection('publications').catch(() => []))
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => b.data.year - a.data.year);
+
+const allProjects = (await getCollection('project').catch(() => []))
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => (a.data.order ?? 99) - (b.data.order ?? 99));
+
+const recentPosts    = allPosts.slice(0, HOME_POST_COUNT);
+const recentPubs     = allPubs.slice(0, HOME_PUBLICATION_COUNT);
+const featuredProjs  = allProjects.slice(0, HOME_RESEARCH_COUNT);
+
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function readTime(body: string) {
+  const words = body?.split(/\s+/).length ?? 0;
+  return Math.max(1, Math.ceil(words / 200));
+}
+---
+
+<Base>
+
+<!-- ══════════════════════════════════════════════════
+     HERO / ABOUT
+══════════════════════════════════════════════════ -->
+<section id="about" class="hero-section">
+  <div class="container hero-container">
+
+    <!-- Hero background image strip (like the mountains photo) -->
+    <div class="hero-banner" aria-hidden="true">
+      <!-- Replace with your own banner image by adding a file to /public/images/banner.jpg -->
+      <!-- <img src="/images/banner.jpg" alt="" /> -->
+      <div class="hero-banner-placeholder"></div>
+    </div>
+
+    <!-- Avatar + text -->
+    <div class="hero-body">
+      <div class="hero-avatar-wrap">
+        <img
+          src={AUTHOR.avatar}
+          alt={AUTHOR.name}
+          class="hero-avatar"
+          width="170"
+          height="170"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <div class="hero-avatar-placeholder" style="display:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+
+      <div class="hero-text fade-up">
+        <h1 class="hero-name">{AUTHOR.name}</h1>
+        <p class="hero-title">{AUTHOR.title}</p>
+        <p class="hero-inst">{AUTHOR.department}, {AUTHOR.institution}</p>
+
+        <p class="hero-bio" set:html={AUTHOR.bio} />
+
+        <div class="hero-actions">
+          <a href={AUTHOR.cvPdf} class="btn btn-outline" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download CV
+          </a>
+          <!-- Social icon links -->
+          <div class="hero-socials">
+            {SOCIAL.github && (
+              <a href={SOCIAL.github} target="_blank" rel="noopener" aria-label="GitHub" class="social-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+              </a>
+            )}
+            {SOCIAL.twitter && (
+              <a href={SOCIAL.twitter} target="_blank" rel="noopener" aria-label="Twitter" class="social-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              </a>
+            )}
+            {SOCIAL.googleScholar && (
+              <a href={SOCIAL.googleScholar} target="_blank" rel="noopener" aria-label="Google Scholar" class="social-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5.242 13.769L0 9.5 12 0l12 9.5-5.242 4.269C17.548 11.249 14.978 9.5 12 9.5c-2.977 0-5.548 1.748-6.758 4.269zM12 10a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/></svg>
+              </a>
+            )}
+            {SOCIAL.linkedin && (
+              <a href={SOCIAL.linkedin} target="_blank" rel="noopener" aria-label="LinkedIn" class="social-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+              </a>
+            )}
+            {SOCIAL.orcid && (
+              <a href={SOCIAL.orcid} target="_blank" rel="noopener" aria-label="ORCID" class="social-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zM7.369 4.378c.525 0 .947.431.947.947s-.422.947-.947.947a.95.95 0 0 1-.947-.947c0-.525.422-.947.947-.947zm-.722 3.038h1.444v10.041H6.647V7.416zm3.562 0h3.9c3.712 0 5.344 2.653 5.344 5.025 0 2.578-2.016 5.025-5.325 5.025h-3.919V7.416zm1.444 1.303v7.444h2.297c2.359 0 3.9-1.303 3.9-3.722s-1.453-3.722-3.9-3.722h-2.297z"/></svg>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     POSTS
+══════════════════════════════════════════════════ -->
+<section id="posts" class="home-section">
+  <div class="container">
+    <h2 class="section-heading">Posts</h2>
+
+    {recentPosts.length === 0 ? (
+      <p class="empty-note">No posts yet. Create <code>src/content/posts/my-first-post.mdx</code></p>
+    ) : (
+      <div class="post-list">
+        {recentPosts.map((post: any) => (
+          <a href={`/posts/${post.slug}/`} class="post-row fade-up">
+            <div class="post-row-body">
+              <h3 class="post-row-title">{post.data.title}</h3>
+              {post.data.subtitle && (
+                <p class="post-row-subtitle">{post.data.subtitle}</p>
+              )}
+              <div class="post-row-meta">
+                <time>{fmtDate(post.data.date)}</time>
+                <span class="meta-dot">·</span>
+                <span>{post.data.readingTime ?? readTime(post.body ?? '')} min read</span>
+              </div>
+            </div>
+            {post.data.image && (
+              <img
+                src={post.data.image}
+                alt=""
+                class="post-row-thumb"
+                width="120"
+                height="80"
+                loading="lazy"
+              />
+            )}
+          </a>
+        ))}
+      </div>
+    )}
+
+    {allPosts.length > HOME_POST_COUNT && (
+      <div class="section-footer">
+        <a href="/posts/" class="see-all-link">See all posts →</a>
+      </div>
+    )}
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PUBLICATIONS  (replaces Newsletter)
+══════════════════════════════════════════════════ -->
+<section id="publications" class="home-section home-section--alt">
+  <div class="container">
+    <h2 class="section-heading">Publications</h2>
+
+    {recentPubs.length === 0 ? (
+      <p class="empty-note">No publications yet. Create <code>src/content/publications/my-paper.md</code></p>
+    ) : (
+      <div class="pub-list">
+        {recentPubs.map((pub: any) => (
+          <a href={`/publications/${pub.slug}/`} class="pub-row fade-up">
+            <div class="pub-row-body">
+              <h3 class="pub-row-title">{pub.data.title}</h3>
+              <p class="pub-row-authors">
+                {pub.data.authors.map((a: string, i: number, arr: string[]) => (
+                  <span class:list={[{ 'author-self': a === AUTHOR.name }]}>
+                    {a}{i < arr.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </p>
+              {pub.data.journal && (
+                <p class="pub-row-journal">
+                  <em>{pub.data.journal}</em>, {pub.data.year}
+                  {pub.data.status !== 'published' && <span class="pub-status"> · {pub.data.status.replace('-', ' ')}</span>}
+                </p>
+              )}
+              <div class="pub-row-links" onclick="event.preventDefault()">
+                {pub.data.pdf     && <a href={pub.data.pdf}                          target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">PDF</a>}
+                {pub.data.slides  && <a href={pub.data.slides}                       target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Slides</a>}
+                {pub.data.arxiv   && <a href={`https://arxiv.org/abs/${pub.data.arxiv}`} target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">arXiv</a>}
+                {pub.data.doi     && <a href={`https://doi.org/${pub.data.doi}`}     target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">DOI</a>}
+                {pub.data.repo    && <a href={pub.data.repo}                         target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Code</a>}
+              </div>
+            </div>
+            {pub.data.image && (
+              <img
+                src={pub.data.image}
+                alt=""
+                class="pub-row-thumb"
+                width="120"
+                height="80"
+                loading="lazy"
+              />
+            )}
+          </a>
+        ))}
+      </div>
+    )}
+
+    {allPubs.length > HOME_PUBLICATION_COUNT && (
+      <div class="section-footer">
+        <a href="/publications/" class="see-all-link">See all publications →</a>
+      </div>
+    )}
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     RESEARCH / PROJECTS
+══════════════════════════════════════════════════ -->
+<section id="research" class="home-section">
+  <div class="container">
+    <h2 class="section-heading">Research</h2>
+
+    {featuredProjs.length === 0 ? (
+      <p class="empty-note">No projects yet. Create <code>src/content/project/my-project.md</code></p>
+    ) : (
+      <div class="project-grid">
+        {featuredProjs.map((proj: any) => (
+          <a href={`/project/${proj.slug}/`} class="project-card fade-up">
+            {proj.data.image && (
+              <div class="project-card-img">
+                <img src={proj.data.image} alt="" width="540" height="200" loading="lazy" />
+              </div>
+            )}
+            <div class="project-card-body">
+              <h3 class="project-card-title">{proj.data.title}</h3>
+              <p class="project-card-desc">{proj.data.description}</p>
+              <div class="project-card-links" onclick="event.preventDefault()">
+                {proj.data.links.map((l: any) => (
+                  <a href={l.href} target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">{l.label}</a>
+                ))}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+
+    {allProjects.length > HOME_RESEARCH_COUNT && (
+      <div class="section-footer">
+        <a href="/project/" class="see-all-link">See all projects →</a>
+      </div>
+    )}
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     CONTACT
+══════════════════════════════════════════════════ -->
+<section id="contact" class="home-section home-section--alt">
+  <div class="container contact-section">
+    <h2 class="section-heading">Contact</h2>
+    <div class="contact-grid">
+      <div class="contact-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>{CONTACT.location}</span>
+      </div>
+      {CONTACT.office && (
+        <div class="contact-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <span>{CONTACT.office}</span>
+        </div>
+      )}
+      <div class="contact-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a>
+      </div>
+      {CONTACT.booking && (
+        <div class="contact-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <a href={CONTACT.booking} target="_blank" rel="noopener">Book an appointment</a>
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
+</Base>
+
+<style>
+/* ── Hero ── */
+.hero-section {
+  position: relative;
+  background: var(--bg);
+}
+.hero-container { padding-top: 0; padding-bottom: 0; }
+
+.hero-banner {
+  height: 160px;
+  overflow: hidden;
+  background: linear-gradient(135deg,
+    hsl(var(--hue),40%,88%) 0%,
+    hsl(calc(var(--hue)+30),35%,82%) 50%,
+    hsl(calc(var(--hue)-20),45%,86%) 100%);
+}
+[data-theme="dark"] .hero-banner {
+  background: linear-gradient(135deg,
+    hsl(var(--hue),25%,14%) 0%,
+    hsl(calc(var(--hue)+30),20%,10%) 100%);
+}
+.hero-banner img { width: 100%; height: 100%; object-fit: cover; }
+.hero-banner-placeholder { width: 100%; height: 100%; }
+
+/* hero-body: avatar sits at top-left, text at top-right — tops aligned */
+.hero-body {
+  display: flex;
+  gap: 4rem;
+  align-items: flex-start;
+  padding: 0 1.5rem 3rem;
+  max-width: var(--page-w);
+  margin: 0 auto;
+}
+
+/* Pull avatar up so its TOP aligns with where text starts.
+   Avatar is 140px tall; banner is 160px; we pull up 70px so the
+   centre of the avatar sits on the banner edge, and the top of
+   the avatar is ~70px above that — roughly level with the first
+   line of text which has padding-top: 0. */
+.hero-avatar-wrap {
+  flex-shrink: 0;
+  margin-top: 0px;
+  position: relative;
+  z-index: 2;
+}
+.hero-avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--bg);
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  background: var(--bg-subtle);
+  display: block;
+}
+.hero-avatar-placeholder {
+  width: 180px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: 4px solid var(--bg);
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+}
+
+/* Text starts right after the banner — no top padding needed */
+.hero-text { padding-top: 0rem; flex: 1; min-width: 0; }
+.hero-name  { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.2rem; }
+.hero-title { font-size: 1rem; color: var(--text-2); margin-bottom: 0.1rem; font-weight: 400; }
+.hero-inst  { font-size: 0.85rem; color: var(--text-3); margin-bottom: 1.1rem; }
+.hero-bio   { font-size: 0.95rem; color: var(--text-2); line-height: 1.7; margin-bottom: 1.25rem; max-width: 560px; }
+.hero-bio a { text-decoration: underline; text-underline-offset: 3px; }
+
+.hero-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.hero-socials { display: flex; gap: 0.6rem; align-items: center; }
+.social-icon {
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  transition: color var(--t), transform var(--t);
+}
+.social-icon:hover { color: var(--accent); transform: translateY(-2px); }
+
+/* ── Home sections ── */
+.home-section { padding: 3.5rem 0; background: var(--bg); }
+.home-section--alt { background: var(--bg-off); }
+
+.empty-note {
+  color: var(--text-3);
+  font-size: 0.9rem;
+  padding: 2rem;
+  border: 1px dashed var(--border-med);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.section-footer { margin-top: 1.5rem; }
+.see-all-link { font-size: 0.9rem; font-weight: 500; }
+
+/* ── Post rows (like Courthoud) ── */
+.post-list { display: flex; flex-direction: column; }
+
+.post-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none !important;
+  color: inherit;
+  transition: background var(--t);
+}
+.post-row:first-child { border-top: 1px solid var(--border); }
+.post-row:hover { background: var(--bg-off); padding-left: 0.6rem; padding-right: 0.6rem; border-radius: var(--r); }
+.post-row-body { flex: 1; min-width: 0; }
+.post-row-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  color: var(--text);
+  transition: color var(--t);
+}
+.post-row:hover .post-row-title { color: var(--accent); }
+.post-row-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-2);
+  margin-bottom: 0.35rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.post-row-meta { font-size: 0.8rem; color: var(--text-3); display: flex; align-items: center; gap: 0.4rem; }
+.meta-dot { opacity: 0.5; }
+.post-row-thumb {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--r);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+/* ── Publication rows ── */
+.pub-list { display: flex; flex-direction: column; }
+
+.pub-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none !important;
+  color: inherit;
+  transition: background var(--t);
+}
+.pub-row:first-child { border-top: 1px solid var(--border); }
+.pub-row:hover { background: var(--bg-off); padding-left: 0.6rem; padding-right: 0.6rem; border-radius: var(--r); }
+.pub-row-body { flex: 1; min-width: 0; }
+.pub-row-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text); transition: color var(--t); }
+.pub-row:hover .pub-row-title { color: var(--accent); }
+.pub-row-authors { font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.2rem; }
+.author-self { font-weight: 700; color: var(--text); }
+.pub-row-journal { font-size: 0.82rem; color: var(--text-3); margin-bottom: 0.4rem; }
+.pub-status { color: var(--accent); font-style: normal; font-weight: 500; }
+.pub-row-links { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.pub-link {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-light);
+  padding: 0.15em 0.6em;
+  border-radius: 4px;
+  transition: background var(--t);
+  text-decoration: none !important;
+}
+.pub-link:hover { background: var(--accent); color: #fff; }
+.pub-row-thumb {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--r);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+/* ── Project cards ── */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  text-decoration: none !important;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t-med);
+}
+.project-card:hover {
+  border-color: var(--border-med);
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  transform: translateY(-3px);
+}
+.project-card:hover .project-card-title { color: var(--accent); }
+.project-card-img { aspect-ratio: 16/7; overflow: hidden; background: var(--bg-subtle); }
+.project-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--t-slow); }
+.project-card:hover .project-card-img img { transform: scale(1.03); }
+.project-card-body { padding: 1.1rem 1.25rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+.project-card-title { font-size: 0.95rem; font-weight: 600; line-height: 1.3; transition: color var(--t); }
+.project-card-desc { font-size: 0.85rem; color: var(--text-2); line-height: 1.55; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.project-card-links { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* ── Contact ── */
+.contact-section {}
+.contact-grid { display: flex; flex-direction: column; gap: 0.85rem; margin-top: 0.5rem; }
+.contact-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.92rem; color: var(--text-2); }
+.contact-item svg { flex-shrink: 0; color: var(--text-3); }
+.contact-item a { color: var(--accent); }
+
+/* ── Responsive ── */
+@media (max-width: 680px) {
+  .hero-body { flex-direction: column; gap: 1rem; }
+  .hero-avatar-wrap { margin-top: -45px; }
+  .hero-avatar, .hero-avatar-placeholder { width: 200px; height: 100px; }
+  .post-row-thumb, .pub-row-thumb { display: none; }
+  .project-grid { grid-template-columns: 1fr; }
+}
+</style>

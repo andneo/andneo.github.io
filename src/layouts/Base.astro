@@ -1,0 +1,340 @@
+---
+import { AUTHOR, SOCIAL, NAV, ACCENT_HUE } from '../config';
+import AnimatedBackground from '../components/AnimatedBackground.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  noCanvas?: boolean;   // pass noCanvas to disable the animated bg on content pages
+}
+
+const { title, description = AUTHOR.bio.replace(/<[^>]+>/g, '').slice(0, 160), noCanvas = false } = Astro.props;
+const pageTitle = title ? `${title} | ${AUTHOR.name}` : AUTHOR.name;
+const path = Astro.url.pathname;
+
+function isActive(href: string) {
+  if (href === '/') return path === '/';
+  return path.startsWith(href.replace('/#','').replace('#',''));
+}
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content={description} />
+  <title>{pageTitle}</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title"       content={pageTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type"        content="website" />
+
+  <!-- KaTeX CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous" />
+
+  <!-- Inject accent hue as CSS variable -->
+  <style define:vars={{ accentHue: ACCENT_HUE }}>
+    :root { --hue: var(--accentHue); }
+  </style>
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="sitemap" href="/sitemap-index.xml" />
+</head>
+
+<body>
+  <!-- Animated background canvas (behind everything) -->
+  {!noCanvas && <AnimatedBackground />}
+
+  <!-- ═══ NAVBAR ═══ -->
+  <header class="navbar" id="navbar">
+    <div class="container navbar-inner">
+
+      <!-- Brand -->
+      <a href="/" class="navbar-brand">{AUTHOR.name}</a>
+
+      <!-- Desktop nav -->
+      <nav class="navbar-links" id="navbar-links" role="navigation" aria-label="Main navigation">
+        {NAV.map(item => (
+          item.children ? (
+            <div class="nav-dropdown">
+              <button class="nav-link nav-link--dropdown" aria-haspopup="true" aria-expanded="false">
+                {item.label}
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"/></svg>
+              </button>
+              <div class="nav-dropdown-menu">
+                {item.children.map(child => (
+                  <a href={child.href} class="nav-dropdown-item">{child.label}</a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <a
+              href={item.href}
+              class:list={['nav-link', { 'nav-link--active': isActive(item.href) }]}
+            >
+              {item.label}
+            </a>
+          )
+        ))}
+      </nav>
+
+      <!-- Actions: theme toggle + hamburger -->
+      <div class="navbar-actions">
+        <button class="theme-btn" id="theme-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <main style="position: relative; z-index: 1;">
+    <slot />
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="footer" style="position: relative; z-index: 1;">
+    <div class="container footer-inner">
+      <div class="footer-links">
+        {SOCIAL.github        && <a href={SOCIAL.github}        target="_blank" rel="noopener" aria-label="GitHub">{AUTHOR.name} · GitHub</a>}
+        {SOCIAL.twitter       && <a href={SOCIAL.twitter}       target="_blank" rel="noopener" aria-label="Twitter">Twitter</a>}
+        {SOCIAL.googleScholar && <a href={SOCIAL.googleScholar} target="_blank" rel="noopener" aria-label="Google Scholar">Scholar</a>}
+        {SOCIAL.orcid         && <a href={SOCIAL.orcid}         target="_blank" rel="noopener" aria-label="ORCID">ORCID</a>}
+      </div>
+      <p class="footer-copy">© {new Date().getFullYear()} {AUTHOR.name}</p>
+    </div>
+  </footer>
+
+  <script>
+    // ── Theme toggle ──────────────────────────────────────────────
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('theme-btn');
+    const stored = localStorage.getItem('theme') ??
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    html.setAttribute('data-theme', stored);
+
+    themeBtn?.addEventListener('click', () => {
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+
+    // ── Hamburger ──────────────────────────────────────────────────
+    const ham  = document.getElementById('hamburger');
+    const navL = document.getElementById('navbar-links');
+    ham?.addEventListener('click', () => {
+      const open = navL?.classList.toggle('open');
+      ham.setAttribute('aria-expanded', open ? 'true' : 'false');
+      ham.classList.toggle('open', !!open);
+    });
+    document.addEventListener('click', e => {
+      if (!ham?.contains(e.target as Node) && !navL?.contains(e.target as Node)) {
+        navL?.classList.remove('open');
+        ham?.classList.remove('open');
+      }
+    });
+
+    // ── Dropdown toggles (mobile) ───────────────────────────────────
+    document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        // Close all
+        document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
+          b.setAttribute('aria-expanded', 'false');
+          b.closest('.nav-dropdown')?.classList.remove('open');
+        });
+        if (!expanded) {
+          btn.setAttribute('aria-expanded', 'true');
+          btn.closest('.nav-dropdown')?.classList.add('open');
+        }
+      });
+    });
+    // Close dropdowns on outside click
+    document.addEventListener('click', e => {
+      if (!(e.target as Element).closest('.nav-dropdown')) {
+        document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
+          b.setAttribute('aria-expanded', 'false');
+          b.closest('.nav-dropdown')?.classList.remove('open');
+        });
+      }
+    });
+
+    // ── Scroll shadow ─────────────────────────────────────────────
+    const navbar = document.getElementById('navbar');
+    const onScroll = () => navbar?.classList.toggle('scrolled', window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  </script>
+</body>
+</html>
+
+<style>
+/* ═══ NAVBAR ═══ */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--t), box-shadow var(--t), background var(--t-slow);
+}
+.navbar.scrolled {
+  border-color: var(--border);
+  box-shadow: 0 1px 12px rgba(0,0,0,.06);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  height: 60px;
+  gap: 1.5rem;
+}
+.navbar-brand {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: auto;
+}
+.navbar-brand:hover { color: var(--accent); }
+
+/* Nav links */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-2);
+  padding: 0.35em 0.7em;
+  border-radius: var(--r);
+  transition: color var(--t), background var(--t);
+  cursor: pointer;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-sans);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-link:hover, .nav-link--active { color: var(--text); }
+.nav-link--active { color: var(--accent) !important; }
+.nav-link:hover { background: var(--bg-off); }
+
+/* Dropdown */
+.nav-dropdown { position: relative; }
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,.1);
+  padding: 0.4rem;
+  display: none;
+  z-index: 300;
+}
+.nav-dropdown.open .nav-dropdown-menu { display: flex; flex-direction: column; }
+.nav-dropdown-item {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  padding: 0.5em 0.85em;
+  border-radius: var(--r);
+  transition: background var(--t), color var(--t);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.nav-dropdown-item:hover { background: var(--bg-off); color: var(--text); }
+
+/* Theme button */
+.theme-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.35em 0.45em;
+  cursor: pointer;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  transition: background var(--t), color var(--t);
+}
+.theme-btn:hover { background: var(--bg-off); color: var(--text); }
+[data-theme="light"] .icon-moon { display: block; }
+[data-theme="light"] .icon-sun  { display: none; }
+[data-theme="dark"]  .icon-moon { display: none; }
+[data-theme="dark"]  .icon-sun  { display: block; }
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+.hamburger span { display: block; width: 20px; height: 2px; background: var(--text-2); border-radius: 2px; transition: transform var(--t), opacity var(--t); }
+.hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* ═══ FOOTER ═══ */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 1.75rem 0;
+  margin-top: auto;
+  background: var(--bg);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.footer-links { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.footer-links a { font-size: 0.85rem; color: var(--text-3); }
+.footer-links a:hover { color: var(--accent); }
+.footer-copy { font-size: 0.8rem; color: var(--text-3); }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+  .navbar-links {
+    position: fixed;
+    top: 60px; left: 0; right: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+    padding: 0.6rem 1rem 1rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,.1);
+    transform: translateY(-6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t), transform var(--t);
+  }
+  .navbar-links.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .nav-link { padding: 0.6em 0.9em; }
+  .nav-dropdown-menu { position: static; box-shadow: none; border: none; padding-left: 1rem; }
+  .nav-dropdown.open .nav-dropdown-menu { display: flex; }
+}
+</style>

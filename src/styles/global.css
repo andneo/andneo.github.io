@@ -1,0 +1,297 @@
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL STYLES
+   Design: clean academic, light background, strong typographic
+   hierarchy, single blue accent — faithful to Courthoud's aesthetic
+   but with more refinement and an animated background.
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,300;1,8..60,400;1,8..60,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Tokens ── */
+:root {
+  /* Accent — set via inline style from config.ts */
+  --hue: 215;
+  --accent:          hsl(var(--hue), 75%, 50%);
+  --accent-hover:    hsl(var(--hue), 75%, 42%);
+  --accent-light:    hsl(var(--hue), 75%, 96%);
+  --accent-border:   hsl(var(--hue), 60%, 82%);
+
+  /* Surface */
+  --bg:           #ffffff;
+  --bg-off:       #f8f9fa;
+  --bg-subtle:    #f1f3f5;
+  --surface:      #ffffff;
+  --border:       #e9ecef;
+  --border-med:   #dee2e6;
+
+  /* Text */
+  --text:         #1a1b1e;
+  --text-2:       #495057;
+  --text-3:       #868e96;
+  --text-inv:     #ffffff;
+
+  /* Typography */
+  --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif:  'Source Serif 4', Georgia, serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Layout */
+  --sidebar-w:   240px;
+  --content-w:   720px;
+  --page-w:      1080px;
+  --gap:         2rem;
+  --page-pad: clamp(1rem, 4vw, 2.5rem);
+
+  /* Transitions */
+  --t:           150ms ease;
+  --t-med:       250ms ease;
+  --t-slow:      400ms ease;
+
+  /* Radius */
+  --r:           6px;
+  --r-lg:        12px;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] {
+  --bg:           #0d1117;
+  --bg-off:       #161b22;
+  --bg-subtle:    #21262d;
+  --surface:      #161b22;
+  --border:       #30363d;
+  --border-med:   #3d444d;
+  --text:         #e6edf3;
+  --text-2:       #8d96a0;
+  --text-3:       #626c77;
+  --text-inv:     #0d1117;
+  --accent:          hsl(var(--hue), 85%, 62%);
+  --accent-hover:    hsl(var(--hue), 85%, 70%);
+  --accent-light:    hsl(var(--hue), 40%, 12%);
+  --accent-border:   hsl(var(--hue), 40%, 25%);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  transition: background var(--t-slow), color var(--t-slow);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Links ── */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--t);
+}
+a:hover { color: var(--accent-hover); }
+
+/* ── Headings ── */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+}
+h1 { font-size: clamp(1.65rem, 3.5vw, 2.25rem); }
+h2 { font-size: clamp(1.25rem, 2.5vw, 1.6rem); }
+h3 { font-size: 1.15rem; }
+h4 { font-size: 1rem; }
+
+/* ── Prose — for MDX content ── */
+.prose {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--text);
+  max-width: var(--content-w);
+}
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  font-family: var(--font-sans);
+  margin-top: 2.25em;
+  margin-bottom: 0.6em;
+}
+.prose h2 {
+  font-size: 1.35rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+.prose h3 { font-size: 1.1rem; }
+.prose > p { margin-bottom: 1.1em; }
+.prose ul, .prose ol { padding-left: 1.5em; margin-bottom: 1em; }
+.prose li { margin-bottom: 0.3em; }
+.prose strong { font-weight: 600; }
+.prose em { font-style: italic; }
+.prose blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 1.5em 0;
+  padding: 0.5em 1.25em;
+  color: var(--text-2);
+  background: var(--accent-light);
+  border-radius: 0 var(--r) var(--r) 0;
+}
+.prose img {
+  max-width: 100%;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  margin: 1.5em auto;
+  display: block;
+}
+.prose hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-family: var(--font-sans); margin: 1.25em 0; }
+.prose th { background: var(--bg-off); padding: 0.5em 0.9em; border: 1px solid var(--border-med); text-align: left; font-weight: 600; }
+.prose td { padding: 0.45em 0.9em; border: 1px solid var(--border); }
+.prose tr:nth-child(even) td { background: var(--bg-off); }
+.prose a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Inline code ── */
+code:not([class]) {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+/* ── Code blocks (rehype-pretty-code) ── */
+[data-rehype-pretty-code-figure] {
+  margin: 1.5rem 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,.05);
+}
+[data-rehype-pretty-code-title] {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+}
+[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  padding: 1.1rem 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+[data-line] { display: block; }
+[data-highlighted-line] { background: hsl(var(--hue),60%,50%,.08); }
+
+/* ── KaTeX ── */
+.katex-display { overflow-x: auto; padding: 0.25em 0; }
+.katex { font-size: 1.05em; }
+
+/* ── Layout utilities ── */
+.container {
+  width: 100%;
+  margin: 0;
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+}
+.container--narrow { max-width: var(--content-w); margin: 0 auto; padding: 0 1.5rem; }
+main { flex: 1; }
+
+/* ── Section heading style matching Courthoud ── */
+.section-heading {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 1.75rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Tags / chips ── */
+.tag {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.2em 0.65em;
+  border-radius: 100px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  white-space: nowrap;
+  text-transform: lowercase;
+  font-family: var(--font-sans);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.45em 1em;
+  border-radius: var(--r);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--t);
+  border: 1px solid transparent;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+.btn-primary   { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-outline   { background: transparent; color: var(--accent); border-color: var(--accent); }
+.btn-outline:hover { background: var(--accent-light); }
+.btn-ghost     { background: transparent; color: var(--text-2); border-color: var(--border); }
+.btn-ghost:hover { background: var(--bg-off); color: var(--text); }
+.btn-sm        { font-size: 0.8rem; padding: 0.3em 0.75em; }
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.5rem;
+  transition: border-color var(--t), box-shadow var(--t);
+}
+.card:hover { border-color: var(--border-med); box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
+
+/* ── Selection ── */
+::selection { background: hsl(var(--hue),70%,50%,.2); }
+
+/* ── Focus ── */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp .45s ease both; }
+.fade-up:nth-child(1) { animation-delay: .04s }
+.fade-up:nth-child(2) { animation-delay: .08s }
+.fade-up:nth-child(3) { animation-delay: .12s }
+.fade-up:nth-child(4) { animation-delay: .16s }
+.fade-up:nth-child(5) { animation-delay: .20s }
+.fade-up:nth-child(6) { animation-delay: .24s }
+
+/* ── Print ── */
+@media print {
+  nav, footer, .no-print, canvas { display: none !important; }
+  body { background: white; color: black; }
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .container, .container--narrow { padding: 0 1rem; }
+}

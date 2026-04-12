@@ -1,0 +1,282 @@
+---
+import Base from './Base.astro';
+import { AUTHOR } from '../config';
+
+interface Props {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  date: Date;
+  tags?: string[];
+  image?: string;
+  readingTime?: number;
+}
+
+const { title, subtitle, description, date, tags = [], image, readingTime } = Astro.props;
+
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+---
+
+<Base title={title} description={description} noCanvas={true}>
+  <div class="post-layout">
+
+    <!-- ── Sidebar TOC ── -->
+    <aside class="post-sidebar" id="post-sidebar">
+      <div class="sidebar-inner">
+        <p class="sidebar-label">Contents</p>
+        <nav class="toc" id="toc" aria-label="Table of contents"></nav>
+      </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <article class="post-main">
+
+      <!-- Header -->
+      <header class="post-header">
+        <a href="/post/" class="back-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Posts
+        </a>
+
+        <h1 class="post-title">{title}</h1>
+        {subtitle && <p class="post-subtitle">{subtitle}</p>}
+
+        <div class="post-meta">
+          <time datetime={date.toISOString()}>{fmtDate(date)}</time>
+          {readingTime && (
+            <>
+              <span class="meta-sep">·</span>
+              <span id="reading-time">{readingTime} min read</span>
+            </>
+          )}
+          {!readingTime && (
+            <>
+              <span class="meta-sep">·</span>
+              <span id="reading-time">— min read</span>
+            </>
+          )}
+        </div>
+
+        {tags.length > 0 && (
+          <div class="post-tags">
+            {tags.map(t => <span class="tag">{t}</span>)}
+          </div>
+        )}
+
+        {image && (
+          <div class="post-hero-img">
+            <img src={image} alt={title} />
+          </div>
+        )}
+
+        <hr class="post-divider" />
+      </header>
+
+      <!-- Body -->
+      <div class="prose" id="post-body">
+        <slot />
+      </div>
+
+      <!-- Author bio footer -->
+      <footer class="post-footer">
+        <hr />
+        <div class="author-card">
+          <img
+            src={AUTHOR.avatar}
+            alt={AUTHOR.name}
+            class="author-avatar"
+            width="56"
+            height="56"
+            onerror="this.style.display='none'"
+          />
+          <div class="author-info">
+            <p class="author-name">{AUTHOR.name}</p>
+            <p class="author-bio" set:html={AUTHOR.bio} />
+          </div>
+        </div>
+        <div class="post-nav">
+          <a href="/post/" class="btn btn-ghost btn-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            All posts
+          </a>
+        </div>
+      </footer>
+
+    </article>
+  </div>
+</Base>
+
+<script>
+// ── Auto-compute reading time ─────────────────────────────────────
+const body = document.getElementById('post-body');
+const rtEl = document.getElementById('reading-time');
+if (body && rtEl && rtEl.textContent?.includes('—')) {
+  const words = (body.textContent ?? '').split(/\s+/).filter(Boolean).length;
+  rtEl.textContent = `${Math.max(1, Math.ceil(words / 200))} min read`;
+}
+
+// ── Build TOC ────────────────────────────────────────────────────
+const headings = body?.querySelectorAll<HTMLElement>('h2, h3');
+const tocEl = document.getElementById('toc');
+const sidebar = document.getElementById('post-sidebar');
+
+if (headings && headings.length > 1 && tocEl && sidebar) {
+  sidebar.style.display = '';
+  headings.forEach((h, i) => {
+    if (!h.id) h.id = `h-${i}`;
+    const a = document.createElement('a');
+    a.href = `#${h.id}`;
+    a.textContent = h.textContent ?? '';
+    a.className = `toc-link toc-${h.tagName.toLowerCase()}`;
+    tocEl.appendChild(a);
+  });
+
+  // Scrollspy
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const link = tocEl.querySelector<HTMLElement>(`[href="#${entry.target.id}"]`);
+      if (entry.isIntersecting) {
+        tocEl.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+        link?.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-8% 0px -80% 0px' });
+  headings.forEach(h => io.observe(h));
+} else {
+  if (sidebar) sidebar.style.display = 'none';
+}
+
+// ── Add heading anchor links ──────────────────────────────────────
+body?.querySelectorAll<HTMLElement>('h2, h3, h4').forEach(h => {
+  if (!h.id) return;
+  const anchor = document.createElement('a');
+  anchor.href = `#${h.id}`;
+  anchor.className = 'heading-anchor';
+  anchor.innerHTML = '#';
+  anchor.setAttribute('aria-hidden', 'true');
+  h.appendChild(anchor);
+});
+</script>
+
+<style>
+/* ── Page layout ── */
+.post-layout {
+  display: grid;
+
+  grid-template-columns:
+    var(--sidebar-w)     /* left TOC */
+    minmax(0, 1fr)       /* main content */
+    140px;    /* right spacer */
+
+  width: 100%;
+  margin: 0rem;
+  gap: clamp(0rem, 0.5vw, 0.5rem);
+
+  padding-top: 2.5rem;
+  padding-bottom: 5rem;
+
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+
+}
+
+.post-main {
+  justify-content: flex-start;
+  padding-left: 2rem;
+}
+
+.prose {
+  max-width: clamp(680px, 80vw, 900px);
+}
+
+/* ── Sidebar ── */
+.post-sidebar {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+.sidebar-inner {
+  border-left: 2px solid var(--border);
+  padding-left: 1rem;
+}
+.sidebar-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-bottom: 0.6rem;
+}
+.toc { display: flex; flex-direction: column; gap: 0; }
+.toc-link {
+  font-size: 0.83rem;
+  color: var(--text-3);
+  padding: 0.22em 0;
+  line-height: 1.4;
+  transition: color var(--t);
+  text-decoration: none;
+}
+.toc-link:hover { color: var(--text); }
+.toc-link.active { color: var(--accent); font-weight: 500; }
+.toc-h3 { padding-left: 0.85rem; font-size: 0.79rem; }
+
+/* ── Post header ── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.85rem;
+  color: var(--text-3);
+  margin-bottom: 1.5rem;
+  transition: color var(--t);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--accent); }
+
+.post-title { font-size: clamp(1.5rem, 3.5vw, 2.1rem); margin-bottom: 0.4rem; line-height: 1.2; }
+.post-subtitle { font-size: 1.05rem; color: var(--text-2); margin-bottom: 0.65rem; line-height: 1.5; font-style: italic; }
+.post-meta { font-size: 0.82rem; color: var(--text-3); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.65rem; }
+.meta-sep { opacity: 0.5; }
+.post-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+.post-hero-img { margin: 1.25rem 0; }
+.post-hero-img img { width: 100%; border-radius: var(--r-lg); border: 1px solid var(--border); max-height: 420px; object-fit: cover; }
+.post-divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0 1.75rem; }
+
+/* ── Heading anchors ── */
+.heading-anchor {
+  margin-left: 0.5em;
+  opacity: 0;
+  color: var(--text-3);
+  font-size: 0.8em;
+  font-weight: 400;
+  transition: opacity var(--t);
+  text-decoration: none;
+}
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor { opacity: 1; }
+
+/* ── Post footer ── */
+.post-footer { margin-top: 3.5rem; }
+.post-footer > hr { border: none; border-top: 1px solid var(--border); margin-bottom: 1.75rem; }
+.author-card { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem; }
+.author-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--border); }
+.author-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+.author-bio { font-size: 0.84rem; color: var(--text-2); line-height: 1.55; }
+.author-bio a { text-decoration: underline; text-underline-offset: 2px; }
+.post-nav { display: flex; gap: 0.75rem; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .post-layout { grid-template-columns: 1fr; }
+  .post-sidebar { display: none; }
+}
+@media (max-width: 480px) {
+  .post-layout { padding: 1.5rem 1rem 4rem; }
+}
+</style>

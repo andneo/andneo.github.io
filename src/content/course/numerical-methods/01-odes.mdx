@@ -1,0 +1,118 @@
+---
+title: "Ch.1 · ODE Integration"
+description: "Runge-Kutta methods, symplectic integrators, adaptive timestepping, and error control."
+course: "numerical-methods"
+chapter: 1
+tags: ["integration", "symplectic", "runge-kutta"]
+date: 2024-02-01
+---
+
+## Overview
+
+Almost every simulation in astrophysics reduces to integrating a system of ordinary differential equations (ODEs).
+The choice of integrator affects accuracy, stability, and whether conserved quantities
+(energy, angular momentum) remain conserved over long runs.
+
+## Initial value problems
+
+We want to solve:
+
+$$
+\frac{d\mathbf{y}}{dt} = \mathbf{f}(t, \mathbf{y}), \quad \mathbf{y}(t_0) = \mathbf{y}_0
+$$
+
+For a particle of unit mass in a 1D potential $V(x)$, the state vector is $\mathbf{y} = (x, v)$
+and the right-hand side is $\mathbf{f} = (v, -V'(x))$.
+
+## Euler method
+
+The simplest integrator advances the state by one step $h$:
+
+$$
+\mathbf{y}_{n+1} = \mathbf{y}_n + h\,\mathbf{f}(t_n, \mathbf{y}_n)
+$$
+
+This is first-order accurate — global error $\sim O(h)$ — and almost never used in practice.
+For Hamiltonian systems it is not symplectic and energy drifts linearly with time.
+
+## Runge-Kutta methods
+
+The classic 4th-order Runge-Kutta (RK4) evaluates $\mathbf{f}$ at four points per step:
+
+$$
+\mathbf{k}_1 = h\,\mathbf{f}(t_n,\, \mathbf{y}_n)
+$$
+$$
+\mathbf{k}_2 = h\,\mathbf{f}\!\left(t_n + \tfrac{h}{2},\, \mathbf{y}_n + \tfrac{\mathbf{k}_1}{2}\right)
+$$
+$$
+\mathbf{k}_3 = h\,\mathbf{f}\!\left(t_n + \tfrac{h}{2},\, \mathbf{y}_n + \tfrac{\mathbf{k}_2}{2}\right)
+$$
+$$
+\mathbf{k}_4 = h\,\mathbf{f}(t_n + h,\, \mathbf{y}_n + \mathbf{k}_3)
+$$
+$$
+\mathbf{y}_{n+1} = \mathbf{y}_n + \tfrac{1}{6}(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4)
+$$
+
+Global error is $O(h^4)$. RK4 is excellent for dissipative systems, but **not symplectic**:
+it injects or removes energy from Hamiltonian systems over long integrations.
+
+## Leapfrog / Störmer-Verlet
+
+For Hamiltonian systems write $H = T(\mathbf{p}) + V(\mathbf{q})$. The leapfrog is:
+
+$$
+\mathbf{p}_{n+1/2} = \mathbf{p}_n - \frac{h}{2}\nabla_q V(\mathbf{q}_n)
+$$
+$$
+\mathbf{q}_{n+1} = \mathbf{q}_n + h\,\nabla_p T(\mathbf{p}_{n+1/2})
+$$
+$$
+\mathbf{p}_{n+1} = \mathbf{p}_{n+1/2} - \frac{h}{2}\nabla_q V(\mathbf{q}_{n+1})
+$$
+
+This is 2nd-order and **symplectic**: it conserves a modified Hamiltonian exactly,
+so energy error is bounded (oscillates) rather than drifting.
+
+```python title="leapfrog.py"
+import numpy as np
+
+def leapfrog(q, p, h, grad_V):
+    """One leapfrog step for separable Hamiltonian H = p^2/2 + V(q)."""
+    p = p - 0.5 * h * grad_V(q)   # half kick
+    q = q + h * p                  # drift  (grad_T = p for unit mass)
+    p = p - 0.5 * h * grad_V(q)   # half kick
+    return q, p
+
+def run(q0, p0, T, h, grad_V):
+    q, p = np.array(q0, float), np.array(p0, float)
+    E0 = 0.5 * np.dot(p, p)       # + V(q0), track relative error
+    n_steps = int(T / h)
+    E_err = []
+    for _ in range(n_steps):
+        q, p = leapfrog(q, p, h, grad_V)
+        E = 0.5 * np.dot(p, p)
+        E_err.append(E - E0)
+    return q, p, np.array(E_err)
+```
+
+## Adaptive timestepping
+
+For problems with multiple timescales (e.g. tight binaries in a cluster), a fixed $h$
+is either wasteful or inaccurate. Embedded RK pairs (Dormand-Prince, Cash-Karp) estimate
+the local truncation error cheaply and adjust $h$:
+
+$$
+h_{\rm new} = h \left(\frac{\epsilon_{\rm tol}}{e}\right)^{1/5}
+$$
+
+where $e$ is the estimated error and $\epsilon_{\rm tol}$ is the tolerance.
+`scipy.integrate.solve_ivp` implements this with `method='RK45'`.
+
+## When to use what
+
+- **Dissipative / non-Hamiltonian** ODE: use adaptive RK45 (`scipy.integrate.solve_ivp`)  
+- **Hamiltonian, smooth potential**: leapfrog with fixed $h$  
+- **Hamiltonian, close encounters**: leapfrog with individual adaptive $h$ (Aarseth criterion)  
+- **High accuracy, smooth**: 4th-order symplectic (Forest-Ruth or PEFRL)

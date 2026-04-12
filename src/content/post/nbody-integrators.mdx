@@ -1,0 +1,120 @@
+---
+title: "N-body Integrators: A Practical Guide"
+subtitle: "From Euler to symplectic — why your choice of integrator matters more than you think"
+description: "A practical tour of numerical integrators for gravitational N-body problems, with Python implementations and benchmarks."
+date: 2024-01-08
+tags: ["numerical methods", "n-body", "tutorial"]
+draft: false
+---
+
+## The problem
+
+You have $N$ point masses interacting gravitationally. You want to evolve them forward in time.
+The equations of motion are deceptively simple:
+
+$$
+m_i \ddot{\mathbf{r}}_i = \sum_{j \neq i} \frac{G m_i m_j (\mathbf{r}_j - \mathbf{r}_i)}{|\mathbf{r}_j - \mathbf{r}_i|^3}
+$$
+
+But the choice of integrator — the algorithm that advances the system by one timestep $\Delta t$ — determines whether your simulation conserves energy over thousands of orbits or drifts catastrophically.
+
+## Why standard Runge-Kutta fails
+
+The classic 4th-order Runge-Kutta (RK4) is accurate and robust for most ODEs.
+For Hamiltonian systems like gravity, it has a fatal flaw: it does not conserve phase-space volume (Liouville's theorem) and steadily *injects* or *removes* energy from the system.
+
+Over long integrations this creates a secular drift in total energy $E$, which is unphysical.
+
+```python title="energy_drift.py"
+import numpy as np
+
+def rk4_step(state, dt, accel_fn):
+    """Classic RK4 — does NOT conserve energy over long runs."""
+    k1 = dt * deriv(state, accel_fn)
+    k2 = dt * deriv(state + 0.5 * k1, accel_fn)
+    k3 = dt * deriv(state + 0.5 * k2, accel_fn)
+    k4 = dt * deriv(state + k3, accel_fn)
+    return state + (k1 + 2*k2 + 2*k3 + k4) / 6
+
+def deriv(state, accel_fn):
+    n = len(state) // 2
+    pos, vel = state[:n], state[n:]
+    return np.concatenate([vel, accel_fn(pos)])
+```
+
+## The leapfrog / Störmer-Verlet integrator
+
+The **leapfrog** (or Störmer-Verlet, or kick-drift-kick) integrator is 2nd-order accurate
+but **symplectic** — it exactly preserves a modified Hamiltonian $\tilde{H} = H + O(\Delta t^2)$.
+This means energy error oscillates but never drifts:
+
+$$
+\mathbf{v}_{n+1/2} = \mathbf{v}_n + \frac{\Delta t}{2} \mathbf{a}(\mathbf{r}_n)
+$$
+$$
+\mathbf{r}_{n+1} = \mathbf{r}_n + \Delta t\, \mathbf{v}_{n+1/2}
+$$
+$$
+\mathbf{v}_{n+1} = \mathbf{v}_{n+1/2} + \frac{\Delta t}{2} \mathbf{a}(\mathbf{r}_{n+1})
+$$
+
+```python title="leapfrog.py"
+def leapfrog_step(pos, vel, dt, accel_fn):
+    """Kick-drift-kick leapfrog. Symplectic, O(dt^2)."""
+    acc  = accel_fn(pos)
+    vel  = vel + 0.5 * dt * acc        # kick
+    pos  = pos + dt * vel              # drift
+    acc  = accel_fn(pos)
+    vel  = vel + 0.5 * dt * acc        # kick
+    return pos, vel
+
+def gravity(pos, masses, eps=0.01):
+    """Softened gravitational acceleration. eps prevents divergence."""
+    n   = len(masses)
+    acc = np.zeros_like(pos)
+    for i in range(n):
+        for j in range(n):
+            if i == j: continue
+            dr    = pos[j] - pos[i]
+            r2    = np.dot(dr, dr) + eps**2
+            acc[i] += masses[j] * dr / r2**1.5
+    return acc  # G = 1 units
+```
+
+## Higher-order symplectic methods
+
+For higher accuracy without sacrificing symplecticity, use **Yoshida's method** or
+**Forest-Ruth** — these are 4th-order symplectic integrators built from leapfrog substeps
+with carefully chosen coefficients:
+
+$$
+w_0 = -\frac{2^{1/3}}{2 - 2^{1/3}}, \quad w_1 = \frac{1}{2 - 2^{1/3}}
+$$
+
+The Forest-Ruth scheme applies leapfrog with stepsizes $(c_1, d_1, c_2, d_2, c_3)$
+where $c_i, d_i$ are functions of $w_0, w_1$.
+
+## Timestep criterion
+
+Even the best integrator fails with too large a $\Delta t$. For N-body work the standard
+Aarseth criterion adaptively reduces the timestep near close encounters:
+
+$$
+\Delta t_i = \eta \sqrt{\frac{|\mathbf{a}_i| \, |\ddot{\mathbf{a}}_i| + |\dot{\mathbf{a}}_i|^2}{|\dot{\mathbf{a}}_i| \, |\dddot{\mathbf{a}}_i| + |\ddot{\mathbf{a}}_i|^2}}
+$$
+
+where $\eta \approx 0.01$–$0.05$ is a tolerance parameter.
+
+## Summary
+
+| Integrator | Order | Symplectic | Cost per step |
+|---|---|---|---|
+| Euler | 1 | No | 1 force eval |
+| RK4 | 4 | **No** | 4 force evals |
+| Leapfrog | 2 | **Yes** | 2 force evals |
+| Forest-Ruth | 4 | Yes | 6 force evals |
+| PEFRL | 4 | Yes | 8 force evals |
+
+For most stellar dynamics problems, leapfrog with individual adaptive timesteps
+(the Aarseth $\eta$ criterion) is the industry standard. RK4 should not be used
+for long integrations of conservative systems.

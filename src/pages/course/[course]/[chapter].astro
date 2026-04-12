@@ -1,0 +1,50 @@
+---
+import { getCollection } from 'astro:content';
+import CourseLayout from '../../../layouts/CourseLayout.astro';
+
+export async function getStaticPaths() {
+  const all = await getCollection('course').catch(() => []);
+  // Only chapter pages (chapter > 0)
+  const chapters = all.filter((p: any) => p.data.chapter > 0 && !p.data.draft);
+  return chapters.map((page: any) => {
+    const parts = page.slug.split('/');
+    const courseSlug = parts[0];
+    const chapterSlug = parts.slice(1).join('/');
+    return {
+      params: { course: courseSlug, chapter: chapterSlug },
+      props: { page },
+    };
+  });
+}
+
+const { page } = Astro.props;
+const { course: courseSlug, chapter: chapterSlug } = Astro.params;
+
+// Load all pages for this course to populate sidebar
+const all = await getCollection('course').catch(() => []);
+
+const indexPage = all.find((p: any) => p.data.course === courseSlug && p.data.chapter === 0);
+const courseTitle = indexPage?.data.title ?? courseSlug;
+
+const chapters = all
+  .filter((p: any) => p.data.course === courseSlug && p.data.chapter > 0 && !p.data.draft)
+  .sort((a: any, b: any) => a.data.chapter - b.data.chapter)
+  .map((p: any) => {
+    const prefix = courseSlug + '/';
+    const slug = p.slug.startsWith(prefix) ? p.slug.slice(prefix.length) : p.slug;
+    return { slug, title: p.data.title, chapter: p.data.chapter };
+  });
+
+const { Content } = await page.render();
+---
+
+<CourseLayout
+  title={page.data.title}
+  courseTitle={courseTitle}
+  courseSlug={courseSlug}
+  chapters={chapters}
+  currentSlug={chapterSlug}
+  description={page.data.description}
+>
+  <Content />
+</CourseLayout>

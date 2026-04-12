@@ -1,0 +1,397 @@
+---
+import Base from './Base.astro';
+
+interface Props {
+  title: string;
+  courseTitle: string;
+  courseSlug: string;
+  chapters: Array<{ slug: string; title: string; chapter: number }>;
+  currentSlug?: string;
+  description?: string;
+}
+
+const { title, courseTitle, courseSlug, chapters, currentSlug, description } = Astro.props;
+
+const sorted = [...chapters].sort((a, b) => a.chapter - b.chapter);
+---
+
+<Base title={`${title} — ${courseTitle}`} description={description} noCanvas={true}>
+
+  <!-- Mobile toggle (hidden on desktop) -->
+  <button class="sidebar-toggle no-print" id="sidebar-toggle" aria-label="Toggle chapter list" aria-expanded="false">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    Chapters
+  </button>
+
+  <!-- Backdrop for mobile sidebar -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <div class="course-shell">
+
+    <!-- ══ LEFT: chapter nav ══ -->
+    <aside class="course-sidebar" id="course-sidebar">
+      <div class="course-sidebar-inner">
+        <div class="course-sidebar-header">
+          <a href={`/course/${courseSlug}/`} class="course-sidebar-title">{courseTitle}</a>
+        </div>
+        <nav class="chapter-nav" aria-label="Course chapters">
+          <a
+            href={`/course/${courseSlug}/`}
+            class:list={['chapter-link chapter-link--index', { active: !currentSlug }]}
+          >
+            Overview
+          </a>
+          {sorted.map(ch => (
+            <a
+              href={`/course/${courseSlug}/${ch.slug}/`}
+              class:list={['chapter-link', { active: ch.slug === currentSlug }]}
+            >
+              <span class="chapter-num">{String(ch.chapter).padStart(2, '0')}</span>
+              <span class="chapter-label">{ch.title.replace(/^Ch\.\d+\s*[·\-]\s*/, '')}</span>
+            </a>
+          ))}
+        </nav>
+      </div>
+    </aside>
+
+    <!-- ══ CENTRE: main content ══ -->
+    <article class="course-main">
+      <a href={`/course/${courseSlug}/`} class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        {courseTitle}
+      </a>
+
+      <h1 class="course-page-title">{title}</h1>
+
+      <div class="prose" id="course-body">
+        <slot />
+      </div>
+
+      {currentSlug && (() => {
+        const idx = sorted.findIndex(c => c.slug === currentSlug);
+        const prev = idx > 0 ? sorted[idx - 1] : null;
+        const next = idx < sorted.length - 1 ? sorted[idx + 1] : null;
+        return (
+          <nav class="chapter-pagination">
+            {prev ? (
+              <a href={`/course/${courseSlug}/${prev.slug}/`} class="chap-prev">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <span>{prev.title.replace(/^Ch\.\d+\s*[·\-]\s*/, '')}</span>
+              </a>
+            ) : <span />}
+            {next ? (
+              <a href={`/course/${courseSlug}/${next.slug}/`} class="chap-next">
+                <span>{next.title.replace(/^Ch\.\d+\s*[·\-]\s*/, '')}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+            ) : <span />}
+          </nav>
+        );
+      })()}
+    </article>
+
+    <!-- ══ RIGHT: page TOC ══ -->
+    <aside class="course-toc" id="course-toc">
+      <p class="toc-label">Contents</p>
+      <nav id="toc-nav"></nav>
+    </aside>
+
+  </div>
+</Base>
+
+<script>
+// ── Build TOC ────────────────────────────────────────────────────
+var body      = document.getElementById('course-body');
+var tocNav    = document.getElementById('toc-nav');
+var tocAside  = document.getElementById('course-toc');
+var headings  = body ? body.querySelectorAll('h2, h3') : [];
+
+if (headings.length > 0 && tocNav && tocAside) {
+  for (var i = 0; i < headings.length; i++) {
+    var h = headings[i];
+    if (!h.id) h.id = 'h-' + i;
+    var a = document.createElement('a');
+    a.href = '#' + h.id;
+    a.textContent = h.textContent || '';
+    a.className = 'toc-link toc-' + h.tagName.toLowerCase();
+    tocNav.appendChild(a);
+  }
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      var link = tocNav.querySelector('[href="#' + e.target.id + '"]');
+      if (e.isIntersecting) {
+        tocNav.querySelectorAll('.toc-link').forEach(function(l) { l.classList.remove('active'); });
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-8% 0px -80% 0px' });
+  for (var j = 0; j < headings.length; j++) io.observe(headings[j]);
+} else {
+  if (tocAside) tocAside.style.display = 'none';
+}
+
+// ── Mobile sidebar toggle ────────────────────────────────────────
+var sidebar   = document.getElementById('course-sidebar');
+var toggle    = document.getElementById('sidebar-toggle');
+var backdrop  = document.getElementById('sidebar-backdrop');
+
+function openSidebar() {
+  if (sidebar)  sidebar.classList.add('open');
+  if (backdrop) backdrop.classList.add('visible');
+  if (toggle)   toggle.setAttribute('aria-expanded', 'true');
+}
+function closeSidebar() {
+  if (sidebar)  sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('visible');
+  if (toggle)   toggle.setAttribute('aria-expanded', 'false');
+}
+
+if (toggle)   toggle.addEventListener('click', function() {
+  sidebar && sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+});
+if (backdrop) backdrop.addEventListener('click', closeSidebar);
+if (sidebar) {
+  sidebar.querySelectorAll('.chapter-link').forEach(function(l) {
+    l.addEventListener('click', closeSidebar);
+  });
+}
+</script>
+
+<style>
+/* ══════════════════════════════════════════════════════
+   THREE-COLUMN LAYOUT
+   Left sidebar (chapter nav) | Centre (content) | Right (TOC)
+══════════════════════════════════════════════════════ */
+.course-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 190px;
+  grid-template-areas: "sidebar main toc";
+  min-height: calc(100vh - 60px);
+  max-width: 1280px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* ══ Left sidebar ══ */
+.course-sidebar {
+  grid-area: sidebar;
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg-off);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-med) transparent;
+}
+.course-sidebar::-webkit-scrollbar { width: 4px; }
+.course-sidebar::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 2px; }
+
+.course-sidebar-inner { padding: 1.25rem 0; }
+.course-sidebar-header {
+  padding: 0 1rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+.course-sidebar-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+  line-height: 1.4;
+}
+.course-sidebar-title:hover { color: var(--accent); }
+
+.chapter-nav { display: flex; flex-direction: column; gap: 0; }
+
+.chapter-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background var(--t), color var(--t);
+  line-height: 1.45;
+}
+.chapter-link:hover  { background: var(--bg-subtle); color: var(--text); }
+.chapter-link.active { color: var(--accent); background: var(--accent-light); font-weight: 500; }
+.chapter-link--index { font-weight: 500; }
+
+.chapter-num {
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+  min-width: 1.6em;
+}
+.chapter-link.active .chapter-num { color: var(--accent); }
+.chapter-label { flex: 1; min-width: 0; }
+
+/* ══ Centre content ══ */
+.course-main {
+  grid-area: main;
+  padding: 2.25rem 2.5rem 5rem;
+  min-width: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.85rem;
+  color: var(--text-3);
+  margin-bottom: 1.25rem;
+  transition: color var(--t);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--accent); }
+
+.course-page-title {
+  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.2;
+}
+
+/* ══ Right TOC ══ */
+.course-toc {
+  grid-area: toc;
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 2.25rem 1.25rem 2.25rem 0.5rem;
+}
+.toc-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-3);
+  margin-bottom: 0.55rem;
+}
+#toc-nav {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--border);
+  padding-left: 0.75rem;
+  gap: 0;
+}
+.toc-link {
+  font-size: 0.79rem;
+  color: var(--text-3);
+  padding: 0.2em 0;
+  transition: color var(--t);
+  text-decoration: none;
+  line-height: 1.4;
+  display: block;
+}
+.toc-link:hover  { color: var(--text); }
+.toc-link.active { color: var(--accent); font-weight: 500; }
+.toc-h3 { padding-left: 0.7rem; font-size: 0.75rem; }
+
+/* ══ Chapter pagination ══ */
+.chapter-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  gap: 1rem;
+}
+.chap-prev, .chap-next {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+  max-width: 46%;
+  transition: opacity var(--t);
+}
+.chap-prev:hover, .chap-next:hover { opacity: 0.7; }
+.chap-next { margin-left: auto; text-align: right; }
+.chap-prev span, .chap-next span {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ══ Mobile toggle button ══ */
+.sidebar-toggle {
+  display: none;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.45em 0.9em;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  background: var(--bg-off);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  color: var(--text-2);
+  position: relative;
+  z-index: 10;
+  transition: background var(--t), color var(--t);
+}
+.sidebar-toggle:hover { background: var(--bg-subtle); color: var(--text); }
+
+/* Backdrop for mobile sidebar */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  z-index: 140;
+  opacity: 0;
+  transition: opacity var(--t-med);
+}
+.sidebar-backdrop.visible { opacity: 1; }
+
+/* ══ Responsive breakpoints ══ */
+
+/* 1080px: drop right TOC */
+@media (max-width: 1080px) {
+  .course-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-areas: "sidebar main";
+  }
+  .course-toc { display: none; }
+}
+
+/* 768px: sidebar becomes slide-in overlay */
+@media (max-width: 768px) {
+  .sidebar-toggle   { display: inline-flex; }
+  .sidebar-backdrop { display: block; pointer-events: none; }
+  .sidebar-backdrop.visible { pointer-events: all; }
+
+  .course-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "main";
+  }
+
+  .course-sidebar {
+    position: fixed;
+    top: 60px;
+    left: -240px;
+    width: 220px;
+    height: calc(100vh - 60px);
+    z-index: 150;
+    transition: left var(--t-med);
+  }
+  .course-sidebar.open { left: 0; }
+
+  .course-main { padding: 1.25rem 1rem 4rem; }
+}
+</style>

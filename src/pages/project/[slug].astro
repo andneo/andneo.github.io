@@ -1,0 +1,120 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('project').catch(() => []);
+  return projects
+    .filter((p: any) => !p.data.draft)
+    .map((proj: any) => ({ params: { slug: proj.slug }, props: { proj } }));
+}
+
+const { proj } = Astro.props;
+const { Content } = await proj.render();
+
+// Related projects (same tags)
+const all = await getCollection('project').catch(() => []);
+const related = all
+  .filter((p: any) => p.slug !== proj.slug && !p.data.draft)
+  .filter((p: any) => p.data.tags.some((t: string) => proj.data.tags.includes(t)))
+  .slice(0, 4);
+---
+
+<Base title={proj.data.title} description={proj.data.description} noCanvas={true}>
+  <div class="container--narrow" style="padding-top: 2.5rem; padding-bottom: 5rem;">
+
+    <a href="/#research" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Research
+    </a>
+
+    <h1 class="proj-title">{proj.data.title}</h1>
+
+    {proj.data.date && (
+      <p class="proj-date">{proj.data.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+    )}
+
+    <!-- Action links -->
+    {proj.data.links.length > 0 && (
+      <div class="proj-links">
+        {proj.data.links.map((l: any, i: number) => (
+          <a
+            href={l.href}
+            target="_blank"
+            rel="noopener"
+            class:list={['btn btn-sm', i === 0 ? 'btn-primary' : 'btn-outline']}
+          >
+            {l.label}
+          </a>
+        ))}
+      </div>
+    )}
+
+    {proj.data.tags.length > 0 && (
+      <div class="proj-tags">
+        {proj.data.tags.map((t: string) => <span class="tag">{t}</span>)}
+      </div>
+    )}
+
+    {proj.data.image && (
+      <div class="proj-image">
+        <img src={proj.data.image} alt={proj.data.title} />
+      </div>
+    )}
+
+    <!-- Description -->
+    <p class="proj-description">{proj.data.description}</p>
+
+    <!-- Rich content from MDX -->
+    <div class="prose">
+      <Content />
+    </div>
+
+    <!-- Related projects -->
+    {related.length > 0 && (
+      <section class="related-section">
+        <h2>Related</h2>
+        <ul class="related-list">
+          {related.map((r: any) => (
+            <li>
+              <a href={`/project/${r.slug}/`}>{r.data.title}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+  </div>
+</Base>
+
+<style>
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.3em;
+  font-size: 0.85rem; color: var(--text-3); margin-bottom: 1.25rem;
+  transition: color var(--t); text-decoration: none;
+}
+.back-link:hover { color: var(--accent); }
+
+.proj-title { font-size: clamp(1.5rem, 3.5vw, 2.1rem); margin-bottom: 0.4rem; line-height: 1.2; }
+.proj-date { font-size: 0.85rem; color: var(--text-3); margin-bottom: 0.9rem; }
+.proj-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem; }
+.proj-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.25rem; }
+
+.proj-image { margin: 1.25rem 0; }
+.proj-image img {
+  width: 100%; border-radius: var(--r-lg); border: 1px solid var(--border);
+  max-height: 400px; object-fit: cover;
+}
+
+.proj-description {
+  font-size: 1rem; color: var(--text-2); line-height: 1.75;
+  margin-bottom: 2rem; font-family: var(--font-serif);
+  padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
+}
+
+.related-section { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.related-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+.related-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+.related-list li::before { content: '→ '; color: var(--accent); }
+.related-list a { font-size: 0.9rem; }
+</style>

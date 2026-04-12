@@ -1,0 +1,164 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { AUTHOR } from '../../config';
+
+const pubs = (await getCollection('publications').catch(() => []))
+  .filter((p: any) => !p.data.draft)
+  .sort((a: any, b: any) => b.data.year - a.data.year);
+
+const allTags = [...new Set(pubs.flatMap((p: any) => p.data.tags))].sort();
+const statusGroups = ['published', 'forthcoming', 'working-paper'] as const;
+---
+
+<Base title="Publications">
+  <div class="publications-page">
+
+    <div class="page-head">
+      <h1>Publications</h1>
+      <p class="page-desc">Peer-reviewed papers and working papers. PDFs are author copies. Click any title for abstract and additional materials.</p>
+    </div>
+
+    {allTags.length > 0 && (
+      <div class="tag-filter" id="tag-filter">
+        <button class="filter-btn active" data-tag="all">All</button>
+        {allTags.map((t: string) => <button class="filter-btn" data-tag={t}>{t}</button>)}
+      </div>
+    )}
+
+    {pubs.length === 0 ? (
+      <p class="empty-msg">
+        No publications yet.<br />
+        Create your first at <code>src/content/publications/my-paper.md</code>
+      </p>
+    ) : (
+      statusGroups.map(status => {
+        const group = pubs.filter((p: any) => p.data.status === status);
+        if (group.length === 0) return null;
+        const label = status === 'working-paper' ? 'Working Papers' : status === 'forthcoming' ? 'Forthcoming' : 'Published';
+        return (
+          <div class="pub-group" data-status={status}>
+            <h2 class="pub-group-title">{label}</h2>
+            <div class="pub-list" id="pub-list">
+              {group.map((pub: any) => (
+                <a
+                  href={`/publications/${pub.slug}/`}
+                  class="pub-row fade-up"
+                  data-tags={pub.data.tags.join(',')}
+                >
+                  <div class="pub-row-body">
+                    <h3 class="pub-row-title">{pub.data.title}</h3>
+                    <p class="pub-authors">
+                      {pub.data.authors.map((a: string, i: number, arr: string[]) => (
+                        <span class:list={[{ 'self': a === AUTHOR.name }]}>
+                          {a}{i < arr.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}
+                    </p>
+                    {pub.data.journal && (
+                      <p class="pub-venue">
+                        <em>{pub.data.journal}</em>, {pub.data.year}
+                      </p>
+                    )}
+                    {pub.data.abstract && (
+                      <p class="pub-abstract">{pub.data.abstract}</p>
+                    )}
+                    <div class="pub-links" onclick="event.preventDefault()">
+                      {pub.data.pdf    && <a href={pub.data.pdf}                               target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">PDF</a>}
+                      {pub.data.slides && <a href={pub.data.slides}                            target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Slides</a>}
+                      {pub.data.arxiv  && <a href={`https://arxiv.org/abs/${pub.data.arxiv}`} target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">arXiv</a>}
+                      {pub.data.doi    && <a href={`https://doi.org/${pub.data.doi}`}          target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">DOI</a>}
+                      {pub.data.repo   && <a href={pub.data.repo}                              target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Code</a>}
+                    </div>
+                  </div>
+                  {pub.data.image && (
+                    <img src={pub.data.image} alt="" class="pub-thumb" width="120" height="80" loading="lazy" />
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+      })
+    )}
+
+  </div>
+</Base>
+
+<script>
+  const btns = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+  const rows = document.querySelectorAll<HTMLElement>('.pub-row');
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tag = btn.dataset.tag;
+      rows.forEach(row => {
+        const tags = (row.dataset.tags ?? '').split(',');
+        row.style.display = (tag === 'all' || tags.includes(tag!)) ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+<style>
+.page-head { margin-bottom: 2rem; }
+.page-head h1 { margin-bottom: 0.4rem; }
+.page-desc { color: var(--text-2); font-size: 0.95rem; line-height: 1.6; }
+
+.tag-filter {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
+}
+.filter-btn {
+  font-size: 0.8rem; font-weight: 500; padding: 0.25em 0.85em;
+  border-radius: 100px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); cursor: pointer; font-family: var(--font-sans); transition: all var(--t);
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.pub-group { margin-bottom: 2.5rem; }
+.pub-group-title {
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-3); margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+}
+.pub-list { display: flex; flex-direction: column; }
+.pub-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1.5rem; padding: 1.25rem 0.5rem; border-bottom: 1px solid var(--border);
+  text-decoration: none !important; color: inherit;
+  border-radius: var(--r); transition: background var(--t), padding var(--t);
+}
+.pub-row:first-child { border-top: 1px solid var(--border); }
+.pub-row:hover { background: var(--bg-off); padding-left: 1rem; padding-right: 1rem; }
+.pub-row-body { flex: 1; min-width: 0; }
+.pub-row-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; transition: color var(--t); }
+.pub-row:hover .pub-row-title { color: var(--accent); }
+.pub-authors { font-size: 0.84rem; color: var(--text-2); margin-bottom: 0.2rem; }
+.pub-authors .self { font-weight: 700; color: var(--text); }
+.pub-venue { font-size: 0.82rem; color: var(--text-3); margin-bottom: 0.4rem; }
+.pub-abstract {
+  font-size: 0.84rem; color: var(--text-2); line-height: 1.55; margin-bottom: 0.5rem;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pub-links { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.pub-link {
+  font-size: 0.78rem; font-weight: 500; color: var(--accent);
+  border: 1px solid var(--accent-border); background: var(--accent-light);
+  padding: 0.15em 0.6em; border-radius: 4px; transition: background var(--t);
+  text-decoration: none !important;
+}
+.pub-link:hover { background: var(--accent); color: #fff; }
+.pub-thumb { width: 120px; height: 80px; object-fit: cover; border-radius: var(--r); border: 1px solid var(--border); flex-shrink: 0; }
+.empty-msg { padding: 3rem 2rem; text-align: center; color: var(--text-3); border: 1px dashed var(--border-med); border-radius: var(--r-lg); line-height: 2; }
+
+.publications-page {
+  max-width: 1080px;
+  margin: 0 auto; /* 👈 THIS is what centers it */
+  padding: 3rem var(--page-pad) 5rem;
+}
+
+@media (max-width: 540px) { .pub-thumb { display: none; } }
+</style>

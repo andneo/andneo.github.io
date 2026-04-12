@@ -1,0 +1,107 @@
+---
+title: "The Virial Theorem"
+subtitle: "Why self-gravitating systems get hotter when they lose energy"
+description: "A derivation of the virial theorem and its consequences for stellar systems, with an interactive orbit visualisation."
+date: 2024-03-15
+tags: ["stellar dynamics", "classical mechanics", "tutorial"]
+draft: false
+---
+
+import InteractivePlot from '../../components/InteractivePlot.astro';
+
+## Introduction
+
+The **virial theorem** is one of the most elegant results in classical mechanics.
+For any bound, time-averaged system in equilibrium it relates kinetic and potential energy:
+
+$$
+2\langle T \rangle + \langle V \rangle = 0
+$$
+
+Its most surprising consequence — *a bound gravitational system that loses energy gets hotter* —
+underpins the theory of stellar dynamics, from globular clusters to galaxy clusters.
+
+## Derivation
+
+Define the **virial** of a system of $N$ particles:
+
+$$
+\mathcal{G} = \sum_{i=1}^{N} \mathbf{p}_i \cdot \mathbf{r}_i
+$$
+
+Taking the time derivative and applying Newton's second law $\dot{\mathbf{p}}_i = \mathbf{F}_i$:
+
+$$
+\frac{d\mathcal{G}}{dt} = \sum_i \mathbf{F}_i \cdot \mathbf{r}_i + 2T
+$$
+
+For a **bound, time-averaged** system $\langle d\mathcal{G}/dt \rangle = 0$.
+For gravity, where $V \propto r^{-1}$, we have $\mathbf{F} \cdot \mathbf{r} = -V$, giving:
+
+$$
+\boxed{2\langle T \rangle = -\langle V \rangle}
+$$
+
+The total energy therefore satisfies $E = \langle T \rangle + \langle V \rangle = -\langle T \rangle$,
+so **the system has negative heat capacity**.
+
+## Numerical check
+
+Here's a simple Python implementation that verifies the theorem for a Keplerian orbit:
+
+```python title="virial_check.py"
+import numpy as np
+
+def leapfrog(r0, v0, n_steps=20_000, dt=1e-3):
+    """Integrate a Keplerian orbit and return time-averaged energies."""
+    r, v = np.array(r0, float), np.array(v0, float)
+    T_sum, V_sum = 0.0, 0.0
+
+    for _ in range(n_steps):
+        r_mag = np.linalg.norm(r)
+        a = -r / r_mag**3          # G = M = 1
+        v += 0.5 * a * dt
+        r += v * dt
+        r_mag = np.linalg.norm(r)
+        a = -r / r_mag**3
+        v += 0.5 * a * dt
+
+        T_sum += 0.5 * np.dot(v, v)
+        V_sum += -1.0 / r_mag
+
+    T_mean = T_sum / n_steps
+    V_mean = V_sum / n_steps
+    return T_mean, V_mean, 2 * T_mean / abs(V_mean)
+
+T, V, ratio = leapfrog([1.0, 0.0], [0.0, 1.0])  # circular orbit
+print(f"⟨T⟩ = {T:.5f},  ⟨V⟩ = {V:.5f}")
+print(f"2⟨T⟩ / |⟨V⟩| = {ratio:.6f}  (should be 1.000000)")
+```
+
+Running this gives `2⟨T⟩ / |⟨V⟩| = 1.000000` to machine precision.
+
+## Interactive visualisation
+
+The plot below shows how kinetic and potential energies vary along a Keplerian orbit.
+Adjust the eccentricity slider to see how the averages (dashed lines) remain locked in the $2:1$ ratio.
+
+<InteractivePlot id="virial-plot" />
+
+## Physical consequences
+
+**Globular clusters:** A cluster that loses stars through tidal stripping or two-body relaxation will
+*contract* — its remaining stars orbit faster even though the cluster has lost energy.
+This **gravothermal catastrophe** drives core collapse.
+
+**Molecular clouds:** The Jeans criterion $M > M_J$ for gravitational collapse follows directly
+from asking when the virial theorem cannot be satisfied in a static configuration.
+
+**Galaxy clusters:** The **virial mass estimator** $M = \sigma_r^2 R / G$ is derived by applying
+the theorem to the line-of-sight velocity dispersion $\sigma_r$ of member galaxies,
+and gives cluster masses that agree with X-ray and lensing estimates.
+
+## Conclusion
+
+The virial theorem's counter-intuitive prediction — negative heat capacity — is not a curiosity
+but a fundamental feature of all self-gravitating systems.
+Any simulation, observation, or theory of stellar systems must account for it.

@@ -1,0 +1,289 @@
+---
+import Base from '../../layouts/Base.astro';
+import { AUTHOR } from '../../config';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CV DATA — edit everything below to match your CV
+// For longer CVs consider splitting this data into src/data/cv.ts
+// ─────────────────────────────────────────────────────────────────────────────
+
+const workExperience = [
+  {
+    role: "Postdoctoral Research Fellow",
+    org: "University of Cambridge",
+    orgUrl: "https://www.ast.cam.ac.uk",
+    period: "Oct 2022 – present",
+    notes: ["Institute of Astronomy", "Royal Society University Research Fellowship"],
+  },
+];
+
+const education = [
+  { degree: "Ph.D.", field: "Astrophysics", inst: "University of Cambridge", year: "2022" },
+  { degree: "M.Phil.", field: "Astronomy", inst: "University of Cambridge", year: "2018" },
+  { degree: "B.Sc.", field: "Physics", inst: "University of Edinburgh", year: "2017", note: "First class honours" },
+];
+
+const interests = {
+  primary:   "Stellar Dynamics, Galactic Evolution, N-body Simulations",
+  secondary: "Spectral Methods, Gravitational Waves, Scientific Computing",
+};
+
+const workingPapers = [
+  {
+    title: "Stellar Feedback and the Regulation of Star Formation in Dwarf Galaxies",
+    coauthors: "with A. Collaborator",
+    href: "/publications/smith-2024/",
+  },
+  {
+    title: "A Pseudo-Spectral Method for Self-Gravitating Fluid Dynamics",
+    coauthors: "",
+    href: "/publications/smith-2023/",
+  },
+];
+
+const teaching = [
+  { role: "Lecturer", course: "Stellar Dynamics", inst: "University of Cambridge", year: "2023–24", courseUrl: "/course/stellar-dynamics/" },
+  { role: "Lecturer", course: "Numerical Methods", inst: "University of Cambridge", year: "2022–23", courseUrl: "/course/numerical-methods/" },
+  { role: "Teaching Assistant", course: "Theoretical Mechanics", inst: "University of Oxford", year: "2020–22", courseUrl: null },
+];
+
+const presentations = [
+  { year: "2024", items: ["Galaxy Formation Workshop, Garching (invited)", "SPHERIC 2024, Durham (contributed)"] },
+  { year: "2023", items: ["Princeton IAS Seminar", "IAU Symposium 390, Busan"] },
+  { year: "2022", items: ["Applied Micro Seminar, Cambridge (×3)", "Theory Seminar, Oxford"] },
+];
+
+const service = [
+  "Referee: ApJ, MNRAS, A&A, JCP (since 2021)",
+  "SOC Member: UK Stellar Dynamics Workshop 2024",
+  "Organiser: Cambridge Astro Theory Seminar 2022–23",
+  "Outreach: Institute of Astronomy Open Evenings (annual)",
+];
+
+const awards = [
+  { year: "2023", name: "Royal Astronomical Society Fowler Award" },
+  { year: "2022", name: "Royal Society University Research Fellowship" },
+  { year: "2021", name: "Best Student Paper, IAU Symposium 362" },
+];
+
+const skills = {
+  computing: "Python, Julia, C/C++, Fortran, MATLAB",
+  tools:     "Git, LaTeX, Slurm, Docker, AWS",
+  languages: "English (native), French (conversational)",
+};
+
+const references = [
+  { name: "Prof. A. N. Other",    inst: "University of Cambridge", url: "https://www.cam.ac.uk" },
+  { name: "Prof. B. Supervisor",  inst: "University of Oxford",    url: "https://www.ox.ac.uk" },
+];
+---
+
+<Base title="Curriculum Vitae" noCanvas={true}>
+  <div class="cv-page">
+
+    <!-- Profile column -->
+    <aside class="cv-aside">
+      <img
+        src={AUTHOR.avatar}
+        alt={AUTHOR.name}
+        class="cv-avatar"
+        width="160"
+        height="160"
+        onerror="this.style.display='none'"
+      />
+      <a href={AUTHOR.cvPdf} target="_blank" class="btn btn-outline btn-sm cv-dl">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        PDF
+      </a>
+    </aside>
+
+    <!-- Main CV content -->
+    <main class="cv-main">
+
+      <h1 class="cv-name">{AUTHOR.name}</h1>
+      <p class="cv-updated">Last updated {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+
+      <!-- Work experience -->
+      <section class="cv-section">
+        <h2>Work Experience</h2>
+        <ul class="cv-list">
+          {workExperience.map(w => (
+            <li>
+              <strong>{w.role}</strong> for <a href={w.orgUrl} target="_blank" rel="noopener">{w.org}</a>
+              {w.notes?.map(n => <><br /><span class="cv-note">+ {n}</span></>)}
+              <br /><span class="cv-period">{w.period}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <!-- Education -->
+      <section class="cv-section">
+        <h2>Education</h2>
+        <ul class="cv-list">
+          {education.map(e => (
+            <li>
+              <strong>{e.degree}</strong> {e.field}, <em>{e.inst}</em>, {e.year}
+              {e.note && <><br /><span class="cv-note">{e.note}</span></>}
+            </li>
+          ))}
+        </ul>
+        <p class="interests-line">
+          <strong>Primary interests:</strong> {interests.primary}<br />
+          <strong>Secondary interests:</strong> {interests.secondary}
+        </p>
+      </section>
+
+      <!-- Working papers / publications -->
+      <section class="cv-section">
+        <h2>Working Papers</h2>
+        <ul class="cv-list">
+          {workingPapers.map(p => (
+            <li>
+              <a href={p.href}>{p.title}</a>
+              {p.coauthors && <em> ({p.coauthors})</em>}
+            </li>
+          ))}
+        </ul>
+        <p class="cv-see-all"><a href="/publications/">→ See all publications</a></p>
+      </section>
+
+      <!-- Teaching -->
+      <section class="cv-section">
+        <h2>Teaching</h2>
+        <ul class="cv-list">
+          {teaching.map(t => (
+            <li>
+              {t.role}{' '}
+              {t.courseUrl
+                ? <a href={t.courseUrl}>{t.course}</a>
+                : <span>{t.course}</span>
+              }
+              <br />
+              <span class="cv-note"><em>{t.inst}</em>, {t.year}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <!-- Presentations -->
+      <section class="cv-section">
+        <h2>Presentations</h2>
+        {presentations.map(p => (
+          <div class="pres-year-group">
+            <strong>{p.year}</strong>
+            <ul class="cv-list cv-list--compact">
+              {p.items.map(item => <li>{item}</li>)}
+            </ul>
+          </div>
+        ))}
+      </section>
+
+      <!-- Service -->
+      <section class="cv-section">
+        <h2>Academic Service</h2>
+        <ul class="cv-list cv-list--compact">
+          {service.map(s => <li>{s}</li>)}
+        </ul>
+      </section>
+
+      <!-- Awards -->
+      <section class="cv-section">
+        <h2>Honors &amp; Awards</h2>
+        <ul class="cv-list cv-list--compact">
+          {awards.map(a => <li><strong>{a.year}</strong> — {a.name}</li>)}
+        </ul>
+      </section>
+
+      <!-- Skills -->
+      <section class="cv-section">
+        <h2>Skills</h2>
+        <ul class="cv-list cv-list--compact">
+          <li><strong>Computing:</strong> {skills.computing}</li>
+          <li><strong>Tools:</strong> {skills.tools}</li>
+          <li><strong>Languages:</strong> {skills.languages}</li>
+        </ul>
+      </section>
+
+      <!-- References -->
+      <section class="cv-section">
+        <h2>References</h2>
+        <ul class="cv-list cv-list--compact">
+          {references.map(r => (
+            <li><a href={r.url} target="_blank" rel="noopener">{r.name}</a>, {r.inst}</li>
+          ))}
+        </ul>
+      </section>
+
+      <!-- Contact -->
+      <section class="cv-section">
+        <h2>Contact</h2>
+        <ul class="cv-list cv-list--compact">
+          <li><strong>email</strong> <a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a></li>
+          <li><strong>website</strong> <a href="/">{AUTHOR.name.toLowerCase().replace(/\s+/g, '')}.github.io</a></li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+</Base>
+
+<style>
+.cv-page {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+  gap: 3rem;
+  align-items: start;
+}
+
+/* Aside */
+.cv-aside {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.cv-avatar {
+  width: 140px; height: 140px;
+  border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+}
+.cv-dl { width: 100%; justify-content: center; }
+
+/* Main */
+.cv-name { font-size: clamp(1.4rem, 3vw, 1.9rem); margin-bottom: 0.2rem; }
+.cv-updated { font-size: 0.8rem; color: var(--text-3); margin-bottom: 2rem; }
+
+/* Sections */
+.cv-section { margin-bottom: 2rem; padding-bottom: 1.75rem; border-bottom: 1px solid var(--border); }
+.cv-section:last-child { border-bottom: none; }
+.cv-section h2 {
+  font-size: 1.05rem; font-weight: 600; margin-bottom: 0.75rem;
+  color: var(--text); letter-spacing: 0;
+}
+
+/* Lists */
+.cv-list { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; padding: 0; font-size: 0.92rem; color: var(--text-2); }
+.cv-list--compact { gap: 0.4rem; }
+.cv-list li { line-height: 1.55; }
+.cv-note { font-size: 0.84rem; color: var(--text-3); }
+.cv-period { font-size: 0.82rem; color: var(--accent); }
+.interests-line { font-size: 0.88rem; color: var(--text-2); line-height: 1.65; margin-top: 0.75rem; }
+.cv-see-all { margin-top: 0.5rem; font-size: 0.85rem; }
+
+.pres-year-group { margin-bottom: 0.75rem; }
+.pres-year-group > strong { font-size: 0.88rem; color: var(--text); display: block; margin-bottom: 0.3rem; }
+
+/* Responsive */
+@media (max-width: 680px) {
+  .cv-page { grid-template-columns: 1fr; }
+  .cv-aside { position: static; flex-direction: row; justify-content: flex-start; }
+  .cv-avatar { width: 90px; height: 90px; }
+}
+</style>
