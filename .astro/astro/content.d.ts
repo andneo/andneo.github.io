@@ -197,14 +197,15 @@ declare module 'astro:content' {
   data: InferEntrySchema<"post">
 } & { render(): Render[".mdx"] };
 };
-"project": Record<string, {
-  id: string;
-  slug: string;
+"project": {
+"dwarf-galaxies.md": {
+	id: "dwarf-galaxies.md";
+  slug: "dwarf-galaxies";
   body: string;
   collection: "project";
-  data: InferEntrySchema<"project">;
-  render(): Render[".md"];
-}>;
+  data: InferEntrySchema<"project">
+} & { render(): Render[".md"] };
+};
 "publications": {
 "smith2023.mdx": {
 	id: "smith2023.mdx";
