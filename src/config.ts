@@ -13,7 +13,7 @@ export const AUTHOR = {
   bio: `My research interests are generally in the realm of understanding programmable matter. 
   Get in touch if there's anything you see here that interests you or you want to share something interesting with me. 
   I believe in open science and try to contribute by sharing my <a href="/publications">papers</a>,
-<a href="/post">blog posts</a>, and <a href="/course">lecture notes</a>.`,
+<a href="/posts">blog posts</a>, and <a href="/course">lecture notes</a>.`,
   // Path to your photo — place the file in /public/images/
   avatar: "/images/avatar.jpg",
   // Path to your CV PDF — place the file in /public/files/
