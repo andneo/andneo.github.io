@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let raf, time = 0;
 
   const GRID = 200;
-  const INTERACTION = 70;
+  const INTERACTION = 60;
 
   let RADIUS = 8;
   let COUNT = 160;
@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     // 🔥 responsive tuning
-    RADIUS = Math.max(3, Math.min(7, W / 180));
-    COUNT = Math.min(260, Math.floor((W * H) / 5000));
+    RADIUS = 16 //Math.max(3, Math.min(7, W / 180));
+    COUNT = 500; //Math.min(260, Math.floor((W * H) / 5000));
   }
 
   function rand(a, b) {
