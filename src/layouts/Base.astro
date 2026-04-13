@@ -1,21 +1,21 @@
 ---
-import { AUTHOR, SOCIAL, NAV, ACCENT_HUE } from '../config';
-import AnimatedBackground from '../components/AnimatedBackground.astro';
+import { AUTHOR, SOCIAL, NAV, ACCENT_HUE, SITE_NAME } from '../config';
 import '../styles/global.css';
 
 interface Props {
   title?: string;
   description?: string;
-  noCanvas?: boolean;   // pass noCanvas to disable the animated bg on content pages
+  noCanvas?: boolean;
 }
 
 const { title, description = AUTHOR.bio.replace(/<[^>]+>/g, '').slice(0, 160), noCanvas = false } = Astro.props;
-const pageTitle = title ? `${title} | ${AUTHOR.name}` : AUTHOR.name;
+const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
 const path = Astro.url.pathname;
 
 function isActive(href: string) {
-  if (href === '/') return path === '/';
-  return path.startsWith(href.replace('/#','').replace('#',''));
+  if (href === '/' || href === '/#about') return path === '/';
+  const clean = href.replace('/#','').replace('#','');
+  return clean.length > 1 && path.startsWith(clean);
 }
 ---
 
@@ -27,35 +27,34 @@ function isActive(href: string) {
   <meta name="description" content={description} />
   <title>{pageTitle}</title>
 
-  <!-- Open Graph -->
   <meta property="og:title"       content={pageTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:type"        content="website" />
 
-  <!-- KaTeX CSS -->
+  <!-- View Transitions API — eliminates white flash between pages -->
+  <meta name="view-transition" content="same-origin" />
+
+  <!-- KaTeX -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous" />
 
-  <!-- Inject accent hue as CSS variable -->
+  <!-- Accent hue -->
   <style define:vars={{ accentHue: ACCENT_HUE }}>
     :root { --hue: var(--accentHue); }
   </style>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="sitemap" href="/sitemap-index.xml" />
 </head>
 
 <body>
-  <!-- Animated background canvas (behind everything) -->
-  {!noCanvas && <AnimatedBackground />}
+  <!-- Background removed: using HeroSim instead -->
 
   <!-- ═══ NAVBAR ═══ -->
   <header class="navbar" id="navbar">
     <div class="container navbar-inner">
+      <a href="/" class="navbar-brand">
+        <span class="brand-text">{SITE_NAME}</span>
+      </a>
 
-      <!-- Brand -->
-      <a href="/" class="navbar-brand">{AUTHOR.name}</a>
-
-      <!-- Desktop nav -->
       <nav class="navbar-links" id="navbar-links" role="navigation" aria-label="Main navigation">
         {NAV.map(item => (
           item.children ? (
@@ -81,11 +80,10 @@ function isActive(href: string) {
         ))}
       </nav>
 
-      <!-- Actions: theme toggle + hamburger -->
       <div class="navbar-actions">
-        <button class="theme-btn" id="theme-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
-          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <button class="theme-btn" id="theme-btn" aria-label="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
           <span></span><span></span><span></span>
@@ -94,26 +92,27 @@ function isActive(href: string) {
     </div>
   </header>
 
-  <!-- ═══ MAIN ═══ -->
   <main style="position: relative; z-index: 1;">
     <slot />
   </main>
 
-  <!-- ═══ FOOTER ═══ -->
   <footer class="footer" style="position: relative; z-index: 1;">
     <div class="container footer-inner">
-      <div class="footer-links">
-        {SOCIAL.github        && <a href={SOCIAL.github}        target="_blank" rel="noopener" aria-label="GitHub">{AUTHOR.name} · GitHub</a>}
-        {SOCIAL.twitter       && <a href={SOCIAL.twitter}       target="_blank" rel="noopener" aria-label="Twitter">Twitter</a>}
-        {SOCIAL.googleScholar && <a href={SOCIAL.googleScholar} target="_blank" rel="noopener" aria-label="Google Scholar">Scholar</a>}
-        {SOCIAL.orcid         && <a href={SOCIAL.orcid}         target="_blank" rel="noopener" aria-label="ORCID">ORCID</a>}
+      <div class="footer-left">
+        <span class="footer-brand">{SITE_NAME}</span>
+        <div class="footer-links">
+          {SOCIAL.github        && <a href={SOCIAL.github}        target="_blank" rel="noopener">GitHub</a>}
+          {SOCIAL.twitter       && <a href={SOCIAL.twitter}       target="_blank" rel="noopener">Twitter</a>}
+          {SOCIAL.googleScholar && <a href={SOCIAL.googleScholar} target="_blank" rel="noopener">Scholar</a>}
+          {SOCIAL.orcid         && <a href={SOCIAL.orcid}         target="_blank" rel="noopener">ORCID</a>}
+        </div>
       </div>
       <p class="footer-copy">© {new Date().getFullYear()} {AUTHOR.name}</p>
     </div>
   </footer>
 
   <script>
-    // ── Theme toggle ──────────────────────────────────────────────
+    // ── Theme ──────────────────────────────────────────────────────
     const html = document.documentElement;
     const themeBtn = document.getElementById('theme-btn');
     const stored = localStorage.getItem('theme') ??
@@ -126,7 +125,7 @@ function isActive(href: string) {
       localStorage.setItem('theme', next);
     });
 
-    // ── Hamburger ──────────────────────────────────────────────────
+    // ── Hamburger ─────────────────────────────────────────────────
     const ham  = document.getElementById('hamburger');
     const navL = document.getElementById('navbar-links');
     ham?.addEventListener('click', () => {
@@ -141,11 +140,10 @@ function isActive(href: string) {
       }
     });
 
-    // ── Dropdown toggles (mobile) ───────────────────────────────────
+    // ── Dropdowns ─────────────────────────────────────────────────
     document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(btn => {
       btn.addEventListener('click', () => {
         const expanded = btn.getAttribute('aria-expanded') === 'true';
-        // Close all
         document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
           b.setAttribute('aria-expanded', 'false');
           b.closest('.nav-dropdown')?.classList.remove('open');
@@ -156,7 +154,6 @@ function isActive(href: string) {
         }
       });
     });
-    // Close dropdowns on outside click
     document.addEventListener('click', e => {
       if (!(e.target as Element).closest('.nav-dropdown')) {
         document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
@@ -166,17 +163,48 @@ function isActive(href: string) {
       }
     });
 
-    // ── Scroll shadow ─────────────────────────────────────────────
+    // ── Scroll shadow ──────────────────────────────────────────────
     const navbar = document.getElementById('navbar');
     const onScroll = () => navbar?.classList.toggle('scrolled', window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
+
+    // ── Page transition: fade on navigate ─────────────────────────
+    // Intercept all internal link clicks and do a soft fade
+    document.addEventListener('click', (e) => {
+      const target = (e.target as Element).closest('a');
+      if (!target) return;
+      const href = target.getAttribute('href');
+      if (!href) return;
+      // Skip external, hash-only, and download links
+      if (
+        href.startsWith('http') ||
+        href.startsWith('mailto') ||
+        href.startsWith('#') ||
+        target.hasAttribute('download') ||
+        target.getAttribute('target') === '_blank'
+      ) return;
+      // Skip if modifier key held
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+      e.preventDefault();
+      document.body.classList.add('page-leaving');
+      setTimeout(() => { window.location.href = href; }, 180);
+    });
   </script>
 </body>
 </html>
 
 <style>
-/* ═══ NAVBAR ═══ */
+/* ── Page transition ── */
+body {
+  transition: opacity 180ms ease;
+}
+body.page-leaving {
+  opacity: 0;
+}
+
+/* ── Navbar ── */
 .navbar {
   position: sticky;
   top: 0;
@@ -187,10 +215,10 @@ function isActive(href: string) {
 }
 .navbar.scrolled {
   border-color: var(--border);
-  box-shadow: 0 1px 12px rgba(0,0,0,.06);
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 16px rgba(0,0,0,.07);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .navbar-inner {
   display: flex;
@@ -198,24 +226,28 @@ function isActive(href: string) {
   height: 60px;
   gap: 1.5rem;
 }
+
+/* Brand */
 .navbar-brand {
-  font-weight: 600;
-  font-size: 1.05rem;
-  color: var(--text);
-  white-space: nowrap;
+  text-decoration: none;
   flex-shrink: 0;
   margin-right: auto;
 }
-.navbar-brand:hover { color: var(--accent); }
+.brand-text {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-transform: lowercase;
+  transition: color var(--t);
+}
+.navbar-brand:hover .brand-text { color: var(--accent); }
 
 /* Nav links */
-.navbar-links {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-}
+.navbar-links { display: flex; align-items: center; gap: 0.1rem; }
 .nav-link {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-2);
   padding: 0.35em 0.7em;
@@ -231,21 +263,20 @@ function isActive(href: string) {
   text-decoration: none;
   white-space: nowrap;
 }
-.nav-link:hover, .nav-link--active { color: var(--text); }
-.nav-link--active { color: var(--accent) !important; }
-.nav-link:hover { background: var(--bg-off); }
+.nav-link:hover          { color: var(--text); background: var(--bg-off); }
+.nav-link--active        { color: var(--accent) !important; }
 
 /* Dropdown */
 .nav-dropdown { position: relative; }
 .nav-dropdown-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   min-width: 220px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  box-shadow: 0 8px 32px rgba(0,0,0,.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
   padding: 0.4rem;
   display: none;
   z-index: 300;
@@ -295,7 +326,7 @@ function isActive(href: string) {
 .hamburger.open span:nth-child(2) { opacity: 0; }
 .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-/* ═══ FOOTER ═══ */
+/* Footer */
 .footer {
   border-top: 1px solid var(--border);
   padding: 1.75rem 0;
@@ -309,12 +340,14 @@ function isActive(href: string) {
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+.footer-left  { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.footer-brand { font-size: 0.85rem; font-weight: 600; color: var(--text-3); letter-spacing: 0.04em; text-transform: lowercase; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 1.25rem; }
-.footer-links a { font-size: 0.85rem; color: var(--text-3); }
+.footer-links a { font-size: 0.82rem; color: var(--text-3); transition: color var(--t); }
 .footer-links a:hover { color: var(--accent); }
-.footer-copy { font-size: 0.8rem; color: var(--text-3); }
+.footer-copy  { font-size: 0.78rem; color: var(--text-3); }
 
-/* ═══ RESPONSIVE ═══ */
+/* Responsive */
 @media (max-width: 768px) {
   .hamburger { display: flex; }
   .navbar-links {
@@ -331,6 +364,7 @@ function isActive(href: string) {
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--t), transform var(--t);
+    z-index: 199;
   }
   .navbar-links.open { opacity: 1; pointer-events: all; transform: translateY(0); }
   .nav-link { padding: 0.6em 0.9em; }
