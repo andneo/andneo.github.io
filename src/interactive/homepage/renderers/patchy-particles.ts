@@ -377,8 +377,15 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
         ctx.globalAlpha = (localOrder - 0.55) * 0.14 * contrast;
         ctx.strokeStyle = colors.ordered;
         ctx.lineWidth = 0.65;
+        const ringRadius = radius * 2.2;
         ctx.beginPath();
-        ctx.arc(x[i], y[i], radius * 2.1, 0, TAU);
+        for (let vertex = 0; vertex < 6; vertex++) {
+          const theta = angle[i] + vertex * TAU / 6;
+          const px = x[i] + Math.cos(theta) * ringRadius;
+          const py = y[i] + Math.sin(theta) * ringRadius;
+          if (vertex === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
         ctx.stroke();
       }
 
