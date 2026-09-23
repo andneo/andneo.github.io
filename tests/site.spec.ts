@@ -20,7 +20,7 @@ test('homepage reaction-diffusion field animates efficiently and pauses',async({
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const canvas=page.locator('.homepage-field canvas');await expect(canvas).toBeVisible();
  await expect(canvas).toHaveAttribute('data-motion','running');
- const grid=await canvas.getAttribute('data-grid');expect(grid).toMatch(/^\\d+x\\d+$/);
+ const grid=await canvas.getAttribute('data-grid');expect(grid).toMatch(/^\d+x\d+$/);
  const cells=grid!.split('x').map(Number);expect(cells[0]*cells[1]).toBeLessThanOrEqual(26000);
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(700);
