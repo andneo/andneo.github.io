@@ -3,6 +3,7 @@ export interface FieldRect {
   top: number;
   right: number;
   bottom: number;
+  radius?: number;
 }
 
 export interface HomepageRenderer {

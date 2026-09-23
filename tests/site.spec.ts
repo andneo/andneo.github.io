@@ -16,14 +16,17 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
-test('homepage Cahn-Hilliard field runs continuously and stays lightweight',async({page})=>{
+test('hero trail field wraps the identity block and stays lightweight',async({page})=>{
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- const canvas=page.locator('.homepage-field canvas');await expect(canvas).toBeVisible();
- await expect(canvas).toHaveAttribute('data-motion','running');
+ const hero=page.locator('.home-hero');const canvas=hero.locator('.homepage-field canvas');
+ await expect(canvas).toBeVisible();await expect(canvas).toHaveAttribute('data-motion','running');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
- const grid=await canvas.getAttribute('data-grid');expect(grid).toMatch(/^\d+x\d+$/);
- const cells=grid!.split('x').map(Number);expect(cells[0]*cells[1]).toBeLessThanOrEqual(22000);
+ const agents=Number(await canvas.getAttribute('data-agents'));expect(agents).toBeGreaterThan(40);expect(agents).toBeLessThanOrEqual(140);
+ expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
+ const quiet=page.locator('[data-field-quiet]');
+ const radius=await quiet.evaluate((node:HTMLElement)=>getComputedStyle(node).borderRadius);
+ expect(parseFloat(radius)).toBeGreaterThanOrEqual(20);
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(900);
  const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
@@ -31,7 +34,7 @@ test('homepage Cahn-Hilliard field runs continuously and stays lightweight',asyn
 });
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const field=page.locator('.homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');
+ const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
  const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(350);
