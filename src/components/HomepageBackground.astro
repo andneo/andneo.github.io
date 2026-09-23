@@ -1,0 +1,60 @@
+---
+import site from '../data/site.json';
+const poster = Array.from({ length: 54 }, (_, index) => {
+  const row = Math.floor(index / 9);
+  const column = index % 9;
+  const phase = (index * 1.61803398875) % 1;
+  return {
+    x: 62 + column * 132 + (row % 2) * 34 + Math.sin(index * 1.7) * 18,
+    y: 62 + row * 118 + Math.cos(index * 1.13) * 20,
+    angle: phase * Math.PI * 2,
+    ordered: index % 7 === 0 || index % 11 === 0,
+  };
+});
+const bonds = poster.flatMap((_, index) => {
+  const links: [number, number][] = [];
+  if (index % 9 !== 8 && index % 3 !== 2) links.push([index, index + 1]);
+  if (index + 9 < poster.length && index % 4 === 0) links.push([index, index + 9]);
+  return links;
+});
+---
+<homepage-background data-renderer={site.HERO.renderer} data-enabled={String(site.HERO.enabled)}>
+  <div class="homepage-field" aria-hidden="true">
+    <svg class="homepage-field__poster" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+      <g class="poster-bonds">
+        {bonds.map(([a,b]) => <line x1={poster[a].x} y1={poster[a].y} x2={poster[b].x} y2={poster[b].y} />)}
+      </g>
+      <g class="poster-particles">
+        {poster.map(point => <g transform={`translate(${point.x} ${point.y}) rotate(${point.angle * 57.2958})`} class:list={{ ordered: point.ordered }}>
+          <circle class="poster-core" r="6" />
+          <circle class="poster-patch" cx="5.2" r="1.35" />
+          <circle class="poster-patch" cx="-2.6" cy="4.5" r="1.35" />
+          <circle class="poster-patch" cx="-2.6" cy="-4.5" r="1.35" />
+        </g>)}
+      </g>
+    </svg>
+    <canvas aria-hidden="true" hidden></canvas>
+  </div>
+  <button class="homepage-motion-toggle" type="button" hidden data-visible="true">Pause animation</button>
+  <span class="homepage-field__status sr-only" role="status">Static scientific field</span>
+</homepage-background>
+<script>
+  import '../interactive/homepage/controller';
+</script>
+<style>
+  homepage-background { display: contents; }
+  .homepage-field { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--field-wash); }
+  .homepage-field::after { content: ''; position: absolute; inset: 0; background: var(--field-vignette); pointer-events: none; }
+  .homepage-field__poster, canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+  .homepage-field__poster { color: var(--field-particle); opacity: .72; }
+  .poster-bonds { stroke: var(--field-bond); stroke-width: 1; opacity: .5; }
+  .poster-core { fill: currentColor; opacity: .42; }
+  .poster-patch { fill: var(--field-patch); opacity: .7; }
+  .ordered .poster-core { fill: var(--field-ordered); opacity: .56; }
+  .homepage-motion-toggle { position: fixed; right: clamp(.75rem, 2vw, 1.5rem); bottom: clamp(.75rem, 2vw, 1.5rem); z-index: 20; padding: .45rem .65rem; border: 1px solid var(--border-med); border-radius: var(--r); background: var(--control-bg); color: var(--text-2); box-shadow: var(--shadow-hairline); font: .7rem/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; backdrop-filter: blur(8px); transition: opacity var(--t), border-color var(--t), color var(--t); }
+  .homepage-motion-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .homepage-motion-toggle[data-visible='false'] { opacity: 0; pointer-events: none; }
+  @media (max-width: 720px) { .homepage-motion-toggle { font-size: .65rem; } }
+  @media (prefers-reduced-motion: reduce) { .homepage-motion-toggle { transition: none; } }
+  @media print { .homepage-field, .homepage-motion-toggle { display: none !important; } }
+</style>

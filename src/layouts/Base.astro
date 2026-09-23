@@ -1,5 +1,5 @@
 ---
-import { AUTHOR, SOCIAL, NAV, SITE_NAME, SITE_URL } from '../config';
+import { AUTHOR, SOCIAL, NAV, SITE_NAME, SITE_URL, ACCENT_HUE } from '../config';
 import { validateContent } from '../lib/content';
 import '../styles/global.css';
 import 'katex/dist/katex.min.css';
@@ -11,7 +11,7 @@ const canonical = new URL(Astro.url.pathname, SITE_URL);
 const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.url.pathname === '/' : Astro.url.pathname.startsWith(href));
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" style={`--accent-hue:${ACCENT_HUE}`}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

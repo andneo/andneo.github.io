@@ -1,24 +1,220 @@
 ---
 import Base from '../layouts/Base.astro';
-import HeroSim from '../components/HeroSim.astro';
+import HomepageBackground from '../components/HomepageBackground.astro';
 import PublicationList from '../components/content/PublicationList.astro';
-import {AUTHOR,CONTACT,HOME_POST_COUNT,HOME_PUBLICATION_COUNT,HOME_RESEARCH_COUNT} from '../config';
-import {published,byId,url} from '../lib/content';
-const projects=(await published('project')).sort((a,b)=>a.data.order-b.data.order||byId(a,b)).slice(0,HOME_RESEARCH_COUNT);
-const posts=(await published('post')).sort((a,b)=>b.data.date.valueOf()-a.data.date.valueOf()||byId(a,b)).slice(0,HOME_POST_COUNT);
-const pubs=(await published('publications')).sort((a,b)=>b.data.year-a.data.year||byId(a,b)).slice(0,HOME_PUBLICATION_COUNT);
-const courses=await published('courses');
+import { AUTHOR, CONTACT, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
+import { published, byId, url } from '../lib/content';
+const projects = (await published('project')).sort((a,b) => a.data.order - b.data.order || byId(a,b)).slice(0, HOME_RESEARCH_COUNT);
+const posts = (await published('post')).sort((a,b) => b.data.date.valueOf() - a.data.date.valueOf() || byId(a,b)).slice(0, HOME_POST_COUNT);
+const pubs = (await published('publications')).sort((a,b) => b.data.year - a.data.year || byId(a,b)).slice(0, HOME_PUBLICATION_COUNT);
+const courses = await published('courses');
+const pad = (value: number) => String(value + 1).padStart(2, '0');
 ---
 <Base>
- <div class="container">
-  <section class="landing-hero" id="about"><div><p class="eyebrow">{AUTHOR.title}</p><h1>{AUTHOR.name}</h1><div class="hero-bio" set:html={AUTHOR.bio}/><div class="hero-actions"><a class="btn btn-primary" href="/research/">Explore research</a><a class="btn" href="/cv/">Curriculum vitae</a></div></div><HeroSim/></section>
-  <section class="home-section" id="research"><div class="section-header"><h2>Research</h2><a href="/research/">All research →</a></div><ul class="research-grid">{projects.map(p=><li><p class="eyebrow">{p.data.status}</p><h3><a href={url('project',p.id)}>{p.data.title}</a></h3><p>{p.data.description}</p></li>)}</ul></section>
-  <section class="home-section" id="posts"><div class="section-header"><h2>Articles</h2><a href="/posts/">All articles →</a></div><ul class="content-list">{posts.map(p=><li><p class="meta">{p.data.date.toISOString().slice(0,10)}</p><h3><a href={url('post',p.id)}>{p.data.title}</a></h3><p>{p.data.description}</p></li>)}</ul></section>
-  <section class="home-section"><div class="section-header"><h2>Courses</h2><a href="/courses/">All courses →</a></div><ul class="research-grid">{courses.map(c=><li><h3><a href={url('courses',c.id)}>{c.data.title}</a></h3><p>{c.data.description}</p></li>)}</ul></section>
-  <section class="home-section" id="publications"><div class="section-header"><h2>Publications</h2><a href="/publications/">Full index →</a></div><PublicationList publications={pubs}/></section>
-  <section class="home-section" id="contact"><h2>Contact</h2><p><a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a> · {CONTACT.location}</p></section>
- </div>
+  <div class="homepage-root">
+    <HomepageBackground />
+    <div class="homepage-content">
+      <section class="home-hero" id="about">
+        <div class="container hero-frame">
+          <div class="hero-primary">
+            <p class="hero-kicker"><span class="signal-dot" aria-hidden="true"></span>{AUTHOR.title}</p>
+            <h1>{AUTHOR.name}</h1>
+            <div class="hero-bio" set:html={AUTHOR.bio} />
+            <div class="hero-actions" aria-label="Primary links">
+              <a class="btn btn-primary" href="/research/">Explore research</a>
+              <a class="btn" href="/courses/">Lecture notes</a>
+              <a class="text-action" href="/cv/">Curriculum vitae <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+          <nav class="hero-index" aria-label="Homepage sections">
+            <p class="eyebrow">Field index</p>
+            <ol>
+              <li><a href="#research"><span>01</span>Research</a></li>
+              <li><a href="#courses"><span>02</span>Lecture notes</a></li>
+              <li><a href="#posts"><span>03</span>Writing</a></li>
+              <li><a href="#publications"><span>04</span>Publications</a></li>
+            </ol>
+          </nav>
+        </div>
+      </section>
+
+      <section class="home-section home-research" id="research">
+        <div class="container section-frame">
+          <header class="section-intro">
+            <div><p class="section-number">01 / Research</p><h2>Research</h2></div>
+            <a class="section-link" href="/research/">All research <span aria-hidden="true">→</span></a>
+          </header>
+          <ol class="research-ledger">
+            {projects.map((project, index) => <li>
+              <span class="entry-number" aria-hidden="true">{pad(index)}</span>
+              <div class="entry-body">
+                <p class="eyebrow">{project.data.status}</p>
+                <h3><a href={url('project', project.id)}>{project.data.title}</a></h3>
+                <p>{project.data.description}</p>
+              </div>
+              <span class="entry-arrow" aria-hidden="true">↗</span>
+            </li>)}
+          </ol>
+        </div>
+      </section>
+
+      <section class="home-section home-courses" id="courses">
+        <div class="container section-frame section-frame--narrow">
+          <header class="section-intro">
+            <div><p class="section-number">02 / Lecture notes</p><h2>Courses</h2></div>
+            <a class="section-link" href="/courses/">All courses <span aria-hidden="true">→</span></a>
+          </header>
+          <ol class="course-register">
+            {courses.map((course, index) => <li>
+              <span class="course-number">{pad(index)}</span>
+              <div>
+                <h3><a href={url('courses', course.id)}>{course.data.title}</a></h3>
+                <p>{course.data.description}</p>
+              </div>
+              <p class="course-meta">{course.data.level}<span aria-hidden="true"> · </span>{course.data.status}</p>
+            </li>)}
+          </ol>
+        </div>
+      </section>
+
+      <section class="home-section home-writing" id="posts">
+        <div class="container section-frame">
+          <header class="section-intro">
+            <div><p class="section-number">03 / Writing</p><h2>Articles</h2></div>
+            <a class="section-link" href="/posts/">All articles <span aria-hidden="true">→</span></a>
+          </header>
+          <ol class="article-index">
+            {posts.map(post => <li>
+              <time datetime={post.data.date.toISOString()}>{post.data.date.toISOString().slice(0,10)}</time>
+              <div><h3><a href={url('post', post.id)}>{post.data.title}</a></h3><p>{post.data.description}</p></div>
+              <span aria-hidden="true">→</span>
+            </li>)}
+          </ol>
+        </div>
+      </section>
+
+      <section class="home-section home-publications" id="publications">
+        <div class="container section-frame section-frame--compact">
+          <header class="section-intro">
+            <div><p class="section-number">04 / Scholarly record</p><h2>Selected publications</h2></div>
+            <a class="section-link" href="/publications/">Full index <span aria-hidden="true">→</span></a>
+          </header>
+          <div class="publication-register"><PublicationList publications={pubs} /></div>
+        </div>
+      </section>
+
+      <section class="home-contact" id="contact">
+        <div class="container contact-frame">
+          <p class="section-number">05 / Contact</p>
+          <h2>Contact</h2>
+          <p><a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a><span aria-hidden="true"> · </span>{CONTACT.location}</p>
+        </div>
+      </section>
+    </div>
+  </div>
 </Base>
 <style>
-.landing-hero{display:grid;grid-template-columns:1fr 1.15fr;gap:clamp(2rem,5vw,5rem);align-items:center;padding-block:clamp(3rem,8vw,7rem)}h1{font-family:var(--font-serif);font-weight:400;font-size:clamp(2.8rem,5vw,4.5rem);margin-block:1rem 1.5rem}.hero-bio{font-size:1.05rem;color:var(--text-2);max-width:52ch}.hero-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.5rem}.home-section{padding-block:2rem;border-top:1px solid var(--border)}.section-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}.section-header a{font-size:.85rem}.research-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:2rem;padding:0;list-style:none}.research-grid p{color:var(--text-2)}.research-grid h3{font-size:1.3rem}@media(max-width:800px){.landing-hero{grid-template-columns:1fr}.landing-hero scientific-hero{max-width:600px;width:100%}}
+  .homepage-root { position: relative; isolation: isolate; overflow: clip; }
+  .homepage-content { position: relative; z-index: 1; }
+  .home-hero, .home-section, .home-contact { position: relative; }
+  .home-hero::before, .home-section::before, .home-contact::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .home-hero::before { background: radial-gradient(ellipse at 28% 48%, var(--home-scrim-strong) 0 24%, var(--home-scrim) 48%, transparent 74%); }
+  .hero-frame { min-height: clamp(620px, 84svh, 900px); display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(220px, .45fr); gap: clamp(3rem, 9vw, 9rem); align-items: center; padding-block: clamp(5rem, 12vh, 9rem); }
+  .hero-primary { max-width: 790px; }
+  .hero-kicker { display: flex; align-items: center; gap: .7rem; margin: 0 0 1.2rem; font: .76rem/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-2); }
+  .signal-dot { width: .5rem; height: .5rem; border: 1px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 4px var(--accent-light); }
+  h1 { max-width: 10ch; margin: 0; font: 400 clamp(4rem, 10vw, 8.5rem)/.88 var(--font-display); letter-spacing: -.065em; text-wrap: balance; }
+  .hero-bio { max-width: 59ch; margin-top: clamp(2rem, 5vw, 3.75rem); font: clamp(1.05rem, 1rem + .32vw, 1.28rem)/1.72 var(--font-serif); color: var(--text-2); }
+  .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1rem; margin-top: 2rem; }
+  .text-action { padding: .55rem .15rem; font-size: .84rem; text-decoration: none; border-bottom: 1px solid var(--border-med); }
+  .hero-index { align-self: end; padding-bottom: clamp(2rem, 8vh, 5.5rem); }
+  .hero-index > p { margin: 0 0 1rem; }
+  .hero-index ol { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-med); }
+  .hero-index li { border-bottom: 1px solid var(--border); }
+  .hero-index a { display: grid; grid-template-columns: 2.3rem 1fr; gap: .5rem; padding: .85rem 0; color: var(--text); text-decoration: none; font-size: .9rem; }
+  .hero-index a span { font: .7rem var(--font-mono); color: var(--text-3); }
+  .hero-index a:hover { color: var(--accent); }
+
+  .home-section { padding-block: clamp(5.5rem, 11vw, 10rem); }
+  .home-research::before { background: linear-gradient(90deg, var(--home-scrim-strong) 0 52%, var(--home-scrim) 72%, transparent 100%); }
+  .home-courses::before { background: linear-gradient(270deg, var(--home-scrim-strong) 0 48%, var(--home-scrim) 76%, transparent 100%); }
+  .home-writing::before { background: linear-gradient(90deg, var(--home-scrim) 0 62%, transparent 100%); }
+  .home-publications::before { background: linear-gradient(180deg, transparent 0, var(--home-scrim) 30%, var(--home-scrim-strong) 100%); }
+  .section-frame { position: relative; }
+  .section-frame--narrow { max-width: 1080px; }
+  .section-frame--compact { max-width: 980px; }
+  .section-intro { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: clamp(2.75rem, 6vw, 5rem); padding-bottom: 1.2rem; border-bottom: 1px solid var(--border-med); }
+  .section-intro h2 { margin: .15rem 0 0; font: 400 clamp(2.6rem, 5.5vw, 5rem)/.96 var(--font-display); letter-spacing: -.045em; }
+  .section-number { margin: 0; font: .7rem/1.4 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+  .section-link { flex: none; padding-bottom: .25rem; font: .78rem var(--font-mono); text-decoration: none; }
+
+  .research-ledger { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--grid-gap); margin: 0; padding: 0; list-style: none; }
+  .research-ledger li { grid-column: span 6; min-height: 260px; display: grid; grid-template-columns: 2.4rem minmax(0, 1fr) auto; gap: 1rem; align-content: space-between; padding: 1.5rem 0; border-top: 1px solid var(--border); }
+  .research-ledger li:first-child { grid-column: span 7; }
+  .research-ledger li:nth-child(2) { grid-column: 9 / span 4; }
+  .research-ledger li:nth-child(n+3) { margin-top: 1.75rem; }
+  .entry-number, .course-number { font: .7rem var(--font-mono); color: var(--text-3); }
+  .entry-body .eyebrow { margin-top: 0; }
+  .entry-body h3 { max-width: 20ch; margin: .8rem 0 1rem; font: 400 clamp(1.55rem, 2.8vw, 2.5rem)/1.08 var(--font-display); letter-spacing: -.025em; }
+  .entry-body h3 a, .article-index h3 a, .course-register h3 a { color: var(--text); text-decoration: none; }
+  .entry-body h3 a:hover, .article-index h3 a:hover, .course-register h3 a:hover { color: var(--accent); }
+  .entry-body > p:last-child { max-width: 52ch; margin: 0; color: var(--text-2); }
+  .entry-arrow { color: var(--accent); }
+
+  .course-register { margin: 0; padding: 0; list-style: none; counter-reset: course; border-top: 1px solid var(--border-med); }
+  .course-register li { display: grid; grid-template-columns: 3rem minmax(0, 1fr) minmax(140px, .36fr); gap: 1.5rem; align-items: start; padding: clamp(1.5rem, 3vw, 2.25rem) 0; border-bottom: 1px solid var(--border); }
+  .course-register h3 { margin: -.12rem 0 .65rem; font: 400 clamp(1.45rem, 2.7vw, 2rem)/1.14 var(--font-display); }
+  .course-register p { max-width: 58ch; margin: 0; color: var(--text-2); }
+  .course-register .course-meta { justify-self: end; max-width: 20ch; text-align: right; font: .72rem/1.5 var(--font-mono); color: var(--text-3); }
+
+  .article-index { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-med); }
+  .article-index li { display: grid; grid-template-columns: 8rem minmax(0, 1fr) 2rem; gap: 1.5rem; align-items: baseline; padding: 1.4rem 0; border-bottom: 1px solid var(--border); }
+  .article-index time { font: .7rem var(--font-mono); color: var(--text-3); }
+  .article-index h3 { margin: 0; font: 500 clamp(1.1rem, 2.1vw, 1.45rem)/1.25 var(--font-sans); letter-spacing: -.015em; }
+  .article-index p { max-width: 68ch; margin: .45rem 0 0; color: var(--text-2); font-size: .94rem; }
+  .article-index > li > span { justify-self: end; color: var(--accent); }
+
+  .publication-register :global(.content-list) { margin: 0; border-top: 1px solid var(--border-med); }
+  .publication-register :global(.content-list > li) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .34fr); gap: .4rem 2rem; padding-block: 1.4rem; }
+  .publication-register :global(.content-list h3) { grid-column: 1; margin: 0; font-size: 1rem; font-weight: 600; }
+  .publication-register :global(.content-list h3 a) { color: var(--text); text-decoration: none; }
+  .publication-register :global(.content-list h3 a:hover) { color: var(--accent); }
+  .publication-register :global(.content-list > li > p:not(.meta)) { grid-column: 1; margin: .2rem 0 0; color: var(--text-2); font-family: var(--font-serif); }
+  .publication-register :global(.content-list .meta) { grid-column: 2; grid-row: 1 / span 2; margin: 0; text-align: right; font-family: var(--font-mono); font-size: .72rem; line-height: 1.6; }
+
+  .home-contact { padding-block: clamp(6rem, 13vw, 11rem); }
+  .home-contact::before { background: linear-gradient(180deg, var(--home-scrim-strong), var(--bg) 92%); }
+  .contact-frame { display: grid; grid-template-columns: minmax(110px, .35fr) minmax(0, .8fr) minmax(0, 1fr); gap: 2rem; align-items: end; border-top: 1px solid var(--border-med); padding-top: 2rem; }
+  .contact-frame h2 { margin: 0; font: 400 clamp(2.4rem, 5vw, 4.5rem)/1 var(--font-display); }
+  .contact-frame > p:last-child { justify-self: end; margin: 0; text-align: right; font-family: var(--font-serif); }
+
+  @media (max-width: 900px) {
+    .hero-frame { grid-template-columns: minmax(0, 1fr) minmax(180px, .42fr); gap: 3rem; }
+    .research-ledger li, .research-ledger li:first-child, .research-ledger li:nth-child(2) { grid-column: span 6; }
+    .course-register li { grid-template-columns: 2.5rem minmax(0,1fr); }
+    .course-register .course-meta { grid-column: 2; justify-self: start; text-align: left; }
+  }
+
+  @media (max-width: 680px) {
+    .home-hero::before { background: radial-gradient(ellipse at 40% 35%, var(--home-scrim-strong) 0 38%, var(--home-scrim) 70%, transparent 100%); }
+    .hero-frame { min-height: auto; display: block; padding-block: 5rem 4rem; }
+    h1 { font-size: clamp(3.8rem, 19vw, 6.2rem); max-width: 8ch; }
+    .hero-bio { margin-top: 2rem; }
+    .hero-index { margin-top: 4.5rem; padding-bottom: 0; max-width: 24rem; }
+    .home-section { padding-block: 5rem; }
+    .section-intro { align-items: start; margin-bottom: 2.5rem; }
+    .section-intro h2 { font-size: clamp(2.4rem, 12vw, 3.7rem); }
+    .section-link { margin-top: .35rem; }
+    .research-ledger { display: block; }
+    .research-ledger li, .research-ledger li:first-child, .research-ledger li:nth-child(2), .research-ledger li:nth-child(n+3) { min-height: 0; margin-top: 0; padding-block: 1.75rem; }
+    .entry-body h3 { font-size: 1.7rem; }
+    .article-index li { grid-template-columns: 1fr auto; gap: .8rem 1rem; }
+    .article-index time { grid-column: 1 / -1; }
+    .article-index > li > span { grid-column: 2; grid-row: 2; }
+    .publication-register :global(.content-list > li) { display: block; }
+    .publication-register :global(.content-list .meta) { margin-top: .55rem; text-align: left; }
+    .contact-frame { grid-template-columns: 1fr; gap: 1rem; }
+    .contact-frame > p:last-child { justify-self: start; text-align: left; }
+    .home-research::before, .home-courses::before, .home-writing::before { background: linear-gradient(90deg, var(--home-scrim-strong), var(--home-scrim) 82%, transparent); }
+  }
 </style>
