@@ -1,4 +1,6 @@
 ---
+import ContentLink from '../../components/content/ContentLink.astro';
+import {assetExists} from '../../lib/media';
 import Base from '../../layouts/Base.astro';
 import { AUTHOR } from '../../config';
 import cv from '../../data/cv.json';
@@ -18,10 +20,10 @@ const { workExperience,education,interests,workingPapers,teaching,presentations,
         height="160"
         onerror="this.style.display='none'"
       />
-      <a href={AUTHOR.cvPdf} target="_blank" class="btn btn-outline btn-sm cv-dl">
+      {assetExists(AUTHOR.cvPdf) && <a href={AUTHOR.cvPdf} target="_blank" class="btn btn-outline btn-sm cv-dl">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         PDF
-      </a>
+      </a>}
     </aside>
 
     <!-- Main CV content -->
@@ -67,7 +69,7 @@ const { workExperience,education,interests,workingPapers,teaching,presentations,
         <ul class="cv-list">
           {workingPapers.map(p => (
             <li>
-              <a href={p.href}>{p.title}</a>
+              <ContentLink href={p.href}>{p.title}</ContentLink>
               {p.coauthors && <em> ({p.coauthors})</em>}
             </li>
           ))}
@@ -83,7 +85,7 @@ const { workExperience,education,interests,workingPapers,teaching,presentations,
             <li>
               {t.role}{' '}
               {t.courseUrl
-                ? <a href={t.courseUrl}>{t.course}</a>
+                ? <ContentLink href={t.courseUrl}>{t.course}</ContentLink>
                 : <span>{t.course}</span>
               }
               <br />

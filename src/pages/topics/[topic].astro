@@ -1,7 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
-import {published,topicsOf, topicSlug,url} from '../../lib/content';
-export async function getStaticPaths(){const entries=(await Promise.all((['post','project','publications','courses'] as const).map(async kind=>(await published(kind)).map(e=>({title:e.data.title,href:url(kind,e.id),topics:topicsOf(e)}))))).flat();return [...new Set(entries.flatMap(e=>e.topics))].map(topic=>({params:{topic:topicSlug(topic)},props:{topic,entries:entries.filter(e=>e.topics.includes(topic))}}));}
+import { publicEntries, topicsOf, topicSlug } from '../../lib/content';
+export async function getStaticPaths() {
+  const entries = (await publicEntries()).map(({entry,href}) => ({title:entry.data.title,href,topics:topicsOf(entry)}));
+  return [...new Set(entries.flatMap(e=>e.topics))].map(topic => ({
+    params:{topic:topicSlug(topic)}, props:{topic,entries:entries.filter(e=>e.topics.includes(topic))},
+  }));
+}
 const {topic,entries}=Astro.props;
 ---
 <Base title={topic}><div class="container page"><p class="eyebrow">Topic</p><h1>{topic}</h1><ul class="content-list">{entries.map(e=><li><a href={e.href}>{e.title}</a></li>)}</ul></div></Base>

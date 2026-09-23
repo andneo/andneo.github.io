@@ -6,7 +6,11 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "validate:baseline": "node scripts/check-baseline.mjs"
+    "validate:baseline": "node scripts/check-baseline.mjs",
+    "check": "astro check",
+    "validate:site": "node scripts/check-site.mjs",
+    "validate": "npm run check && npm run build && npm run validate:baseline && npm run validate:site",
+    "test:browser": "node scripts/browser-suite.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.0",
@@ -16,7 +20,10 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.6",
+    "parse5": "^8.0.1",
     "rehype-katex": "^7.0.0",
     "rehype-pretty-code": "^0.13.0",
     "remark-math": "^6.0.0",

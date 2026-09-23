@@ -10,7 +10,7 @@ const common = {
   title: z.string().min(1), description: z.string().optional(), subtitle: z.string().optional(),
   slug: path.optional(), tags: z.array(z.string().min(1)).default([]), topics: z.array(z.string().min(1)).default([]),
   draft: z.boolean().default(true), updated: z.coerce.date().optional(), image: z.string().optional(),
-  imageAlt: z.string().optional(), aliases: z.array(z.string().regex(/^\/(?!\/).*\/$/)).default([]),
+  imageAlt: z.string().optional(), aliases: z.array(z.string().regex(/^\/[a-z0-9]+(?:[-/][a-z0-9]+)*\/$/)).default([]),
   resources: z.array(resource).default([]),
 };
 const loader = (base: string, pattern: string | string[] = '**/*.{md,mdx}') => glob({ base, pattern,
@@ -31,7 +31,7 @@ const chapters = defineCollection({ loader: loader('./src/content/course', ['**/
 }).strict().refine(v => (v.kind === 'section') === Boolean(v.parent), 'Only sections require a parent chapter ID') });
 const project = defineCollection({ loader: loader('./src/content/project'), schema: z.object({ ...common,
   description: z.string().min(1), question: z.string().optional(), contribution: z.string().optional(), role: z.string().optional(),
-  status: z.enum(['ongoing','completed','archived']).default('ongoing'), methods: z.array(z.string()).default([]),
+  status: z.enum(['ongoing','completed','archived']).optional(), methods: z.array(z.string()).default([]),
   publications: z.array(path).default([]), links: z.array(resource).default([]),
   date: z.coerce.date().optional(), order: z.number().int().default(99),
 }).strict() });

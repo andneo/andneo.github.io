@@ -1,0 +1,7 @@
+---
+import { isPublishedRoute } from '../../lib/content';
+interface Props { href: string; }
+const {href}=Astro.props;
+const available=await isPublishedRoute(href);
+---
+{available?<a href={href}><slot/></a>:<span><slot/></span>}

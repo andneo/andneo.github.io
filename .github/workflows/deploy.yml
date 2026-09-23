@@ -23,8 +23,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: npm run validate:baseline
+      - run: npm run validate
+      - run: npx playwright install --with-deps chromium --only-shell
+      - run: npm run test:browser
+      - run: npm run validate:site
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

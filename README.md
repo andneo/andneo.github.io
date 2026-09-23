@@ -14,8 +14,7 @@ npm run dev
 Validate the production build:
 
 ```sh
-npm run build
-npm run validate:baseline
+npm run validate
 npm run preview
 ```
 
@@ -26,6 +25,10 @@ npm run preview
 Work on a feature branch, review the diff, and open a pull request. CI builds pull requests and redesign branches. Only a successful build on `main` can deploy through the GitHub Pages environment. In repository Settings → Pages, the source must be GitHub Actions.
 
 Pushing a feature branch does not publish the site. Merging into `main` publishes it. Roll back by reverting a merged change and allowing CI to rebuild.
+
+## Authoring
+
+See [authoring and maintenance](docs/authoring.md) for posts, courses, chapters, research, publications, scientific media, interactive components and deployment. See [component interfaces](docs/components.md) for MDX props. Run `npx playwright install chromium --only-shell` followed by `npm run test:browser` for browser checks.
 
 ## Baseline
 

@@ -24,6 +24,7 @@ const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.ur
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonical} />
     {image && <meta property="og:image" content={new URL(image, SITE_URL)} />}
+    <link rel="alternate" type="application/rss+xml" title={SITE_NAME} href="/rss.xml" />
     <meta name="color-scheme" content="light dark" />
     <script is:inline>
       try { const theme = localStorage.getItem('theme'); if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme; } catch {}
@@ -38,7 +39,7 @@ const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.ur
         <nav class="site-nav" aria-label="Main navigation">
           {NAV.map(item => <a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>{item.label}</a>)}
         </nav>
-        <button class="theme-button" type="button" hidden aria-label="Change colour theme">Theme</button>
+        <button class="theme-button" type="button" hidden>Theme</button>
       </div>
     </header>
     <main id="main" tabindex="-1"><slot /></main>
