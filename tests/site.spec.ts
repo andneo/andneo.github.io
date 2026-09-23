@@ -16,6 +16,20 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
+test('homepage scientific field animates and pauses',async({page})=>{
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
+ const canvas=page.locator('.homepage-field canvas');await expect(canvas).toBeVisible();
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ await page.waitForTimeout(700);
+ const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ expect(after).not.toBe(before);
+ await page.getByRole('button',{name:'Pause animation'}).click();
+ await expect(canvas).toHaveAttribute('data-motion','paused');
+ const paused=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ await page.waitForTimeout(350);
+ expect(await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL())).toBe(paused);
+});
 test('hero motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  await expect(page.getByRole('button',{name:'Play animation'})).toBeVisible();
