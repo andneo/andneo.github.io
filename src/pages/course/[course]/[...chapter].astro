@@ -1,51 +1,7 @@
 ---
-import { getCollection, render } from 'astro:content';
-import CourseLayout from '../../../layouts/CourseLayout.astro';
-
-export async function getStaticPaths() {
-  const all = await getCollection('chapters');
-  // Only chapter pages (chapter > 0)
-  const visible = new Set((await getCollection('courses')).filter(p => !p.data.draft).map(p => p.id));
-  const chapters = all.filter(p => !p.data.draft && visible.has(p.data.course));
-  return chapters.map((page: any) => {
-    const parts = page.id.split('/');
-    const courseSlug = parts[0];
-    const chapterSlug = parts.slice(1).join('/');
-    return {
-      params: { course: courseSlug, chapter: chapterSlug },
-      props: { page },
-    };
-  });
-}
-
-const { page } = Astro.props;
-const { course: courseSlug, chapter: chapterSlug } = Astro.params;
-
-// Load all pages for this course to populate sidebar
-const all = await getCollection('chapters');
-
-const indexPage = (await getCollection('courses')).find(p => p.id === courseSlug && !p.data.draft);
-const courseTitle = indexPage?.data.title ?? courseSlug;
-
-const chapters = all
-  .filter((p: any) => p.data.course === courseSlug && !p.data.draft)
-  .sort((a: any, b: any) => a.data.order - b.data.order)
-  .map((p: any) => {
-    const prefix = courseSlug + '/';
-    const slug = p.id.startsWith(prefix) ? p.id.slice(prefix.length) : p.id;
-    return { slug, title: p.data.title, chapter: p.data.order };
-  });
-
-const { Content } = await render(page);
+import Redirect from '../../../components/navigation/Redirect.astro';
+import {published,courseChapters,url} from '../../../lib/content';
+export async function getStaticPaths(){return (await Promise.all((await published('courses')).map(async c=>(await courseChapters(c.id)).map(p=>({params:{course:c.id,chapter:p.id.slice(c.id.length+1)},props:{to:url('chapters',p.id)}}))))).flat();}
+const {to}=Astro.props;
 ---
-
-<CourseLayout
-  title={page.data.title}
-  courseTitle={courseTitle}
-  courseSlug={courseSlug}
-  chapters={chapters}
-  currentSlug={chapterSlug}
-  description={page.data.description}
->
-  <Content />
-</CourseLayout>
+<Redirect to={to}/>

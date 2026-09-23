@@ -1,26 +1,10 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { render, type CollectionEntry } from 'astro:content';
+import { published } from '../../lib/content';
 import PostLayout from '../../layouts/PostLayout.astro';
-
-export async function getStaticPaths() {
-  const posts = await getCollection('post');
-  return posts
-    .filter((p: any) => !p.data.draft)
-    .map((post: any) => ({ params: { slug: post.id }, props: { post } }));
-}
-
-const { post } = Astro.props;
-const { Content } = await render(post);
+export async function getStaticPaths(){return (await published('post')).map(post=>({params:{slug:post.id},props:{post}}));}
+interface Props { post: CollectionEntry<'post'>; }
+const { post }=Astro.props;
+const { Content,headings }=await render(post);
 ---
-
-<PostLayout
-  title={post.data.title}
-  subtitle={post.data.subtitle}
-  description={post.data.description}
-  date={post.data.date}
-  tags={post.data.tags}
-  image={post.data.image}
-  readingTime={post.data.readingTime}
->
-  <Content />
-</PostLayout>
+<PostLayout post={post} headings={headings}><Content/></PostLayout>

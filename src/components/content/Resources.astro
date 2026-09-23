@@ -1,0 +1,5 @@
+---
+interface Props { resources: {label:string;href:string}[]; }
+const { resources } = Astro.props;
+---
+{resources.length>0 && <ul class="resource-list" aria-label="Resources">{resources.map(r=><li><a href={r.href}>{r.label}</a></li>)}</ul>}

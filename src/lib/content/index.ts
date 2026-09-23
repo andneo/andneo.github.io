@@ -1,6 +1,7 @@
 import { getCollection, type CollectionEntry, type CollectionKey } from 'astro:content';
 
 export const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id, 'en');
+export const topicSlug = (topic: string) => topic.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 export const topicsOf = (entry: { data: { tags: string[]; topics: string[] } }) => [...new Set([...entry.data.tags, ...entry.data.topics])].sort();
 export async function published<C extends CollectionKey>(collection: C) {
   return (await getCollection(collection)).filter(entry => !entry.data.draft).sort(byId);
