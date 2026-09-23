@@ -1,0 +1,10 @@
+---
+import type { ComponentProps } from 'astro/types';
+import { Code } from 'astro:components';
+interface Props { code: string; lang?: ComponentProps<typeof Code>['lang']; title?: string; download?: string; }
+const { code, lang = 'text', title, download } = Astro.props;
+---
+<figure class="code-example">
+  {title && <figcaption>{title}{download && <> · <a href={download} download>Download source</a></>}</figcaption>}
+  <Code code={code} lang={lang} theme="github-light" />
+</figure>

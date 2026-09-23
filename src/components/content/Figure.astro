@@ -1,0 +1,11 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+interface Props { src: string | ImageMetadata; alt: string; caption?: string; id?: string; width?: number; height?: number; background?: 'auto' | 'light'; }
+const { src, alt, caption, id, width, height, background = 'auto' } = Astro.props;
+---
+<figure id={id} class:list={['scientific-figure', { 'figure-light': background === 'light' }]}>
+  {typeof src === 'string' ? <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" /> : <Image src={src} alt={alt} loading="lazy" />}
+  {(caption || Astro.slots.has('default')) && <figcaption>{caption}<slot /></figcaption>}
+</figure>
+<style>.scientific-figure img{width:auto;max-width:100%;height:auto}.figure-light{background:#fff;color:#202b2c;padding:1rem}.figure-light figcaption{color:#465455}</style>
