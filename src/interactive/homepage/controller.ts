@@ -47,6 +47,8 @@ class HomepageBackgroundElement extends HTMLElement {
     const updateButton = () => {
       button.textContent = paused ? 'Play animation' : 'Pause animation';
       button.dataset.state = paused ? 'paused' : 'playing';
+      button.setAttribute('aria-pressed', String(paused));
+      canvas.dataset.motion = paused ? 'paused' : 'running';
       status.textContent = paused ? 'Scientific field paused' : 'Scientific field running';
     };
 
