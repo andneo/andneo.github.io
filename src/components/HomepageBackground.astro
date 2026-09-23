@@ -4,42 +4,27 @@ import site from '../data/site.json';
 <homepage-background data-renderer={site.HERO.renderer} data-enabled={String(site.HERO.enabled)}>
   <div class="homepage-field" aria-hidden="true">
     <svg class="homepage-field__poster" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
-      <g class="poster-contours">
-        <path d="M-80 170C120 20 290 250 470 118s305-28 410 82 240 94 400-26" />
-        <path d="M-50 268C95 126 272 330 448 218s324-55 438 44 246 69 380-54" />
-        <path d="M-80 390C96 240 266 430 452 324s328-43 456 61 243 68 383-66" />
-        <path d="M-80 522C86 364 280 572 468 468s318-32 438 66 231 74 376-52" />
-        <path d="M-60 646C125 510 292 705 486 606s324-23 438 70 226 66 355-44" />
-      </g>
-      <g class="poster-islands">
-        <ellipse cx="235" cy="186" rx="96" ry="54" />
-        <ellipse cx="780" cy="194" rx="132" ry="69" />
-        <ellipse cx="565" cy="430" rx="150" ry="82" />
-        <ellipse cx="992" cy="558" rx="112" ry="58" />
-        <ellipse cx="208" cy="610" rx="118" ry="64" />
+      <g>
+        <path d="M-70 168c154-88 278 67 420-22s269-82 421 7 273 70 480-8" />
+        <path d="M-86 288c182-104 302 66 466-20s281-54 424 37 279 39 454-44" />
+        <path d="M-61 415c155-91 304 55 466-12s264-47 414 42 273 28 439-52" />
+        <path d="M-72 544c161-88 315 46 478-18s267-38 417 46 272 20 427-56" />
+        <path d="M-54 674c155-83 304 37 472-14s272-28 423 49 261 15 406-55" />
       </g>
     </svg>
     <canvas aria-hidden="true" hidden></canvas>
   </div>
-  <button class="homepage-motion-toggle" type="button" hidden data-visible="true">Pause background</button>
-  <span class="homepage-field__status sr-only" role="status">Static reaction-diffusion field</span>
 </homepage-background>
 <script>
   import '../interactive/homepage/controller';
 </script>
 <style>
   homepage-background { display: contents; }
-  .homepage-field { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--field-wash); }
-  .homepage-field::after { content: ''; position: absolute; inset: 0; background: var(--field-vignette); pointer-events: none; }
-  .homepage-field__poster, canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-  .homepage-field__poster { opacity: .5; }
-  .poster-contours { fill: none; stroke: var(--field-primary); stroke-width: 2.2; opacity: .11; }
-  .poster-islands { fill: none; stroke: var(--field-secondary); stroke-width: 1.4; opacity: .08; }
-  canvas { opacity: .92; }
-  .homepage-motion-toggle { position: fixed; right: clamp(.75rem,2vw,1.5rem); bottom: clamp(.75rem,2vw,1.5rem); z-index: 20; padding: .42rem .62rem; border: 1px solid var(--border-med); border-radius: 999px; background: var(--control-bg); color: var(--text-2); box-shadow: var(--shadow-hairline); font: .66rem/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; backdrop-filter: blur(8px); transition: opacity var(--t), border-color var(--t), color var(--t); }
-  .homepage-motion-toggle:hover { border-color: var(--accent); color: var(--text); }
-  .homepage-motion-toggle[data-visible='false'] { opacity: 0; pointer-events: none; }
-  @media (max-width:720px) { .homepage-motion-toggle { font-size: .62rem; } }
-  @media (prefers-reduced-motion:reduce) { .homepage-motion-toggle { transition: none; } }
-  @media print { .homepage-field,.homepage-motion-toggle { display:none !important; } }
+  .homepage-field { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:var(--field-wash); }
+  .homepage-field::after { content:''; position:absolute; inset:0; background:var(--field-vignette); pointer-events:none; }
+  .homepage-field__poster,canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .homepage-field__poster { opacity:.42; }
+  .homepage-field__poster g { fill:none; stroke:var(--field-primary); stroke-width:2; opacity:.08; }
+  canvas { opacity:.94; }
+  @media print { .homepage-field { display:none !important; } }
 </style>

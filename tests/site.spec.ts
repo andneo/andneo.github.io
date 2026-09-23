@@ -16,25 +16,26 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
-test('homepage reaction-diffusion field animates efficiently and pauses',async({page})=>{
+test('homepage Cahn-Hilliard field runs continuously and stays lightweight',async({page})=>{
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const canvas=page.locator('.homepage-field canvas');await expect(canvas).toBeVisible();
  await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-quiet-zones','1');
  const grid=await canvas.getAttribute('data-grid');expect(grid).toMatch(/^\d+x\d+$/);
- const cells=grid!.split('x').map(Number);expect(cells[0]*cells[1]).toBeLessThanOrEqual(26000);
+ const cells=grid!.split('x').map(Number);expect(cells[0]*cells[1]).toBeLessThanOrEqual(22000);
+ expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
- await page.waitForTimeout(700);
+ await page.waitForTimeout(900);
  const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  expect(after).not.toBe(before);
- await page.getByRole('button',{name:'Pause background'}).click();
- await expect(canvas).toHaveAttribute('data-motion','paused');
- const paused=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
- await page.waitForTimeout(350);
- expect(await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL())).toBe(paused);
 });
-test('hero motion, keyboard access, dark theme and legacy redirect',async({page})=>{
+test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- await expect(page.getByRole('button',{name:'Play background'})).toBeVisible();
+ const field=page.locator('.homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');
+ expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
+ const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ await page.waitForTimeout(350);
+ expect(await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL())).toBe(staticFrame);
  await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
  await page.getByRole('button',{name:'Dark theme'}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);

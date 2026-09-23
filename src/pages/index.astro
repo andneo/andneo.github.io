@@ -17,9 +17,11 @@ const courses = await published('courses');
       <section class="home-hero" id="about">
         <div class="container hero-frame">
           <div class="hero-copy">
-            <p class="hero-role">{AUTHOR.title}</p>
-            <h1>{AUTHOR.name}</h1>
-            <div class="hero-bio" set:html={AUTHOR.bio} />
+            <div class="hero-identity" data-field-quiet>
+              <p class="hero-role">{AUTHOR.title}</p>
+              <h1>{AUTHOR.name}</h1>
+              <div class="hero-bio" set:html={AUTHOR.bio} />
+            </div>
             <div class="hero-actions" aria-label="Primary links">
               <a class="btn btn-primary" href="/research/">Research</a>
               <a class="btn" href="/courses/">Lecture notes</a>
@@ -159,7 +161,7 @@ const courses = await published('courses');
   .homepage-content { position: relative; z-index: 1; }
   .home-hero,.home-section,.home-contact { position: relative; }
   .home-hero::before,.home-section::before,.home-contact::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; }
-  .home-hero::before { background: radial-gradient(ellipse at 24% 40%,var(--home-scrim-strong) 0 18%,var(--home-scrim) 46%,transparent 76%); }
+  .home-hero::before { background: radial-gradient(ellipse at 24% 40%,var(--home-scrim) 0 12%,transparent 68%); }
 
   .hero-frame { min-height: clamp(560px,72svh,760px); display:grid; grid-template-columns:minmax(0,1.65fr) minmax(240px,.55fr); gap:clamp(3rem,8vw,9rem); align-items:end; padding-block:clamp(6rem,13vh,9rem) clamp(4rem,8vh,6rem); }
   .hero-copy { max-width:900px; }
@@ -221,7 +223,7 @@ const courses = await published('courses');
     .post-grid,.publication-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
   @media (max-width:640px) {
-    .home-hero::before { background:radial-gradient(ellipse at 38% 30%,var(--home-scrim-strong) 0 34%,var(--home-scrim) 72%,transparent 100%); }
+    .home-hero::before { background:radial-gradient(ellipse at 38% 30%,var(--home-scrim) 0 24%,transparent 82%); }
     .hero-frame { padding-block:6.5rem 3.5rem; }
     h1 { font-size:clamp(2.55rem,12.5vw,4rem); }
     .hero-bio { margin-top:1.4rem; }
