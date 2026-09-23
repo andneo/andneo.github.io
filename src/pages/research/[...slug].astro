@@ -1,0 +1,30 @@
+---
+import {render,type CollectionEntry} from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Toc from '../../components/navigation/Toc.astro';
+import Resources from '../../components/content/Resources.astro';
+import PublicationList from '../../components/content/PublicationList.astro';
+import Figure from '../../components/content/Figure.astro';
+import {published,url} from '../../lib/content';
+import {assetExists} from '../../lib/media';
+export async function getStaticPaths(){return (await published('project')).map(project=>({params:{slug:project.id},props:{project}}));}
+interface Props{project:CollectionEntry<'project'>;}
+const {project}=Astro.props;const d=project.data;
+const {Content,headings}=await render(project);
+const pubs=(await published('publications')).filter(p=>d.publications.includes(p.id));
+const posts=(await published('post')).filter(p=>p.data.projects.includes(project.id));
+---
+<Base title={d.title} description={d.description} image={d.image&&assetExists(d.image)?d.image:undefined}>
+ <div class="reading-shell container page"><aside class="reading-toc"><Toc headings={headings}/></aside><article class="reading-main">
+  <a href="/research/">Research</a><h1>{d.title}</h1><p class="subtitle">{d.description}</p>
+  {d.question&&<section><h2>Research question</h2><p>{d.question}</p></section>}
+  {d.contribution&&<section><h2>Contribution</h2><p>{d.contribution}</p></section>}
+  {d.role&&<p><strong>My role:</strong> {d.role}</p>}
+  <p class="meta">{d.status}{d.methods.length>0&&<> · {d.methods.join(', ')}</>}</p>
+  <Resources resources={[...d.resources,...d.links]}/>
+  {d.image&&assetExists(d.image)&&<Figure src={d.image} alt={d.imageAlt??d.title}/>}
+  <div class="prose"><Content/></div>
+  {pubs.length>0&&<section><h2>Publications</h2><PublicationList publications={pubs}/></section>}
+  {posts.length>0&&<section><h2>Related articles</h2><ul>{posts.map(p=><li><a href={url('post',p.id)}>{p.data.title}</a></li>)}</ul></section>}
+ </article></div>
+</Base>

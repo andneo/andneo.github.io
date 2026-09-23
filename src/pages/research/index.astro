@@ -1,0 +1,6 @@
+---
+import Base from '../../layouts/Base.astro';
+import {published,url,byId} from '../../lib/content';
+const projects=(await published('project')).sort((a,b)=>a.data.order-b.data.order||byId(a,b));
+---
+<Base title="Research" description="Research projects, methods and related publications."><div class="container page"><p class="eyebrow">Scientific work</p><h1>Research</h1><p><a href="/publications/">Full publications index →</a></p><ul class="content-list">{projects.map(p=><li><h2><a href={url('project',p.id)}>{p.data.title}</a></h2><p>{p.data.description}</p>{p.data.role&&<p class="meta">Role: {p.data.role}</p>}</li>)}</ul></div></Base>

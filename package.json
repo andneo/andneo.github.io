@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@types/node": "^24.13.6",
     "rehype-katex": "^7.0.0",
     "rehype-pretty-code": "^0.13.0",
     "remark-math": "^6.0.0",
