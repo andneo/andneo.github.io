@@ -22,8 +22,9 @@ interface Agent{
 }
 
 export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRenderer{
-  const ctx=canvas.getContext('2d',{alpha:true});
-  if(!ctx)throw new Error('Canvas 2D is unavailable');
+  const context=canvas.getContext('2d',{alpha:true});
+  if(!context)throw new Error('Canvas 2D is unavailable');
+  const ctx:CanvasRenderingContext2D=context;
   const rng=createRng();
 
   let width=1,height=1,elapsed=0,disposed=false,reducedMotion=false;
