@@ -1,32 +1,32 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import CourseLayout from '../../../layouts/CourseLayout.astro';
 
 export async function getStaticPaths() {
-  const all = await getCollection('course').catch(() => []);
+  const all = await getCollection('chapters');
   // Get unique course slugs
-  const slugs = [...new Set(all.map((p: any) => p.data.course))];
+  const slugs = (await getCollection('courses')).filter(p => !p.data.draft).map(p => p.id);
   return slugs.map(slug => ({ params: { course: slug } }));
 }
 
 const { course } = Astro.params;
-const all = await getCollection('course').catch(() => []);
+const all = await getCollection('chapters');
 
 // Index page for this course (chapter: 0)
-const indexPage = all.find((p: any) => p.data.course === course && p.data.chapter === 0);
+const indexPage = (await getCollection('courses')).find(p => p.id === course && !p.data.draft);
 
 // All chapters (chapter > 0), sorted
 const chapters = all
-  .filter((p: any) => p.data.course === course && p.data.chapter > 0 && !p.data.draft)
-  .sort((a: any, b: any) => a.data.chapter - b.data.chapter)
+  .filter((p: any) => p.data.course === course && !p.data.draft)
+  .sort((a: any, b: any) => a.data.order - b.data.order)
   .map((p: any) => {
-    // p.slug is e.g. "stellar-dynamics/01-orbits" — strip the course prefix + slash
+    // p.id is e.g. "stellar-dynamics/01-orbits" — strip the course prefix + slash
     const prefix = course + '/';
-    const slug = p.slug.startsWith(prefix) ? p.slug.slice(prefix.length) : p.slug;
-    return { slug, title: p.data.title, chapter: p.data.chapter };
+    const slug = p.id.startsWith(prefix) ? p.id.slice(prefix.length) : p.id;
+    return { slug, title: p.data.title, chapter: p.data.order };
   });
 
-const { Content } = indexPage ? await indexPage.render() : { Content: null };
+const { Content } = indexPage ? await render(indexPage) : { Content: null };
 const title    = indexPage?.data.title ?? course;
 const subtitle = indexPage?.data.subtitle;
 const desc     = indexPage?.data.description;

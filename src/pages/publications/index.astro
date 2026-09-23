@@ -1,9 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import { AUTHOR } from '../../config';
 
-const pubs = (await getCollection('publications').catch(() => []))
+const pubs = (await getCollection('publications'))
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => b.data.year - a.data.year);
 
@@ -42,7 +42,7 @@ const statusGroups = ['published', 'forthcoming', 'working-paper'] as const;
             <div class="pub-list" id="pub-list">
               {group.map((pub: any) => (
                 <a
-                  href={`/publications/${pub.slug}/`}
+                  href={`/publications/${pub.id}/`}
                   class="pub-row fade-up"
                   data-tags={pub.data.tags.join(',')}
                 >

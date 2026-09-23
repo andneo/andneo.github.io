@@ -1,8 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
-const posts = (await getCollection('post').catch(() => []))
+const posts = (await getCollection('post'))
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => b.data.date.valueOf() - a.data.date.valueOf());
 
@@ -44,7 +44,7 @@ function readTime(body: string) {
       ) : (
         posts.map((post: any) => (
           <a
-            href={`/posts/${post.slug}/`}
+            href={`/posts/${post.id}/`}
             class="post-row fade-up"
             data-tags={post.data.tags.join(',')}
           >

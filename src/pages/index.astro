@@ -2,17 +2,17 @@
 import Base from '../layouts/Base.astro';
 import HeroSim from '../components/HeroSim.astro';
 import { AUTHOR, SOCIAL, CONTACT, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
-const allPosts = (await getCollection('post').catch(() => []))
+const allPosts = (await getCollection('post'))
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => b.data.date.valueOf() - a.data.date.valueOf());
 
-const allPubs = (await getCollection('publications').catch(() => []))
+const allPubs = (await getCollection('publications'))
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => b.data.year - a.data.year);
 
-const allProjects = (await getCollection('project').catch(() => []))
+const allProjects = (await getCollection('project'))
   .filter((p: any) => !p.data.draft)
   .sort((a: any, b: any) => (a.data.order ?? 99) - (b.data.order ?? 99));
 
@@ -54,7 +54,7 @@ function readTime(body: string) {
     ) : (
       <div class="post-list">
         {recentPosts.map((post: any) => (
-          <a href={`/posts/${post.slug}/`} class="post-row fade-up">
+          <a href={`/posts/${post.id}/`} class="post-row fade-up">
             <div class="post-row-body">
               <h3 class="post-row-title">{post.data.title}</h3>
               {post.data.subtitle && <p class="post-row-subtitle">{post.data.subtitle}</p>}
@@ -90,7 +90,7 @@ function readTime(body: string) {
     ) : (
       <div class="pub-list">
         {recentPubs.map((pub: any) => (
-          <a href={`/publications/${pub.slug}/`} class="pub-row fade-up">
+          <a href={`/publications/${pub.id}/`} class="pub-row fade-up">
             <div class="pub-row-body">
               <h3 class="pub-row-title">{pub.data.title}</h3>
               <p class="pub-row-authors">
@@ -140,7 +140,7 @@ function readTime(body: string) {
     ) : (
       <div class="project-grid">
         {featuredProjs.map((proj: any) => (
-          <a href={`/project/${proj.slug}/`} class="project-card fade-up">
+          <a href={`/project/${proj.id}/`} class="project-card fade-up">
             {proj.data.image && (
               <div class="project-card-img">
                 <img src={proj.data.image} alt="" width="540" height="200" loading="lazy" />

@@ -1,14 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
 // Get all course index pages (chapter: 0)
-const allCoursePages = await getCollection('course').catch(() => []);
+const allCoursePages = await getCollection('courses');
 
 // Group by course slug — find the index page (chapter: 0) for each
 const courseMap = new Map<string, any>();
 for (const page of allCoursePages) {
-  if (page.data.chapter === 0 && !page.data.draft) {
+  if (!page.data.draft) {
     courseMap.set(page.data.course, page);
   }
 }

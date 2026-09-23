@@ -1,17 +1,17 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import { AUTHOR } from '../../config';
 
 export async function getStaticPaths() {
-  const pubs = await getCollection('publications').catch(() => []);
+  const pubs = await getCollection('publications');
   return pubs
     .filter((p: any) => !p.data.draft)
-    .map((pub: any) => ({ params: { slug: pub.slug }, props: { pub } }));
+    .map((pub: any) => ({ params: { slug: pub.id }, props: { pub } }));
 }
 
 const { pub } = Astro.props;
-const { Content, headings } = await pub.render();
+const { Content, headings } = await render(pub);
 
 // Check if there's any body content (behind-the-scenes)
 const hasContent = (pub.body ?? '').trim().length > 10;

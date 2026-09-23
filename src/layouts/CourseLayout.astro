@@ -118,9 +118,9 @@ if (headings.length > 0 && tocNav && tocAside) {
   }
   var io = new IntersectionObserver(function(entries) {
     entries.forEach(function(e) {
-      var link = tocNav.querySelector('[href="#' + e.target.id + '"]');
+      var link = tocNav?.querySelector('[href="#' + e.target.id + '"]');
       if (e.isIntersecting) {
-        tocNav.querySelectorAll('.toc-link').forEach(function(l) { l.classList.remove('active'); });
+        tocNav?.querySelectorAll('.toc-link').forEach(function(l) { l.classList.remove('active'); });
         if (link) link.classList.add('active');
       }
     });

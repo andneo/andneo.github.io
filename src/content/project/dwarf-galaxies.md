@@ -8,6 +8,7 @@ links:
 tags: ["simulations", "galactic evolution"]
 date: 2024-01-10
 order: 1
+draft: false
 ---
 
 The use of hydrodynamic simulations to understand dwarf galaxy formation has accelerated
