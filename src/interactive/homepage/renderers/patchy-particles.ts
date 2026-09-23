@@ -124,25 +124,38 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
   }
 
   function initialiseParticles() {
-    const clusterCount = Math.max(3, Math.round(Math.sqrt(count) / 2));
+    const clusterCount = clamp(Math.round(Math.sqrt(count) / 3.4), 3, 6);
     const clusterX = new Float32Array(clusterCount);
     const clusterY = new Float32Array(clusterCount);
+    const clusterAngle = new Float32Array(clusterCount);
     for (let c = 0; c < clusterCount; c++) {
       clusterX[c] = rng() * width;
       clusterY[c] = rng() * height;
+      clusterAngle[c] = rng() * TAU;
     }
+
+    const particlesPerCluster = Math.ceil(count / clusterCount);
+    const side = Math.ceil(Math.sqrt(particlesPerCluster));
+    const latticeSpacing = diameter * 1.42;
+    const rowSpacing = latticeSpacing * 0.8660254;
 
     for (let i = 0; i < count; i++) {
       const cluster = i % clusterCount;
-      const theta = rng() * TAU;
-      const spread = Math.min(width, height) * (0.045 + rng() * 0.12);
-      x[i] = (clusterX[cluster] + Math.cos(theta) * spread + width) % width;
-      y[i] = (clusterY[cluster] + Math.sin(theta) * spread + height) % height;
-      vx[i] = (rng() - 0.5) * 8;
-      vy[i] = (rng() - 0.5) * 8;
-      angle[i] = rng() * TAU;
-      omega[i] = (rng() - 0.5) * 0.3;
-      order[i] = rng() * 0.15;
+      const local = Math.floor(i / clusterCount);
+      const row = Math.floor(local / side);
+      const column = local % side;
+      const ox = (column - (side - 1) * 0.5) * latticeSpacing + (row % 2) * latticeSpacing * 0.5;
+      const oy = (row - (side - 1) * 0.5) * rowSpacing;
+      const cos = Math.cos(clusterAngle[cluster]);
+      const sin = Math.sin(clusterAngle[cluster]);
+      const jitter = radius * 0.55;
+      x[i] = (clusterX[cluster] + ox * cos - oy * sin + (rng() - 0.5) * jitter + width) % width;
+      y[i] = (clusterY[cluster] + ox * sin + oy * cos + (rng() - 0.5) * jitter + height) % height;
+      vx[i] = (rng() - 0.5) * 12;
+      vy[i] = (rng() - 0.5) * 12;
+      angle[i] = clusterAngle[cluster] + (rng() - 0.5) * 0.35;
+      omega[i] = (rng() - 0.5) * 0.42;
+      order[i] = 0.28 + rng() * 0.18;
     }
   }
 
@@ -284,16 +297,16 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
     fy.fill(0);
     torque.fill(0);
 
-    const phase = 0.5 + 0.5 * Math.sin((elapsed / 88) * TAU - Math.PI / 2);
+    const phase = 0.5 + 0.5 * Math.sin((elapsed / 76) * TAU - Math.PI / 2);
     const temperature = forcedTemperature ?? clamp(0.18 + phase * 0.78 + Math.sin(scrollProgress * Math.PI) * 0.06, 0.14, 0.98);
     const interaction = forcedInteraction ?? (1.48 - phase * 0.88);
     pairForces(interaction);
     pointerForce();
 
-    const damping = Math.exp(-2.6 * dt);
+    const damping = Math.exp(-2.15 * dt);
     const rotationalDamping = Math.exp(-3.2 * dt);
-    const thermalKick = (8 + 34 * temperature) * Math.sqrt(dt);
-    const angularKick = (0.16 + 0.62 * temperature) * Math.sqrt(dt);
+    const thermalKick = (12 + 44 * temperature) * Math.sqrt(dt);
+    const angularKick = (0.22 + 0.78 * temperature) * Math.sqrt(dt);
 
     for (let i = 0; i < count; i++) {
       const translationalNoiseX = (rng() + rng() + rng() - 1.5) * thermalKick;
@@ -344,7 +357,7 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
       const i = bondA[b];
       const j = bondB[b];
       const strength = bondStrength[b];
-      ctx.globalAlpha = (0.08 + strength * 0.22) * contrast;
+      ctx.globalAlpha = (0.13 + strength * 0.30) * contrast;
       ctx.strokeStyle = colors.bond;
       ctx.beginPath();
       ctx.moveTo(x[i], y[i]);
@@ -354,7 +367,7 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
 
     for (let i = 0; i < count; i++) {
       const localOrder = order[i];
-      ctx.globalAlpha = (0.22 + localOrder * 0.32) * contrast;
+      ctx.globalAlpha = (0.34 + localOrder * 0.38) * contrast;
       ctx.fillStyle = localOrder > 0.56 ? colors.ordered : colors.particle;
       ctx.beginPath();
       ctx.arc(x[i], y[i], radius * (0.72 + localOrder * 0.12), 0, TAU);
@@ -370,7 +383,7 @@ export function createPatchyParticleRenderer(canvas: HTMLCanvasElement): Homepag
       }
 
       ctx.fillStyle = colors.patch;
-      ctx.globalAlpha = (0.28 + localOrder * 0.26) * contrast;
+      ctx.globalAlpha = (0.40 + localOrder * 0.28) * contrast;
       const patchRadius = Math.max(0.7, radius * 0.2);
       const patchDistance = radius * 0.86;
       for (let patch = 0; patch < PATCH_COUNT; patch++) {
