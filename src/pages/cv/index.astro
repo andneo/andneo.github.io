@@ -1,81 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { AUTHOR } from '../../config';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CV DATA — edit everything below to match your CV
-// For longer CVs consider splitting this data into src/data/cv.ts
-// ─────────────────────────────────────────────────────────────────────────────
-
-const workExperience = [
-  {
-    role: "Postdoctoral Research Fellow",
-    org: "University of Cambridge",
-    orgUrl: "https://www.ast.cam.ac.uk",
-    period: "Oct 2022 – present",
-    notes: ["Institute of Astronomy", "Royal Society University Research Fellowship"],
-  },
-];
-
-const education = [
-  { degree: "Ph.D.", field: "Astrophysics", inst: "University of Cambridge", year: "2022" },
-  { degree: "M.Phil.", field: "Astronomy", inst: "University of Cambridge", year: "2018" },
-  { degree: "B.Sc.", field: "Physics", inst: "University of Edinburgh", year: "2017", note: "First class honours" },
-];
-
-const interests = {
-  primary:   "Stellar Dynamics, Galactic Evolution, N-body Simulations",
-  secondary: "Spectral Methods, Gravitational Waves, Scientific Computing",
-};
-
-const workingPapers = [
-  {
-    title: "Stellar Feedback and the Regulation of Star Formation in Dwarf Galaxies",
-    coauthors: "with A. Collaborator",
-    href: "/publications/smith-2024/",
-  },
-  {
-    title: "A Pseudo-Spectral Method for Self-Gravitating Fluid Dynamics",
-    coauthors: "",
-    href: "/publications/smith-2023/",
-  },
-];
-
-const teaching = [
-  { role: "Lecturer", course: "Stellar Dynamics", inst: "University of Cambridge", year: "2023–24", courseUrl: "/course/stellar-dynamics/" },
-  { role: "Lecturer", course: "Numerical Methods", inst: "University of Cambridge", year: "2022–23", courseUrl: "/course/numerical-methods/" },
-  { role: "Teaching Assistant", course: "Theoretical Mechanics", inst: "University of Oxford", year: "2020–22", courseUrl: null },
-];
-
-const presentations = [
-  { year: "2024", items: ["Galaxy Formation Workshop, Garching (invited)", "SPHERIC 2024, Durham (contributed)"] },
-  { year: "2023", items: ["Princeton IAS Seminar", "IAU Symposium 390, Busan"] },
-  { year: "2022", items: ["Applied Micro Seminar, Cambridge (×3)", "Theory Seminar, Oxford"] },
-];
-
-const service = [
-  "Referee: ApJ, MNRAS, A&A, JCP (since 2021)",
-  "SOC Member: UK Stellar Dynamics Workshop 2024",
-  "Organiser: Cambridge Astro Theory Seminar 2022–23",
-  "Outreach: Institute of Astronomy Open Evenings (annual)",
-];
-
-const awards = [
-  { year: "2023", name: "Royal Astronomical Society Fowler Award" },
-  { year: "2022", name: "Royal Society University Research Fellowship" },
-  { year: "2021", name: "Best Student Paper, IAU Symposium 362" },
-];
-
-const skills = {
-  computing: "Python, Julia, C/C++, Fortran, MATLAB",
-  tools:     "Git, LaTeX, Slurm, Docker, AWS",
-  languages: "English (native), French (conversational)",
-};
-
-const references = [
-  { name: "Prof. A. N. Other",    inst: "University of Cambridge", url: "https://www.cam.ac.uk" },
-  { name: "Prof. B. Supervisor",  inst: "University of Oxford",    url: "https://www.ox.ac.uk" },
-];
+import cv from '../../data/cv.json';
+const { workExperience,education,interests,workingPapers,teaching,presentations,service,awards,skills,references } = cv;
 ---
 
 <Base title="Curriculum Vitae" noCanvas={true}>
@@ -98,10 +25,10 @@ const references = [
     </aside>
 
     <!-- Main CV content -->
-    <main class="cv-main">
+    <div class="cv-main">
 
       <h1 class="cv-name">{AUTHOR.name}</h1>
-      <p class="cv-updated">Last updated {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+
 
       <!-- Work experience -->
       <section class="cv-section">
@@ -224,7 +151,7 @@ const references = [
         </ul>
       </section>
 
-    </main>
+    </div>
   </div>
 </Base>
 

@@ -1,0 +1,57 @@
+{
+  "SITE_NAME": "networked matter lab",
+  "AUTHOR": {
+    "name": "Dr. Jane Smith",
+    "title": "Astrophysicist",
+    "institution": "University of Cambridge",
+    "department": "Institute of Astronomy",
+    "email": "js123@cam.ac.uk",
+    "bio": "I hold a PhD in Astrophysics from the University of Cambridge, specialising in\nstellar dynamics, galactic evolution, and numerical methods. I believe in open science and\ntry to contribute by sharing my <a href=\"/publications\">papers</a>,\n<a href=\"/post\">blog posts</a>, and <a href=\"/course\">lecture notes</a>.",
+    "avatar": "/images/avatar.jpg",
+    "cvPdf": "/files/cv.pdf"
+  },
+  "SOCIAL": {
+    "github": "https://github.com/yourusername",
+    "twitter": "https://twitter.com/yourusername",
+    "linkedin": "https://linkedin.com/in/yourname",
+    "googleScholar": "https://scholar.google.com/citations?user=XXXXX",
+    "orcid": "https://orcid.org/0000-0000-0000-0000",
+    "mastodon": null
+  },
+  "NAV": [
+    {
+      "label": "Research",
+      "href": "/#research"
+    },
+    {
+      "label": "Publications",
+      "href": "/publications/"
+    },
+    {
+      "label": "Articles",
+      "href": "/posts/"
+    },
+    {
+      "label": "Courses",
+      "href": "/course/"
+    },
+    {
+      "label": "About",
+      "href": "/about/"
+    },
+    {
+      "label": "CV",
+      "href": "/cv/"
+    }
+  ],
+  "HOME_POST_COUNT": 5,
+  "HOME_PUBLICATION_COUNT": 3,
+  "HOME_RESEARCH_COUNT": 4,
+  "CONTACT": {
+    "location": "Cambridge, United Kingdom",
+    "office": "Hoyle Building, Madingley Road",
+    "booking": null
+  },
+  "ACCENT_HUE": 38,
+  "SITE_URL": "https://andneo.github.io"
+}
