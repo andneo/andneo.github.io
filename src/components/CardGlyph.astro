@@ -1,0 +1,57 @@
+---
+interface Props { seed: string; label?: string; }
+const { seed, label } = Astro.props;
+let hash = 2166136261;
+for (let i = 0; i < seed.length; i++) {
+  hash ^= seed.charCodeAt(i);
+  hash = Math.imul(hash, 16777619);
+}
+const variant = Math.abs(hash) % 4;
+const rotation = (Math.abs(hash >> 5) % 24) - 12;
+---
+<div class="card-glyph" aria-hidden="true" title={label}>
+  <svg viewBox="0 0 64 48" role="presentation">
+    {variant === 0 && (
+      <g transform={`rotate(${rotation} 32 24)`}>
+        <ellipse cx="32" cy="24" rx="22" ry="10" />
+        <ellipse cx="32" cy="24" rx="10" ry="22" />
+        <circle cx="32" cy="24" r="3.2" class="fill" />
+        <circle cx="47" cy="18" r="2" class="fill accent" />
+      </g>
+    )}
+    {variant === 1 && (
+      <g transform={`rotate(${rotation} 32 24)`}>
+        <path d="M18 12 28 6l10 6v12l-10 6-10-6Z" />
+        <path d="m38 12 10-6 10 6v12l-10 6-10-6Z" />
+        <path d="m28 30 10-6 10 6v12l-10 6-10-6Z" />
+        <circle cx="38" cy="24" r="2.2" class="fill accent" />
+      </g>
+    )}
+    {variant === 2 && (
+      <g transform={`rotate(${rotation * 0.45} 32 24)`}>
+        <path d="M5 15c8-9 14 9 22 0s14 9 22 0 9 0 10 1" />
+        <path d="M5 25c8-9 14 9 22 0s14 9 22 0 9 0 10 1" />
+        <path d="M5 35c8-9 14 9 22 0s14 9 22 0 9 0 10 1" />
+        <circle cx="27" cy="25" r="2.2" class="fill accent" />
+      </g>
+    )}
+    {variant === 3 && (
+      <g transform={`rotate(${rotation} 32 24)`}>
+        <path d="M11 32 24 13l15 8 14-10M11 32l23 7 5-18 14 15M24 13l10 26" />
+        <circle cx="11" cy="32" r="2.5" class="fill" />
+        <circle cx="24" cy="13" r="2.5" class="fill accent" />
+        <circle cx="39" cy="21" r="2.5" class="fill" />
+        <circle cx="34" cy="39" r="2.5" class="fill" />
+        <circle cx="53" cy="11" r="2.5" class="fill" />
+        <circle cx="53" cy="36" r="2.5" class="fill accent" />
+      </g>
+    )}
+  </svg>
+</div>
+<style>
+  .card-glyph { width: 4rem; aspect-ratio: 4 / 3; display: grid; place-items: center; color: var(--accent); }
+  svg { width: 100%; height: 100%; overflow: visible; }
+  path, ellipse, circle { fill: none; stroke: currentColor; stroke-width: 1.25; vector-effect: non-scaling-stroke; opacity: .72; }
+  .fill { fill: currentColor; stroke: none; opacity: .72; }
+  .accent { color: var(--signal); opacity: .9; }
+</style>

@@ -1,5 +1,5 @@
 ---
-import { AUTHOR, SOCIAL, NAV, SITE_NAME, SITE_URL, ACCENT_HUE } from '../config';
+import { AUTHOR, SOCIAL, NAV, SITE_NAME, SITE_URL } from '../config';
 import { validateContent } from '../lib/content';
 import '../styles/global.css';
 import 'katex/dist/katex.min.css';
@@ -11,7 +11,7 @@ const canonical = new URL(Astro.url.pathname, SITE_URL);
 const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.url.pathname === '/' : Astro.url.pathname.startsWith(href));
 ---
 <!doctype html>
-<html lang="en" style={`--accent-hue:${ACCENT_HUE}`}>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -33,10 +33,10 @@ const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.ur
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <header class="site-header">
-      <div class="container header-inner">
+    <header class="site-header" data-header data-shrunk="false">
+      <div class="container header-inner" data-header-track>
         <a class="brand" href="/">{SITE_NAME}</a>
-        <nav class="site-nav" aria-label="Main navigation">
+        <nav class="site-nav" aria-label="Main navigation" data-navbar>
           {NAV.map(item => <a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>{item.label}</a>)}
         </nav>
         <button class="theme-button" type="button" hidden>Theme</button>
@@ -55,13 +55,71 @@ const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.ur
       </div>
     </footer>
     <script>
-      const button = document.querySelector<HTMLButtonElement>('.theme-button');
-      if (button) {
-        button.hidden = false;
+      const themeButton = document.querySelector<HTMLButtonElement>('.theme-button');
+      if (themeButton) {
+        themeButton.hidden = false;
         const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-        const update = () => { button.textContent = dark() ? 'Light theme' : 'Dark theme'; };
-        update(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',update);
-        button.addEventListener('click', () => { const next = dark() ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('theme',next); } catch {} update(); });
+        const updateTheme = () => { themeButton.textContent = dark() ? 'Light theme' : 'Dark theme'; };
+        updateTheme();
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+        themeButton.addEventListener('click', () => {
+          const next = dark() ? 'light' : 'dark';
+          document.documentElement.dataset.theme = next;
+          try { localStorage.setItem('theme', next); } catch {}
+          updateTheme();
+        });
+      }
+
+      const header = document.querySelector<HTMLElement>('[data-header]');
+      const track = document.querySelector<HTMLElement>('[data-header-track]');
+      if (header && track) {
+        let scrollFrame = 0;
+        let resizeFrame = 0;
+        const shrinkAt = 96;
+        const growAt = 28;
+
+        const measure = () => {
+          resizeFrame = 0;
+          if (innerWidth < 780) {
+            header.style.removeProperty('--header-compact');
+            return;
+          }
+          const style = getComputedStyle(track);
+          const gap = Number.parseFloat(style.columnGap) || 0;
+          const visible = [...track.children].filter((child): child is HTMLElement =>
+            child instanceof HTMLElement && child.getClientRects().length > 0
+          );
+          let width =
+            Number.parseFloat(style.paddingLeft) +
+            Number.parseFloat(style.paddingRight) +
+            Number.parseFloat(style.borderLeftWidth) +
+            Number.parseFloat(style.borderRightWidth);
+          visible.forEach((child, index) => {
+            width += child.getBoundingClientRect().width + (index ? gap : 0);
+          });
+          header.style.setProperty('--header-compact', `${Math.ceil(width + 4)}px`);
+        };
+
+        const apply = () => {
+          scrollFrame = 0;
+          const shrunk = header.dataset.shrunk === 'true';
+          if (!shrunk && scrollY > shrinkAt) header.dataset.shrunk = 'true';
+          else if (shrunk && scrollY < growAt) header.dataset.shrunk = 'false';
+        };
+
+        addEventListener('scroll', () => {
+          if (scrollFrame) return;
+          scrollFrame = requestAnimationFrame(apply);
+        }, { passive: true });
+
+        addEventListener('resize', () => {
+          if (resizeFrame) return;
+          resizeFrame = requestAnimationFrame(measure);
+        }, { passive: true });
+
+        document.fonts?.ready.then(measure).catch(() => {});
+        measure();
+        apply();
       }
     </script>
   </body>

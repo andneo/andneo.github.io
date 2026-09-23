@@ -55,7 +55,7 @@
   "ACCENT_HUE": 38,
   "SITE_URL": "https://andneo.github.io",
   "HERO": {
-    "renderer": "particles",
+    "renderer": "reaction-diffusion",
     "enabled": true
   }
 }

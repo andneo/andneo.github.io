@@ -4,10 +4,10 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 
 async function createRenderer(name: string, canvas: HTMLCanvasElement): Promise<HomepageRenderer> {
   switch (name) {
-    case 'particles':
-    case 'patchy-particles': {
-      const { createPatchyParticleRenderer } = await import('./renderers/patchy-particles');
-      return createPatchyParticleRenderer(canvas);
+    case 'reaction-diffusion':
+    case 'gray-scott': {
+      const { createReactionDiffusionRenderer } = await import('./renderers/reaction-diffusion');
+      return createReactionDiffusionRenderer(canvas);
     }
     default:
       throw new Error(`Unknown homepage renderer: ${name}`);
@@ -30,8 +30,8 @@ class HomepageBackgroundElement extends HTMLElement {
 
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const systemTheme = matchMedia('(prefers-color-scheme: dark)');
-    const lowCapability = (navigator.hardwareConcurrency || 4) <= 4 || matchMedia('(max-width: 720px)').matches;
-    const frameInterval = lowCapability ? 1000 / 30 : 1000 / 60;
+    const lowCapability = (navigator.hardwareConcurrency || 4) <= 4 || matchMedia('(max-width:720px)').matches;
+    const frameInterval = lowCapability ? 1000 / 10 : 1000 / 15;
 
     let renderer: HomepageRenderer | undefined;
     let frame = 0;
@@ -45,11 +45,11 @@ class HomepageBackgroundElement extends HTMLElement {
     let pageTravel = 1;
 
     const updateButton = () => {
-      button.textContent = paused ? 'Play animation' : 'Pause animation';
+      button.textContent = paused ? 'Play background' : 'Pause background';
       button.dataset.state = paused ? 'paused' : 'playing';
       button.setAttribute('aria-pressed', String(paused));
       canvas.dataset.motion = paused ? 'paused' : 'running';
-      status.textContent = paused ? 'Scientific field paused' : 'Scientific field running';
+      status.textContent = paused ? 'Reaction-diffusion field paused' : 'Reaction-diffusion field running';
     };
 
     const updateMetrics = () => {
@@ -59,15 +59,14 @@ class HomepageBackgroundElement extends HTMLElement {
     };
 
     const updateScroll = () => {
-      if (!renderer) return;
-      renderer.setScroll(clamp((window.scrollY - pageTop) / pageTravel, 0, 1));
+      renderer?.setScroll(clamp((window.scrollY - pageTop) / pageTravel, 0, 1));
     };
 
     const tick = (now: number) => {
       if (!renderer || paused || !visible || document.hidden) return;
       frame = requestAnimationFrame(tick);
       if (now - lastPaint < frameInterval) return;
-      const delta = lastStep ? Math.min((now - lastStep) / 1000, 0.05) : 1 / 60;
+      const delta = lastStep ? Math.min((now - lastStep) / 1000, 0.08) : frameInterval / 1000;
       lastStep = now;
       lastPaint = now;
       renderer.step(delta);
@@ -102,12 +101,6 @@ class HomepageBackgroundElement extends HTMLElement {
       sync();
     };
 
-    const handlePointer = (event: PointerEvent) => {
-      if (event.pointerType === 'touch') return;
-      renderer?.setPointer(event.clientX, event.clientY, true);
-    };
-    const clearPointer = () => renderer?.setPointer(0, 0, false);
-
     const refreshTheme = () => {
       renderer?.refreshTheme();
       renderer?.draw();
@@ -135,23 +128,19 @@ class HomepageBackgroundElement extends HTMLElement {
       window.removeEventListener('scroll', updateScroll);
       motion.removeEventListener('change', handleMotionPreference);
       systemTheme.removeEventListener('change', refreshTheme);
-      page.removeEventListener('pointermove', handlePointer);
-      page.removeEventListener('pointerleave', clearPointer);
       button.removeEventListener('click', toggle);
       renderer?.dispose();
     };
 
     try {
-      renderer = await createRenderer(this.dataset.renderer || 'particles', canvas);
+      renderer = await createRenderer(this.dataset.renderer || 'reaction-diffusion', canvas);
       if (disposed) {
         renderer.dispose();
         return;
       }
-
       canvas.hidden = false;
       poster.style.display = 'none';
       button.hidden = false;
-      status.textContent = motion.matches ? 'Static scientific field' : 'Scientific field running';
       renderer.setReducedMotion(motion.matches);
       renderer.refreshTheme();
       updateMetrics();
@@ -165,8 +154,6 @@ class HomepageBackgroundElement extends HTMLElement {
       window.addEventListener('scroll', updateScroll, { passive: true });
       motion.addEventListener('change', handleMotionPreference);
       systemTheme.addEventListener('change', refreshTheme);
-      page.addEventListener('pointermove', handlePointer, { passive: true });
-      page.addEventListener('pointerleave', clearPointer);
       button.addEventListener('click', toggle);
       sync();
     } catch {
@@ -174,7 +161,7 @@ class HomepageBackgroundElement extends HTMLElement {
       canvas.hidden = true;
       poster.style.display = '';
       button.hidden = true;
-      status.textContent = 'Static scientific field';
+      status.textContent = 'Static reaction-diffusion field';
     }
   }
 
