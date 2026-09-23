@@ -53,5 +53,9 @@
     "booking": null
   },
   "ACCENT_HUE": 38,
-  "SITE_URL": "https://andneo.github.io"
+  "SITE_URL": "https://andneo.github.io",
+  "HERO": {
+    "renderer": "particles",
+    "enabled": true
+  }
 }
