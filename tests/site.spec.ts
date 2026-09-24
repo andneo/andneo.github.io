@@ -16,13 +16,21 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
-test('hero lattice network is visible, animated and bounded',async({page})=>{
+test('hero lattice network has human-scale motion on real graph edges',async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
- await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
- const hero=page.locator('.home-hero');const canvas=hero.locator('.homepage-field canvas');
- await expect(canvas).toBeVisible();await expect(canvas).toHaveAttribute('data-motion','running');
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.goto('/');
+
+ const hero=page.locator('.home-hero');
+ const canvas=hero.locator('.homepage-field canvas');
+ await expect(canvas).toBeVisible();
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-motion-reason','animated');
  await expect(canvas).toHaveAttribute('data-lattice','kagome');
+ await expect(canvas).toHaveAttribute('data-layers','base-trail-active');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
+
  const nodes=Number(await canvas.getAttribute('data-nodes'));
  const edges=Number(await canvas.getAttribute('data-edges'));
  const walkers=Number(await canvas.getAttribute('data-walkers'));
@@ -30,58 +38,70 @@ test('hero lattice network is visible, animated and bounded',async({page})=>{
  expect(edges).toBeGreaterThan(nodes);expect(edges).toBeLessThanOrEqual(11000);
  expect(walkers).toBeGreaterThan(20);expect(walkers).toBeLessThanOrEqual(60);
  expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
+
  const layer=await page.locator('homepage-background').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
  const contentLayer=await page.locator('.hero-frame').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
  expect(layer).toBeGreaterThanOrEqual(1);expect(contentLayer).toBeGreaterThan(layer);
 
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>{
-  const ctx=node.getContext('2d')!;const data=ctx.getImageData(0,0,node.width,node.height).data;
-  let nonzero=0,samples=0;
-  for(let i=3;i<data.length;i+=64){if(data[i]>10)nonzero++;samples++;}
+  const ctx=node.getContext('2d')!;
+  const data=ctx.getImageData(0,0,node.width,node.height).data;
+  let covered=0,samples=0;
+  for(let i=3;i<data.length;i+=64){if(data[i]>10)covered++;samples++;}
   (node as HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray}).__networkSnapshot=data.slice();
   return{
-   coverage:nonzero/samples,
+   coverage:covered/samples,
    transitions:Number(node.dataset.transitions||0),
-   travel:Number(node.dataset.travel||0),
+   simSteps:Number(node.dataset.simSteps||0),
+   probeTravel:Number(node.dataset.probeTravel||0),
   };
  });
- // A one-pixel lattice should not need to occupy 0.5% of the hero area.
- // Motion is proved separately below by transitions, travel, speed and pixel deltas.
  expect(before.coverage).toBeGreaterThan(.001);
 
  await page.waitForTimeout(800);
+
  const after=await canvas.evaluate((node:HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray})=>{
-  const ctx=node.getContext('2d')!;const data=ctx.getImageData(0,0,node.width,node.height).data;
+  const ctx=node.getContext('2d')!;
+  const data=ctx.getImageData(0,0,node.width,node.height).data;
   const previous=node.__networkSnapshot;
   let changed=0,samples=0;
   if(previous){
    for(let i=0;i<data.length;i+=64){
     const delta=Math.abs(data[i]-previous[i])+Math.abs(data[i+1]-previous[i+1])+Math.abs(data[i+2]-previous[i+2])+Math.abs(data[i+3]-previous[i+3]);
-    if(delta>20)changed++;
+    if(delta>32)changed++;
     samples++;
    }
   }
   delete node.__networkSnapshot;
   return{
    transitions:Number(node.dataset.transitions||0),
-   travel:Number(node.dataset.travel||0),
-   meanSpeed:Number(node.dataset.meanSpeed||0),
+   simSteps:Number(node.dataset.simSteps||0),
+   probeTravel:Number(node.dataset.probeTravel||0),
    activeWalkers:Number(node.dataset.activeWalkers||0),
+   activeEdges:Number(node.dataset.activeEdges||0),
+   meanTravel:Number(node.dataset.meanTravel||0),
+   maxTravel:Number(node.dataset.maxTravel||0),
    lastTransitionTime:Number(node.dataset.lastTransitionTime||0),
    changedRatio:samples?changed/samples:0,
   };
  });
- expect(after.transitions).toBeGreaterThan(before.transitions);
- expect(after.travel).toBeGreaterThan(before.travel+25);
- expect(after.meanSpeed).toBeGreaterThan(.05);
- expect(after.activeWalkers).toBeGreaterThan(0);
+
+ expect(after.simSteps-before.simSteps).toBeGreaterThan(30);
+ expect(after.transitions-before.transitions).toBeGreaterThan(20);
+ expect(after.probeTravel-before.probeTravel).toBeGreaterThan(12);
+ expect(after.activeWalkers).toBeGreaterThan(4);
+ expect(after.activeEdges).toBeGreaterThan(4);
+ expect(after.meanTravel).toBeGreaterThan(1.5);
+ expect(after.maxTravel).toBeGreaterThan(4);
  expect(after.lastTransitionTime).toBeGreaterThan(0);
- expect(after.changedRatio).toBeGreaterThan(.0005);
+ expect(after.changedRatio).toBeGreaterThan(.0015);
 
  const quietAlpha=await page.evaluate(()=>{
   const node=document.querySelector<HTMLCanvasElement>('.home-hero .homepage-field canvas')!;
   const quiet=document.querySelector<HTMLElement>('.home-hero [data-field-quiet]')!;
-  const ctx=node.getContext('2d')!;const cr=node.getBoundingClientRect();const qr=quiet.getBoundingClientRect();
+  const ctx=node.getContext('2d')!;
+  const cr=node.getBoundingClientRect();
+  const qr=quiet.getBoundingClientRect();
   const sx=node.width/cr.width,sy=node.height/cr.height;
   const inset=Math.min(24,qr.width*.15,qr.height*.15);
   const x=Math.max(0,Math.floor((qr.left-cr.left+inset)*sx));
@@ -97,7 +117,7 @@ test('hero lattice network is visible, animated and bounded',async({page})=>{
 });
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-lattice','kagome');
+ const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-motion-reason','reduced-motion');await expect(field).toHaveAttribute('data-lattice','kagome');
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
  const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(350);

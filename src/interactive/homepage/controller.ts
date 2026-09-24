@@ -72,6 +72,7 @@ class HomepageBackgroundElement extends HTMLElement{
     const sync=()=>{
       cancelAnimationFrame(frame);frame=0;lastStep=0;lastPaint=0;
       canvas.dataset.motion=paused?'static':'running';
+      canvas.dataset.motionReason=paused?'reduced-motion':document.hidden?'document-hidden':visible?'animated':'offscreen';
       if(renderer&&visible&&!paused&&!document.hidden)frame=requestAnimationFrame(tick);
     };
 

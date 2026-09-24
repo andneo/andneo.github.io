@@ -284,7 +284,9 @@ export function createLatticeGraph(
     return graph;
   }
 
-  let spacing = lowCapability ? 34 : 28;
+  // Larger spacing makes one graph transition a human-visible displacement
+  // while also reducing fill-rate and graph density on the hero canvas.
+  let spacing = lowCapability ? 42 : 34;
   let graph: LatticeGraph;
   for (let attempt = 0; attempt < 7; attempt++) {
     switch (kind) {
