@@ -175,6 +175,35 @@ test('MDX components render and independent enhancements operate',async({page})=
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
 });
 
+test('homepage hero is centered, expanded and stripped of redundant metadata',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/');
+ const hero=page.locator('.home-hero');
+ const identity=hero.locator('.hero-identity');
+ await expect(identity).toBeVisible();
+ await expect(hero.locator('.hero-actions')).toHaveCount(0);
+ await expect(hero.locator('.hero-details')).toHaveCount(0);
+ const geometry=await page.evaluate(()=>{
+  const hero=document.querySelector<HTMLElement>('.home-hero')!;
+  const box=document.querySelector<HTMLElement>('.hero-identity')!;
+  const heading=box.querySelector<HTMLElement>('h1')!;
+  const hr=hero.getBoundingClientRect();
+  const br=box.getBoundingClientRect();
+  return{
+   centreOffset:Math.abs((br.left+br.width/2)-(hr.left+hr.width/2)),
+   widthRatio:br.width/hr.width,
+   height:br.height,
+   headingSize:Number.parseFloat(getComputedStyle(heading).fontSize),
+  };
+ });
+ expect(geometry.centreOffset).toBeLessThan(12);
+ expect(geometry.widthRatio).toBeGreaterThan(.65);
+ expect(geometry.height).toBeGreaterThan(330);
+ expect(geometry.headingSize).toBeLessThan(72);
+ expect(geometry.headingSize).toBeGreaterThan(38);
+});
+
 test('header expands at the top and compacts after scroll without overflow',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
  const header=page.locator('[data-header]');const track=page.locator('[data-header-track]');
