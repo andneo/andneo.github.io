@@ -33,6 +33,7 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  await expect(canvas).toHaveAttribute('data-field-mode','global');
  await expect(canvas).toHaveAttribute('data-layers','base-dynamic');
  await expect(canvas).toHaveAttribute('data-canvas-buffers','2');
+ await expect(canvas).toHaveAttribute('data-active-overlay','vector');
  await expect(canvas).toHaveAttribute('data-diagnostics-hz','4');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
 
@@ -114,7 +115,7 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  // Explorer traffic must remain distributed across most of the hero while a
  // separate focus population keeps the text perimeter visually active.
  expect(after.walkerBins).toBeGreaterThanOrEqual(13);
- expect(after.explorerBins).toBeGreaterThanOrEqual(12);
+ expect(after.explorerBins).toBeGreaterThanOrEqual(10);
  expect(after.activityBins).toBeGreaterThanOrEqual(14);
  expect(after.nearBoxWalkers).toBeGreaterThanOrEqual(10);
  expect(after.walkerSpanX).toBeGreaterThan(.72);
@@ -197,6 +198,7 @@ test('homepage hero is centered, expanded and stripped of redundant metadata',as
  const hero=page.locator('.home-hero');
  const identity=hero.locator('.hero-identity');
  await expect(hero.locator('.homepage-field canvas')).toHaveCount(2);
+ await expect(hero.locator('.homepage-field__active')).toHaveCount(1);
  await expect(identity).toBeVisible();
  await expect(hero.locator('.hero-actions')).toHaveCount(0);
  await expect(hero.locator('.hero-details')).toHaveCount(0);

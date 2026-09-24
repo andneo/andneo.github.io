@@ -3,12 +3,12 @@ import type { LatticeKind } from './renderers/lattices';
 
 const latticeKinds=new Set<LatticeKind>(['square','honeycomb','hexagonal','kagome','penrose']);
 
-async function createRenderer(name:string,baseCanvas:HTMLCanvasElement,canvas:HTMLCanvasElement,lattice:LatticeKind):Promise<HomepageRenderer>{
+async function createRenderer(name:string,baseCanvas:HTMLCanvasElement,canvas:HTMLCanvasElement,activeSvg:SVGSVGElement,lattice:LatticeKind):Promise<HomepageRenderer>{
   switch(name){
     case 'network':
     case 'network-walkers':{
       const {createNetworkRenderer}=await import('./renderers/network');
-      return createNetworkRenderer(baseCanvas,canvas,lattice);
+      return createNetworkRenderer(baseCanvas,canvas,activeSvg,lattice);
     }
     default:throw new Error(`Unknown homepage renderer: ${name}`);
   }
@@ -22,11 +22,12 @@ class HomepageBackgroundElement extends HTMLElement{
 
     const baseCanvas=this.querySelector<HTMLCanvasElement>('.homepage-field__base');
     const canvas=this.querySelector<HTMLCanvasElement>('.homepage-field__dynamic');
+    const activeSvg=this.querySelector<SVGSVGElement>('.homepage-field__active');
     const poster=this.querySelector<SVGElement>('.homepage-field__poster');
     const field=this.querySelector<HTMLElement>('.homepage-field');
     const hero=this.closest<HTMLElement>('.home-hero');
     const quietTargets=hero?[...hero.querySelectorAll<HTMLElement>('[data-field-quiet]')]:[];
-    if(!baseCanvas||!canvas||!poster||!field||!hero)return;
+    if(!baseCanvas||!canvas||!activeSvg||!poster||!field||!hero)return;
 
     const requested=this.dataset.lattice as LatticeKind|undefined;
     const lattice=requested&&latticeKinds.has(requested)?requested:'kagome';
@@ -122,7 +123,7 @@ class HomepageBackgroundElement extends HTMLElement{
       // HTML hidden attribute is present yields a zero-sized layout box.
       baseCanvas.hidden=false;
       canvas.hidden=false;
-      renderer=await createRenderer(this.dataset.renderer||'network',baseCanvas,canvas,lattice);
+      renderer=await createRenderer(this.dataset.renderer||'network',baseCanvas,canvas,activeSvg,lattice);
       if(disposed){renderer.dispose();return;}
 
       poster.style.display='none';

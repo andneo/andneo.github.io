@@ -57,6 +57,7 @@ interface Walker{
 export function createNetworkRenderer(
   baseCanvas:HTMLCanvasElement,
   canvas:HTMLCanvasElement,
+  activeSvg:SVGSVGElement,
   lattice:LatticeKind,
 ):HomepageRenderer{
   const visibleContext=canvas.getContext('2d',{alpha:true});
@@ -110,6 +111,14 @@ export function createNetworkRenderer(
   const queuedCoralEdges:number[]=[];
   const queuedPrimaryTrails:number[]=[];
   const queuedCoralTrails:number[]=[];
+  const activePaths={
+    primaryEdge:activeSvg.querySelector<SVGPathElement>('[data-active="primary-edge"]'),
+    coralEdge:activeSvg.querySelector<SVGPathElement>('[data-active="coral-edge"]'),
+    primaryParticle:activeSvg.querySelector<SVGPathElement>('[data-active="primary-particle"]'),
+    coralParticle:activeSvg.querySelector<SVGPathElement>('[data-active="coral-particle"]'),
+    primaryTarget:activeSvg.querySelector<SVGPathElement>('[data-active="primary-target"]'),
+    coralTarget:activeSvg.querySelector<SVGPathElement>('[data-active="coral-target"]'),
+  };
 
   const lowCapability=()=> (navigator.hardwareConcurrency||4)<=4 || matchMedia('(max-width:720px)').matches;
   const walkerTarget=()=> lowCapability()?34:58;
@@ -524,47 +533,37 @@ export function createNetworkRenderer(
     carve(baseCtx);
   }
 
-  function strokeActiveEdges(coral:boolean){
-    ctx.beginPath();
-    let count=0;
-    for(const walker of walkers){
-      if((walker.hue<CORAL_FRACTION)!==coral||walker.previous===walker.node)continue;
-      ctx.moveTo(graph.x[walker.previous],graph.y[walker.previous]);
-      ctx.lineTo(graph.x[walker.node],graph.y[walker.node]);
-      count++;
-    }
-    if(!count)return;
-    ctx.strokeStyle=coral?paint.coralActive:paint.primaryActive;
-    ctx.lineWidth=coral?2:1.55;
-    ctx.stroke();
+  function circlePath(x:number,y:number,radius:number){
+    return `M${(x+radius).toFixed(2)} ${y.toFixed(2)}a${radius} ${radius} 0 1 0 ${(-radius*2).toFixed(2)} 0a${radius} ${radius} 0 1 0 ${(radius*2).toFixed(2)} 0`;
   }
 
-  function fillWalkerDots(coral:boolean,target:boolean){
-    ctx.beginPath();
-    let count=0;
-    for(const walker of walkers){
-      if((walker.hue<CORAL_FRACTION)!==coral)continue;
-      const x=target?graph.x[walker.node]:walker.x;
-      const y=target?graph.y[walker.node]:walker.y;
-      const radius=target?(coral?1.45:1.1):(coral?2:1.65);
-      ctx.moveTo(x+radius,y);
-      ctx.arc(x,y,radius,0,Math.PI*2);
-      count++;
-    }
-    if(!count)return;
-    ctx.fillStyle=target
-      ?(coral?paint.coralTarget:paint.primaryTarget)
-      :(coral?paint.coralParticle:paint.primaryParticle);
-    ctx.fill();
-  }
+  function updateActiveOverlay(){
+    const primaryEdges:string[]=[];
+    const coralEdges:string[]=[];
+    const primaryParticles:string[]=[];
+    const coralParticles:string[]=[];
+    const primaryTargets:string[]=[];
+    const coralTargets:string[]=[];
 
-  function drawActiveOverlay(){
-    strokeActiveEdges(false);
-    strokeActiveEdges(true);
-    fillWalkerDots(false,false);
-    fillWalkerDots(true,false);
-    fillWalkerDots(false,true);
-    fillWalkerDots(true,true);
+    for(const walker of walkers){
+      const coral=walker.hue<CORAL_FRACTION;
+      if(walker.previous!==walker.node){
+        (coral?coralEdges:primaryEdges).push(
+          `M${graph.x[walker.previous].toFixed(2)} ${graph.y[walker.previous].toFixed(2)}L${graph.x[walker.node].toFixed(2)} ${graph.y[walker.node].toFixed(2)}`,
+        );
+      }
+      (coral?coralParticles:primaryParticles).push(circlePath(walker.x,walker.y,coral?2:1.65));
+      (coral?coralTargets:primaryTargets).push(circlePath(
+        graph.x[walker.node],graph.y[walker.node],coral?1.45:1.1,
+      ));
+    }
+
+    activePaths.primaryEdge?.setAttribute('d',primaryEdges.join(''));
+    activePaths.coralEdge?.setAttribute('d',coralEdges.join(''));
+    activePaths.primaryParticle?.setAttribute('d',primaryParticles.join(''));
+    activePaths.coralParticle?.setAttribute('d',coralParticles.join(''));
+    activePaths.primaryTarget?.setAttribute('d',primaryTargets.join(''));
+    activePaths.coralTarget?.setAttribute('d',coralTargets.join(''));
   }
 
   function compose(){
@@ -572,8 +571,8 @@ export function createNetworkRenderer(
 
     fadeTrails(pendingFadeSteps);
     flushTrails();
-    drawActiveOverlay();
     carve(ctx);
+    updateActiveOverlay();
     pendingFadeSteps=0;
     renderFrames++;
 
@@ -646,6 +645,7 @@ export function createNetworkRenderer(
     canvas.style.height=`${height}px`;
     baseCanvas.style.width=`${width}px`;
     baseCanvas.style.height=`${height}px`;
+    activeSvg.setAttribute('viewBox',`0 0 ${width} ${height}`);
     configureLayer(baseCanvas,baseCtx);
     configureLayer(canvas,ctx);
 
@@ -654,6 +654,7 @@ export function createNetworkRenderer(
     canvas.dataset.dpr=dpr.toFixed(2);
     canvas.dataset.layers='base-dynamic';
     canvas.dataset.canvasBuffers='2';
+    canvas.dataset.activeOverlay='vector';
     canvas.dataset.diagnosticsHz='4';
     buildField();
     rebuildBlockedEdges();
@@ -727,6 +728,12 @@ export function createNetworkRenderer(
     secondary=parseColor(style.getPropertyValue('--field-secondary'),secondary);
     tertiary=parseColor(style.getPropertyValue('--field-tertiary'),tertiary);
     updatePaint();
+    activeSvg.style.setProperty('--network-primary-edge',paint.primaryActive);
+    activeSvg.style.setProperty('--network-coral-edge',paint.coralActive);
+    activeSvg.style.setProperty('--network-primary-particle',paint.primaryParticle);
+    activeSvg.style.setProperty('--network-coral-particle',paint.coralParticle);
+    activeSvg.style.setProperty('--network-primary-target',paint.primaryTarget);
+    activeSvg.style.setProperty('--network-coral-target',paint.coralTarget);
     clearLayer(canvas,ctx);
     renderBaseGraph();
     pendingFadeSteps=0;
@@ -744,6 +751,7 @@ export function createNetworkRenderer(
     queuedCoralEdges.length=0;
     queuedPrimaryTrails.length=0;
     queuedCoralTrails.length=0;
+    for(const path of Object.values(activePaths))path?.setAttribute('d','');
     clearLayer(baseCanvas,baseCtx);
     clearLayer(canvas,ctx);
   }
