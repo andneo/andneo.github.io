@@ -14,7 +14,8 @@ const lattice = site.HERO.lattice ?? 'kagome';
         <path d="M185 300 290 240l105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Z" />
       </g>
     </svg>
-    <canvas aria-hidden="true" hidden></canvas>
+    <canvas class="homepage-field__base" aria-hidden="true" hidden></canvas>
+    <canvas class="homepage-field__dynamic" aria-hidden="true" hidden></canvas>
   </div>
 </homepage-background>
 <script>
@@ -23,8 +24,10 @@ const lattice = site.HERO.lattice ?? 'kagome';
 <style>
   homepage-background { position:absolute; inset:0; z-index:1; display:block; pointer-events:none; overflow:hidden; }
   .homepage-field { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
-  .homepage-field::after { content:''; position:absolute; inset:0; z-index:2; background:var(--field-vignette); pointer-events:none; }
-  .homepage-field__poster,canvas { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; }
+  .homepage-field::after { content:''; position:absolute; inset:0; z-index:3; background:var(--field-vignette); pointer-events:none; }
+  .homepage-field__poster,.homepage-field__base,.homepage-field__dynamic { position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .homepage-field__poster,.homepage-field__base { z-index:1; }
+  .homepage-field__dynamic { z-index:2; }
   .homepage-field__poster { opacity:.75; }
   .poster-network { fill:none; stroke:var(--field-primary); stroke-width:1; opacity:.2; }
   canvas { opacity:1; }

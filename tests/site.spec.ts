@@ -23,15 +23,17 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  await page.goto('/');
 
  const hero=page.locator('.home-hero');
- const canvas=hero.locator('.homepage-field canvas');
+ const canvas=hero.locator('.homepage-field__dynamic');
  await expect(canvas).toBeVisible();
  await expect(canvas).toHaveAttribute('data-motion','running');
  await expect(canvas).toHaveAttribute('data-motion-preference','no-preference');
- await expect(canvas).toHaveAttribute('data-motion-override','none');
+ await expect(canvas).toHaveAttribute('data-motion-policy','always-animated');
  await expect(canvas).toHaveAttribute('data-motion-reason','animated');
  await expect(canvas).toHaveAttribute('data-lattice','kagome');
  await expect(canvas).toHaveAttribute('data-field-mode','global');
- await expect(canvas).toHaveAttribute('data-layers','base-trail-active');
+ await expect(canvas).toHaveAttribute('data-layers','base-dynamic');
+ await expect(canvas).toHaveAttribute('data-canvas-buffers','2');
+ await expect(canvas).toHaveAttribute('data-diagnostics-hz','4');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
 
  const nodes=Number(await canvas.getAttribute('data-nodes'));
@@ -106,7 +108,8 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(after.maxTravel).toBeGreaterThan(4);
  // The active simulation must occupy the hero, not collapse into the annulus
  // surrounding the text exclusion rectangle.
- expect(after.focusWalkers).toBeGreaterThan(15);
+ expect(after.focusWalkers/walkers).toBeGreaterThan(.32);
+ expect(after.focusWalkers/walkers).toBeLessThan(.44);
  expect(after.explorerWalkers).toBeGreaterThan(after.focusWalkers);
  // Explorer traffic must remain distributed across most of the hero while a
  // separate focus population keeps the text perimeter visually active.
@@ -120,7 +123,7 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(after.changedRatio).toBeGreaterThan(.0015);
 
  const quietAlpha=await page.evaluate(()=>{
-  const node=document.querySelector<HTMLCanvasElement>('.home-hero .homepage-field canvas')!;
+  const node=document.querySelector<HTMLCanvasElement>('.home-hero .homepage-field__dynamic')!;
   const quiet=document.querySelector<HTMLElement>('.home-hero [data-field-quiet]')!;
   const ctx=node.getContext('2d')!;
   const cr=node.getBoundingClientRect();
@@ -138,27 +141,39 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(quietAlpha).toBeLessThan(.002);
  expect(errors).toEqual([]);
 });
-test('hero motion override can animate when system preference is reduced',async({page})=>{
+test('hero animation is universal and pauses only when offscreen',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.emulateMedia({reducedMotion:'reduce'});
- await page.goto('/?motion=full');
- const canvas=page.locator('.home-hero .homepage-field canvas');
+ await page.goto('/');
+ const canvas=page.locator('.home-hero .homepage-field__dynamic');
  await expect(canvas).toHaveAttribute('data-motion-preference','reduce');
- await expect(canvas).toHaveAttribute('data-motion-override','full');
+ await expect(canvas).toHaveAttribute('data-motion-policy','always-animated');
  await expect(canvas).toHaveAttribute('data-motion','running');
  await expect(canvas).toHaveAttribute('data-motion-reason','animated');
  const before=Number(await canvas.getAttribute('data-sim-steps'));
+ await page.waitForTimeout(600);
+ const animated=Number(await canvas.getAttribute('data-sim-steps'));
+ expect(animated).toBeGreaterThan(before+20);
+
+ await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+ await expect(canvas).toHaveAttribute('data-motion','paused');
+ await expect(canvas).toHaveAttribute('data-motion-reason','offscreen');
+ await page.waitForTimeout(300);
+ const paused=Number(await canvas.getAttribute('data-sim-steps'));
  await page.waitForTimeout(500);
- const after=Number(await canvas.getAttribute('data-sim-steps'));
- expect(after).toBeGreaterThan(before+15);
+ expect(Number(await canvas.getAttribute('data-sim-steps'))).toBe(paused);
+
+ await page.evaluate(()=>scrollTo(0,0));
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await page.waitForTimeout(500);
+ expect(Number(await canvas.getAttribute('data-sim-steps'))).toBeGreaterThan(paused+15);
 });
-test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
+test('keyboard access, dark theme and legacy redirect remain intact',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-motion-preference','reduce');await expect(field).toHaveAttribute('data-motion-override','none');await expect(field).toHaveAttribute('data-motion-reason','system-reduced-motion');await expect(field).toHaveAttribute('data-lattice','kagome');
+ const field=page.locator('.home-hero .homepage-field__dynamic');
+ await expect(field).toHaveAttribute('data-motion','running');
+ await expect(field).toHaveAttribute('data-motion-policy','always-animated');
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
- const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
- await page.waitForTimeout(350);
- expect(await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL())).toBe(staticFrame);
  await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
  await page.getByRole('button',{name:'Dark theme'}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
@@ -181,6 +196,7 @@ test('homepage hero is centered, expanded and stripped of redundant metadata',as
  await page.goto('/');
  const hero=page.locator('.home-hero');
  const identity=hero.locator('.hero-identity');
+ await expect(hero.locator('.homepage-field canvas')).toHaveCount(2);
  await expect(identity).toBeVisible();
  await expect(hero.locator('.hero-actions')).toHaveCount(0);
  await expect(hero.locator('.hero-details')).toHaveCount(0);

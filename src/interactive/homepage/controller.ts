@@ -3,12 +3,12 @@ import type { LatticeKind } from './renderers/lattices';
 
 const latticeKinds=new Set<LatticeKind>(['square','honeycomb','hexagonal','kagome','penrose']);
 
-async function createRenderer(name:string,canvas:HTMLCanvasElement,lattice:LatticeKind):Promise<HomepageRenderer>{
+async function createRenderer(name:string,baseCanvas:HTMLCanvasElement,canvas:HTMLCanvasElement,lattice:LatticeKind):Promise<HomepageRenderer>{
   switch(name){
     case 'network':
     case 'network-walkers':{
       const {createNetworkRenderer}=await import('./renderers/network');
-      return createNetworkRenderer(canvas,lattice);
+      return createNetworkRenderer(baseCanvas,canvas,lattice);
     }
     default:throw new Error(`Unknown homepage renderer: ${name}`);
   }
@@ -20,26 +20,26 @@ class HomepageBackgroundElement extends HTMLElement{
   async connectedCallback(){
     if(this.dataset.enabled!=='true')return;
 
-    const canvas=this.querySelector<HTMLCanvasElement>('canvas');
+    const baseCanvas=this.querySelector<HTMLCanvasElement>('.homepage-field__base');
+    const canvas=this.querySelector<HTMLCanvasElement>('.homepage-field__dynamic');
     const poster=this.querySelector<SVGElement>('.homepage-field__poster');
     const field=this.querySelector<HTMLElement>('.homepage-field');
     const hero=this.closest<HTMLElement>('.home-hero');
     const quietTargets=hero?[...hero.querySelectorAll<HTMLElement>('[data-field-quiet]')]:[];
-    if(!canvas||!poster||!field||!hero)return;
+    if(!baseCanvas||!canvas||!poster||!field||!hero)return;
 
     const requested=this.dataset.lattice as LatticeKind|undefined;
     const lattice=requested&&latticeKinds.has(requested)?requested:'kagome';
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
-    const motionParam=new URLSearchParams(location.search).get('motion');
-    const motionOverride=motionParam==='full'||motionParam==='reduce'?motionParam:null;
-    const wantsReducedMotion=()=>motionOverride==='reduce'||(motionOverride!=='full'&&motion.matches);
     const systemTheme=matchMedia('(prefers-color-scheme: dark)');
     const lowCapability=(navigator.hardwareConcurrency||4)<=4||matchMedia('(max-width:720px)').matches;
-    const frameInterval=lowCapability?1000/20:1000/30;
+    const preferredInterval=lowCapability?1000/20:1000/30;
+    let frameInterval=preferredInterval;
+    let slowFrames=0,healthyFrames=0;
 
     let renderer:HomepageRenderer|undefined;
     let frame=0,lastStep=0,lastPaint=0;
-    let visible=true,paused=wantsReducedMotion(),disposed=false;
+    let visible=true,disposed=false;
 
     const quietRects=():FieldRect[]=>{
       const fieldRect=field.getBoundingClientRect();
@@ -63,30 +63,38 @@ class HomepageBackgroundElement extends HTMLElement{
       renderer.setQuietZones(rects);
     };
 
+    const updatePerformanceMode=(workMs:number)=>{
+      const expensive=workMs>Math.min(14,frameInterval*.45);
+      if(expensive){slowFrames++;healthyFrames=0;}else{healthyFrames++;slowFrames=Math.max(0,slowFrames-1);}
+      if(!lowCapability&&frameInterval<49&&slowFrames>=8){
+        frameInterval=1000/20;slowFrames=0;healthyFrames=0;
+      }else if(!lowCapability&&frameInterval>40&&healthyFrames>=180){
+        frameInterval=preferredInterval;slowFrames=0;healthyFrames=0;
+      }
+      canvas.dataset.targetFps=String(Math.round(1000/frameInterval));
+      canvas.dataset.performanceMode=frameInterval>40?'conservative':'normal';
+    };
+
     const tick=(now:number)=>{
-      if(!renderer||paused||!visible||document.hidden)return;
+      if(!renderer||!visible||document.hidden)return;
       frame=requestAnimationFrame(tick);
       if(now-lastPaint<frameInterval)return;
       const delta=lastStep?Math.min((now-lastStep)/1000,.07):frameInterval/1000;
       lastStep=now;lastPaint=now;
+      const workStart=performance.now();
       renderer.step(delta);renderer.draw();
+      updatePerformanceMode(performance.now()-workStart);
     };
 
     const sync=()=>{
       cancelAnimationFrame(frame);frame=0;lastStep=0;lastPaint=0;
       canvas.dataset.motionPreference=motion.matches?'reduce':'no-preference';
-      canvas.dataset.motionOverride=motionOverride??'none';
-      canvas.dataset.motion=paused?'static':'running';
-      canvas.dataset.motionReason=paused
-        ?(motionOverride==='reduce'?'query-reduced-motion':'system-reduced-motion')
-        :document.hidden?'document-hidden':visible?'animated':'offscreen';
-      if(renderer&&visible&&!paused&&!document.hidden)frame=requestAnimationFrame(tick);
-    };
-
-    const handleMotion=()=>{
-      paused=wantsReducedMotion();
-      renderer?.setReducedMotion(paused);
-      sync();
+      canvas.dataset.motionPolicy='always-animated';
+      canvas.dataset.motion=visible&&!document.hidden?'running':'paused';
+      canvas.dataset.motionReason=document.hidden?'document-hidden':visible?'animated':'offscreen';
+      canvas.dataset.targetFps=String(Math.round(1000/frameInterval));
+      canvas.dataset.performanceMode=frameInterval>40?'conservative':'normal';
+      if(renderer&&visible&&!document.hidden)frame=requestAnimationFrame(tick);
     };
 
     const refreshTheme=()=>{renderer?.refreshTheme();renderer?.draw();};
@@ -105,7 +113,6 @@ class HomepageBackgroundElement extends HTMLElement{
       disposed=true;cancelAnimationFrame(frame);
       intersection.disconnect();resize.disconnect();themeObserver.disconnect();
       document.removeEventListener('visibilitychange',sync);
-      motion.removeEventListener('change',handleMotion);
       systemTheme.removeEventListener('change',refreshTheme);
       renderer?.dispose();
     };
@@ -113,8 +120,9 @@ class HomepageBackgroundElement extends HTMLElement{
     try{
       // The renderer must measure a visible canvas. Constructing it while the
       // HTML hidden attribute is present yields a zero-sized layout box.
+      baseCanvas.hidden=false;
       canvas.hidden=false;
-      renderer=await createRenderer(this.dataset.renderer||'network',canvas,lattice);
+      renderer=await createRenderer(this.dataset.renderer||'network',baseCanvas,canvas,lattice);
       if(disposed){renderer.dispose();return;}
 
       poster.style.display='none';
@@ -123,20 +131,18 @@ class HomepageBackgroundElement extends HTMLElement{
       renderer.resize();
       updateGeometry();
       renderer.refreshTheme();
-      paused=wantsReducedMotion();
-      renderer.setReducedMotion(paused);
+      renderer.setReducedMotion(false);
       renderer.draw();
 
       intersection.observe(hero);resize.observe(field);
       quietTargets.forEach(target=>resize.observe(target));
       themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
       document.addEventListener('visibilitychange',sync);
-      motion.addEventListener('change',handleMotion);
       systemTheme.addEventListener('change',refreshTheme);
       sync();
     }catch(error){
       console.error('Homepage network renderer failed',error);
-      renderer?.dispose();canvas.hidden=true;poster.style.display='';
+      renderer?.dispose();baseCanvas.hidden=true;canvas.hidden=true;poster.style.display='';
     }
   }
 

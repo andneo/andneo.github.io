@@ -55,21 +55,16 @@ interface Walker{
 }
 
 export function createNetworkRenderer(
+  baseCanvas:HTMLCanvasElement,
   canvas:HTMLCanvasElement,
   lattice:LatticeKind,
 ):HomepageRenderer{
   const visibleContext=canvas.getContext('2d',{alpha:true});
-  if(!visibleContext)throw new Error('Canvas 2D is unavailable');
-
-  const baseCanvas=document.createElement('canvas');
-  const trailCanvas=document.createElement('canvas');
   const baseContext=baseCanvas.getContext('2d',{alpha:true});
-  const trailContext=trailCanvas.getContext('2d',{alpha:true});
-  if(!baseContext||!trailContext)throw new Error('Off-screen Canvas 2D is unavailable');
+  if(!visibleContext||!baseContext)throw new Error('Canvas 2D is unavailable');
 
   const ctx:CanvasRenderingContext2D=visibleContext;
   const baseCtx:CanvasRenderingContext2D=baseContext;
-  const trailCtx:CanvasRenderingContext2D=trailContext;
   const rng=createRng();
 
   let width=1;
@@ -82,6 +77,8 @@ export function createNetworkRenderer(
   let obstacle:FieldRect|null=null;
   let field=new Float32Array(0);
   let busy=new Uint16Array(0);
+  let blockedNeighbors=new Uint8Array(0);
+  let blockedEdges=new Uint8Array(0);
   let spawnBins:number[][]=[];
   let focusNodes:number[]=[];
   let spawnCursor=0;
@@ -90,10 +87,29 @@ export function createNetworkRenderer(
   let transitionCount=0;
   let simulationSteps=0;
   let renderFrames=0;
+  let pendingFadeSteps=0;
   let lastTransitionTime=0;
+  let lastDiagnosticTime=0;
   let primary:[number,number,number]=[120,170,166];
   let secondary:[number,number,number]=[239,128,105];
   let tertiary:[number,number,number]=[103,133,150];
+  let paint={
+    primaryEdge:'rgba(120,170,166,.38)',
+    coralEdge:'rgba(239,128,105,.56)',
+    primaryTrail:'rgba(120,170,166,.42)',
+    coralTrail:'rgba(239,128,105,.62)',
+    primaryActive:'rgba(120,170,166,.70)',
+    coralActive:'rgba(239,128,105,.86)',
+    primaryParticle:'rgba(120,170,166,.86)',
+    coralParticle:'rgba(239,128,105,.96)',
+    primaryTarget:'rgba(120,170,166,.62)',
+    coralTarget:'rgba(239,128,105,.80)',
+    base:'rgba(103,133,150,.10)',
+  };
+  const queuedPrimaryEdges:number[]=[];
+  const queuedCoralEdges:number[]=[];
+  const queuedPrimaryTrails:number[]=[];
+  const queuedCoralTrails:number[]=[];
 
   const lowCapability=()=> (navigator.hardwareConcurrency||4)<=4 || matchMedia('(max-width:720px)').matches;
   const walkerTarget=()=> lowCapability()?34:58;
@@ -119,6 +135,38 @@ export function createNetworkRenderer(
       if(roundedRectSdf(ax+(bx-ax)*t,ay+(by-ay)*t,obstacle)<clearance)return true;
     }
     return false;
+  }
+
+  function rebuildBlockedEdges(){
+    blockedNeighbors=new Uint8Array(graph.neighbors.length);
+    blockedEdges=new Uint8Array(graph.edgeCount);
+    if(!obstacle)return;
+
+    for(let node=0;node<graph.nodeCount;node++){
+      for(let p=graph.offsets[node];p<graph.offsets[node+1];p++){
+        blockedNeighbors[p]=edgeIntersectsObstacle(node,graph.neighbors[p])?1:0;
+      }
+    }
+    for(let edge=0;edge<graph.edgeCount;edge++){
+      blockedEdges[edge]=edgeIntersectsObstacle(graph.edges[edge*2],graph.edges[edge*2+1])?1:0;
+    }
+  }
+
+  function updatePaint(){
+    const rgb=(color:[number,number,number],alpha:number)=>`rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+    paint={
+      primaryEdge:rgb(primary,.38),
+      coralEdge:rgb(secondary,.56),
+      primaryTrail:rgb(primary,.42),
+      coralTrail:rgb(secondary,.62),
+      primaryActive:rgb(primary,.70),
+      coralActive:rgb(secondary,.86),
+      primaryParticle:rgb(primary,.86),
+      coralParticle:rgb(secondary,.96),
+      primaryTarget:rgb(primary,.62),
+      coralTarget:rgb(secondary,.80),
+      base:rgb(tertiary,.10),
+    };
   }
 
   function clearLayer(layer:HTMLCanvasElement,context:CanvasRenderingContext2D){
@@ -302,7 +350,7 @@ export function createNetworkRenderer(
       const candidate=graph.neighbors[p];
       const nextX=graph.x[candidate];
       const nextY=graph.y[candidate];
-      if(obstacle&&(roundedRectSdf(nextX,nextY,obstacle)<12||edgeIntersectsObstacle(walker.node,candidate)))continue;
+      if(obstacle&&(roundedRectSdf(nextX,nextY,obstacle)<12||blockedNeighbors[p]))continue;
 
       const dx=nextX-currentX;
       const dy=nextY-currentY;
@@ -336,15 +384,15 @@ export function createNetworkRenderer(
     return best;
   }
 
+  function queueSegment(target:number[],x1:number,y1:number,x2:number,y2:number){
+    target.push(x1,y1,x2,y2);
+  }
+
   function drawTrailEdge(a:number,b:number,walker:Walker){
-    const coral=walker.hue<CORAL_FRACTION;
-    const color=coral?secondary:primary;
-    trailCtx.beginPath();
-    trailCtx.moveTo(graph.x[a],graph.y[a]);
-    trailCtx.lineTo(graph.x[b],graph.y[b]);
-    trailCtx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${coral?.56:.38})`;
-    trailCtx.lineWidth=coral?1.65:1.25;
-    trailCtx.stroke();
+    queueSegment(
+      walker.hue<CORAL_FRACTION?queuedCoralEdges:queuedPrimaryEdges,
+      graph.x[a],graph.y[a],graph.x[b],graph.y[b],
+    );
   }
 
   function attemptAttractorMove(walker:Walker){
@@ -375,14 +423,10 @@ export function createNetworkRenderer(
   }
 
   function drawParticleTrail(walker:Walker,fromX:number,fromY:number){
-    const coral=walker.hue<CORAL_FRACTION;
-    const color=coral?secondary:primary;
-    trailCtx.beginPath();
-    trailCtx.moveTo(fromX,fromY);
-    trailCtx.lineTo(walker.x,walker.y);
-    trailCtx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${coral?.62:.42})`;
-    trailCtx.lineWidth=coral?1.45:1.05;
-    trailCtx.stroke();
+    queueSegment(
+      walker.hue<CORAL_FRACTION?queuedCoralTrails:queuedPrimaryTrails,
+      fromX,fromY,walker.x,walker.y,
+    );
   }
 
   function advanceWalker(walker:Walker){
@@ -421,32 +465,57 @@ export function createNetworkRenderer(
     }
   }
 
-  function fadeTrails(){
-    trailCtx.save();
-    trailCtx.globalCompositeOperation='destination-out';
-    trailCtx.fillStyle=`rgba(0,0,0,${TRAIL_FADE})`;
-    trailCtx.fillRect(0,0,width,height);
-    trailCtx.restore();
+  function fadeTrails(steps:number){
+    if(steps<=0)return;
+    const alpha=1-Math.pow(1-TRAIL_FADE,steps);
+    ctx.save();
+    ctx.globalCompositeOperation='destination-out';
+    ctx.fillStyle=`rgba(0,0,0,${alpha})`;
+    ctx.fillRect(0,0,width,height);
+    ctx.restore();
+  }
+
+  function strokeSegments(segments:number[],style:string,lineWidth:number,alpha=1){
+    if(!segments.length)return;
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.strokeStyle=style;
+    ctx.lineWidth=lineWidth;
+    ctx.beginPath();
+    for(let i=0;i<segments.length;i+=4){
+      ctx.moveTo(segments[i],segments[i+1]);
+      ctx.lineTo(segments[i+2],segments[i+3]);
+    }
+    ctx.stroke();
+    ctx.restore();
+    segments.length=0;
+  }
+
+  function flushTrails(){
+    const survival=Math.pow(1-TRAIL_FADE,pendingFadeSteps*.5);
+    strokeSegments(queuedPrimaryEdges,paint.primaryEdge,1.25,survival);
+    strokeSegments(queuedCoralEdges,paint.coralEdge,1.65,survival);
+    strokeSegments(queuedPrimaryTrails,paint.primaryTrail,1.05,survival);
+    strokeSegments(queuedCoralTrails,paint.coralTrail,1.45,survival);
   }
 
   function simulationStep(){
-    fadeTrails();
     ageBusy();
     for(const walker of walkers)advanceWalker(walker);
-    carve(trailCtx);
     simulationSteps++;
+    pendingFadeSteps++;
   }
 
   function renderBaseGraph(){
     clearLayer(baseCanvas,baseCtx);
     baseCtx.save();
     baseCtx.lineWidth=.7;
-    baseCtx.strokeStyle=`rgba(${tertiary[0]},${tertiary[1]},${tertiary[2]},.10)`;
+    baseCtx.strokeStyle=paint.base;
     baseCtx.beginPath();
-    for(let e=0;e<graph.edges.length;e+=2){
-      const a=graph.edges[e];
-      const b=graph.edges[e+1];
-      if(edgeIntersectsObstacle(a,b))continue;
+    for(let e=0;e<graph.edgeCount;e++){
+      if(blockedEdges[e])continue;
+      const a=graph.edges[e*2];
+      const b=graph.edges[e*2+1];
       baseCtx.moveTo(graph.x[a],graph.y[a]);
       baseCtx.lineTo(graph.x[b],graph.y[b]);
     }
@@ -455,54 +524,64 @@ export function createNetworkRenderer(
     carve(baseCtx);
   }
 
-  function drawActiveOverlay(){
+  function strokeActiveEdges(coral:boolean){
+    ctx.beginPath();
+    let count=0;
     for(const walker of walkers){
-      const coral=walker.hue<CORAL_FRACTION;
-      const color=coral?secondary:primary;
-      const targetX=graph.x[walker.node];
-      const targetY=graph.y[walker.node];
-
-      if(walker.previous!==walker.node&&!edgeIntersectsObstacle(walker.previous,walker.node)){
-        ctx.beginPath();
-        ctx.moveTo(graph.x[walker.previous],graph.y[walker.previous]);
-        ctx.lineTo(targetX,targetY);
-        ctx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${coral?.86:.70})`;
-        ctx.lineWidth=coral?2.0:1.55;
-        ctx.stroke();
-      }
-
-      // The moving spring particle is explicitly visible, not just its target.
-      ctx.beginPath();
-      ctx.arc(walker.x,walker.y,coral?2.0:1.65,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${color[0]},${color[1]},${color[2]},${coral?.96:.86})`;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(targetX,targetY,coral?1.45:1.1,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${color[0]},${color[1]},${color[2]},${coral?.80:.62})`;
-      ctx.fill();
+      if((walker.hue<CORAL_FRACTION)!==coral||walker.previous===walker.node)continue;
+      ctx.moveTo(graph.x[walker.previous],graph.y[walker.previous]);
+      ctx.lineTo(graph.x[walker.node],graph.y[walker.node]);
+      count++;
     }
+    if(!count)return;
+    ctx.strokeStyle=coral?paint.coralActive:paint.primaryActive;
+    ctx.lineWidth=coral?2:1.55;
+    ctx.stroke();
+  }
+
+  function fillWalkerDots(coral:boolean,target:boolean){
+    ctx.beginPath();
+    let count=0;
+    for(const walker of walkers){
+      if((walker.hue<CORAL_FRACTION)!==coral)continue;
+      const x=target?graph.x[walker.node]:walker.x;
+      const y=target?graph.y[walker.node]:walker.y;
+      const radius=target?(coral?1.45:1.1):(coral?2:1.65);
+      ctx.moveTo(x+radius,y);
+      ctx.arc(x,y,radius,0,Math.PI*2);
+      count++;
+    }
+    if(!count)return;
+    ctx.fillStyle=target
+      ?(coral?paint.coralTarget:paint.primaryTarget)
+      :(coral?paint.coralParticle:paint.primaryParticle);
+    ctx.fill();
+  }
+
+  function drawActiveOverlay(){
+    strokeActiveEdges(false);
+    strokeActiveEdges(true);
+    fillWalkerDots(false,false);
+    fillWalkerDots(true,false);
+    fillWalkerDots(false,true);
+    fillWalkerDots(true,true);
   }
 
   function compose(){
     if(disposed)return;
 
-    ctx.save();
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(baseCanvas,0,0);
-    ctx.drawImage(trailCanvas,0,0);
-    ctx.restore();
-
-    ctx.save();
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
+    fadeTrails(pendingFadeSteps);
+    flushTrails();
     drawActiveOverlay();
     carve(ctx);
-    ctx.restore();
-
+    pendingFadeSteps=0;
     renderFrames++;
+
+    const now=performance.now();
+    if(now-lastDiagnosticTime>=250){
+      updateDiagnostics();
+      lastDiagnosticTime=now;
+    }
   }
 
   function updateDiagnostics(){
@@ -561,20 +640,28 @@ export function createNetworkRenderer(
 
     canvas.width=Math.max(1,Math.round(width*dpr));
     canvas.height=Math.max(1,Math.round(height*dpr));
+    baseCanvas.width=canvas.width;
+    baseCanvas.height=canvas.height;
     canvas.style.width=`${width}px`;
     canvas.style.height=`${height}px`;
+    baseCanvas.style.width=`${width}px`;
+    baseCanvas.style.height=`${height}px`;
     configureLayer(baseCanvas,baseCtx);
-    configureLayer(trailCanvas,trailCtx);
+    configureLayer(canvas,ctx);
 
     graph=createLatticeGraph(lattice,width,height,lowCapability());
     canvas.dataset.lattice=lattice;
     canvas.dataset.dpr=dpr.toFixed(2);
-    canvas.dataset.layers='base-trail-active';
+    canvas.dataset.layers='base-dynamic';
+    canvas.dataset.canvasBuffers='2';
+    canvas.dataset.diagnosticsHz='4';
     buildField();
+    rebuildBlockedEdges();
     rebuildWalkers();
-    clearLayer(trailCanvas,trailCtx);
+    clearLayer(canvas,ctx);
     renderBaseGraph();
     simulationAccumulator=0;
+    pendingFadeSteps=0;
     updateDiagnostics();
     compose();
   }
@@ -595,11 +682,12 @@ export function createNetworkRenderer(
     if(!changed)return;
 
     buildField();
+    rebuildBlockedEdges();
     rebuildWalkers();
-    clearLayer(trailCanvas,trailCtx);
+    clearLayer(canvas,ctx);
     renderBaseGraph();
     simulationAccumulator=0;
-    if(reducedMotion)primeStatic();
+    pendingFadeSteps=0;
     updateDiagnostics();
     compose();
   }
@@ -620,27 +708,17 @@ export function createNetworkRenderer(
       simulationAccumulator=0;
     }
 
-    updateDiagnostics();
   }
 
   function draw(){
     compose();
   }
 
-  function primeStatic(){
-    clearLayer(trailCanvas,trailCtx);
-    for(const walker of walkers)walker.frameTravel=0;
-    for(let i=0;i<(lowCapability()?75:95);i++)simulationStep();
-    updateDiagnostics();
-  }
-
-  function setReducedMotion(reduced:boolean){
-    reducedMotion=reduced;
+  function setReducedMotion(_reduced:boolean){
+    reducedMotion=false;
     simulationAccumulator=0;
-    canvas.dataset.motion=reduced?'static':'running';
-    canvas.dataset.motionReason=reduced?'reduced-motion':'animated';
-    if(reduced)primeStatic();
-    compose();
+    canvas.dataset.motion='running';
+    canvas.dataset.motionReason='animated';
   }
 
   function refreshTheme(){
@@ -648,9 +726,10 @@ export function createNetworkRenderer(
     primary=parseColor(style.getPropertyValue('--field-primary'),primary);
     secondary=parseColor(style.getPropertyValue('--field-secondary'),secondary);
     tertiary=parseColor(style.getPropertyValue('--field-tertiary'),tertiary);
-    clearLayer(trailCanvas,trailCtx);
+    updatePaint();
+    clearLayer(canvas,ctx);
     renderBaseGraph();
-    if(reducedMotion)primeStatic();
+    pendingFadeSteps=0;
     compose();
   }
 
@@ -659,8 +738,14 @@ export function createNetworkRenderer(
     walkers=[];
     field=new Float32Array(0);
     busy=new Uint16Array(0);
+    blockedNeighbors=new Uint8Array(0);
+    blockedEdges=new Uint8Array(0);
+    queuedPrimaryEdges.length=0;
+    queuedCoralEdges.length=0;
+    queuedPrimaryTrails.length=0;
+    queuedCoralTrails.length=0;
     clearLayer(baseCanvas,baseCtx);
-    clearLayer(trailCanvas,trailCtx);
+    clearLayer(canvas,ctx);
   }
 
   return{
