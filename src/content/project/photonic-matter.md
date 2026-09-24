@@ -5,7 +5,7 @@ question: "Which structures can self-assemble reliably while retaining useful op
 contribution: "I combine inverse building-block design, self-assembly simulation and optical calculations to connect microscopic organisation with photonic band gaps, chirality and structural colour."
 status: "ongoing"
 methods: ["photonics", "colloids", "band structures", "self-assembly"]
-publications: ["single-colloidal-gyroids", "patchy-rods-photonic-crystals", "photonic-glasses"]
+publications: ["single-colloidal-gyroids", "patchy-rods-photonic-crystals", "photonic-glasses", "hierarchical-photonic-crystals", "diamond-ring-selection"]
 tags: ["photonics"]
 topics: ["photonic materials", "structural colour", "gyroids", "colloidal crystals"]
 order: 3
