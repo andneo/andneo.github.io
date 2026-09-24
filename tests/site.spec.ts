@@ -38,9 +38,12 @@ test('hero lattice network is visible, animated and bounded',async({page})=>{
   return nonzero/(data.length/4);
  });
  expect(alpha).toBeGreaterThan(.005);
+ const transitionsBefore=Number(await canvas.getAttribute('data-transitions'));
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(800);
+ const transitionsAfter=Number(await canvas.getAttribute('data-transitions'));
  const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ expect(transitionsAfter).toBeGreaterThan(transitionsBefore);
  expect(after).not.toBe(before);
 });
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
