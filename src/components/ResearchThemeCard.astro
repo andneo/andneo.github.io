@@ -1,0 +1,31 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import ResearchGlyph from './ResearchGlyph.astro';
+import { url } from '../lib/content';
+interface Props { project:CollectionEntry<'project'>; publications:CollectionEntry<'publications'>[]; publicationLimit?:number; }
+const {project,publications,publicationLimit=3}=Astro.props;
+const kind=(project.data.tags[0]??'topology') as 'topology'|'design'|'photonics'|'biology';
+const selected=publications.slice(0,publicationLimit);
+---
+<article class="research-theme-card">
+  <div class="theme-visual"><ResearchGlyph kind={kind}/></div>
+  <div class="theme-body">
+    <div class="theme-heading"><span class="theme-index">{String(project.data.order).padStart(2,'0')}</span><h3><a href={url('project',project.id)}>{project.data.title}</a></h3></div>
+    {project.data.question&&<p class="theme-question">{project.data.question}</p>}
+    <p class="theme-description">{project.data.description}</p>
+    <ul class="theme-methods" aria-label="Methods and concepts">{project.data.methods.slice(0,4).map(method=><li>{method}</li>)}</ul>
+  </div>
+  {selected.length>0&&<div class="theme-papers"><p class="theme-papers-label">Selected papers</p><ol>{selected.map(pub=><li><a href={url('publications',pub.id)}><span class="paper-meta">{pub.data.year} · {pub.data.journal}</span><span class="paper-title">{pub.data.title}</span><span class="paper-arrow" aria-hidden="true">↗</span></a></li>)}</ol></div>}
+</article>
+<style>
+  .research-theme-card{min-width:0;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;border:1px solid var(--panel-border);border-radius:var(--r-lg);background:var(--panel-bg);box-shadow:var(--shadow-card);transition:transform 160ms cubic-bezier(.22,.61,.36,1),border-color 160ms ease,background 160ms ease,box-shadow 160ms ease}
+  .research-theme-card:hover,.research-theme-card:focus-within{transform:translateY(-2px);border-color:var(--signal-border);background:color-mix(in srgb,var(--panel-bg-hover) 96%,var(--signal-soft));box-shadow:var(--shadow-lift)}
+  .theme-visual{min-height:120px;display:flex;align-items:center;padding:1rem 1.2rem .7rem;border-bottom:1px solid var(--border);background:linear-gradient(135deg,color-mix(in srgb,var(--bg-off) 90%,var(--cool-soft)),color-mix(in srgb,var(--surface) 94%,var(--signal-soft)))}
+  .theme-body{padding:1.25rem 1.3rem 1rem}.theme-heading{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:.75rem}.theme-index{color:var(--signal);font:400 .67rem/1 var(--font-sans);font-variant-numeric:tabular-nums}
+  .theme-heading h3{margin:0;font:600 clamp(1.25rem,1.5vw,1.55rem)/1.14 var(--font-display);letter-spacing:-.025em}.theme-heading a{color:var(--text);text-decoration:none}.theme-heading a:hover{color:var(--signal)}
+  .theme-question{margin:1rem 0 .65rem;color:var(--text);font:500 .9rem/1.5 var(--font-sans)}.theme-description{margin:0;color:var(--text-2);font-size:.86rem;line-height:1.62}
+  .theme-methods{display:flex;flex-wrap:wrap;gap:.35rem .75rem;margin:1rem 0 0;padding:0;list-style:none}.theme-methods li{color:var(--text-3);font:400 .66rem/1.3 var(--font-sans);text-transform:lowercase}.theme-methods li::before{content:'·';margin-right:.38rem;color:var(--signal)}
+  .theme-papers{margin-top:.15rem;padding:0 1.3rem 1.2rem}.theme-papers-label{margin:0 0 .3rem;color:var(--text-3);font:400 .65rem/1.2 var(--font-sans);text-transform:lowercase}.theme-papers ol{margin:0;padding:0;list-style:none}.theme-papers li{border-top:1px solid var(--border)}
+  .theme-papers a{position:relative;display:grid;grid-template-columns:1fr auto;gap:.18rem .7rem;padding:.72rem 1.35rem .72rem 0;color:var(--text);text-decoration:none}.theme-papers a:hover .paper-title{color:var(--signal)}
+  .paper-meta{grid-column:1;color:var(--text-3);font:400 .61rem/1.25 var(--font-sans)}.paper-title{grid-column:1;font:500 .76rem/1.4 var(--font-sans);transition:color var(--t)}.paper-arrow{position:absolute;right:0;top:50%;translate:0 -50%;color:var(--signal);font-size:.78rem}
+</style>

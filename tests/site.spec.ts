@@ -284,6 +284,23 @@ test('homepage hero is centered, expanded and stripped of redundant metadata',as
  expect(geometry.headingSize).toBeGreaterThan(38);
 });
 
+test('homepage research is organised as four themes with selected publication evidence',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000}); await page.goto('/');
+ const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
+ await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
+ await expect(themes.nth(1)).toContainText('Programming Self-Assembly');
+ await expect(themes.nth(2)).toContainText('Photonic Matter by Design');
+ await expect(themes.nth(3)).toContainText('Self-Assembly in Life');
+ const paperLinks=page.locator('#research .theme-papers a'); expect(await paperLinks.count()).toBeGreaterThanOrEqual(9);
+ expect(await paperLinks.evaluateAll(nodes=>nodes.every(node=>(node.getAttribute('href')??'').startsWith('/publications/')))).toBe(true);
+ const columns=await page.locator('#research .research-theme-grid').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length); expect(columns).toBe(2);
+ await page.goto('/publications/'); const publicationItems=page.locator('.content-list > li'); expect(await publicationItems.count()).toBeGreaterThanOrEqual(13);
+ await expect(page.getByRole('link',{name:/Topological nature of the liquid/i})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Designing the Self-Assembly of Disordered Materials/i})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Effect of coat-protein concentration/i})).toBeVisible();
+ await page.goto('/research/'); await expect(page.locator('.research-page-grid .research-theme-card')).toHaveCount(4);
+});
+
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/posts/');
@@ -356,7 +373,8 @@ test('homepage navigation, section order and card labels use the revised UI typo
  const sectionOrder=await page.locator('.homepage-content > section').evaluateAll(nodes=>
   nodes.map(node=>node.id).filter(id=>['research','posts','publications','courses'].includes(id))
  );
- expect(sectionOrder).toEqual(['research','posts','publications','courses']);
+ expect(sectionOrder).toEqual(['research','posts','courses']);
+ await expect(page.locator('.homepage-content > #publications')).toHaveCount(0);
  await expect(page.locator('#posts .section-header h2')).toHaveText('Blog posts');
  await expect(page.locator('#publications .section-header h2')).toHaveText('Publications');
  await expect(page.locator('#publications .section-header > a')).toContainText('View all');

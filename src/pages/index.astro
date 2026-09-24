@@ -2,12 +2,15 @@
 import Base from '../layouts/Base.astro';
 import HomepageBackground from '../components/HomepageBackground.astro';
 import CardGlyph from '../components/CardGlyph.astro';
-import { AUTHOR, HERO, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
+import ResearchThemeCard from '../components/ResearchThemeCard.astro';
+import { AUTHOR, HERO, HOME_POST_COUNT, HOME_RESEARCH_COUNT } from '../config';
 import { published, byId, url } from '../lib/content';
 
 const projects = (await published('project')).sort((a,b) => a.data.order - b.data.order || byId(a,b)).slice(0, HOME_RESEARCH_COUNT);
+const allPublications = await published('publications');
+const publicationById = new Map(allPublications.map(pub => [pub.id,pub]));
+const publicationsFor = (project: typeof projects[number]) => project.data.publications.map(id=>publicationById.get(id)).filter((pub): pub is NonNullable<typeof pub> => Boolean(pub));
 const posts = (await published('post')).sort((a,b) => b.data.date.valueOf() - a.data.date.valueOf() || byId(a,b)).slice(0, HOME_POST_COUNT);
-const pubs = (await published('publications')).sort((a,b) => b.data.year - a.data.year || byId(a,b)).slice(0, HOME_PUBLICATION_COUNT);
 const courses = await published('courses');
 ---
 <Base>
@@ -34,30 +37,19 @@ const courses = await published('courses');
         </div>
       </section>
 
-      <section class="home-section" id="research">
+      <section class="home-section home-research" id="research">
         <div class="container section-frame">
-          <header class="section-header">
-            <h2>Research</h2>
-            <a href="/research/">View all <span aria-hidden="true">↗</span></a>
+          <header class="section-header research-header">
+            <div>
+              <p class="section-kicker">A common language for complex systems</p>
+              <h2>Research</h2>
+            </div>
+            <a href="/research/">Research overview <span aria-hidden="true">↗</span></a>
           </header>
-          <ol class="card-grid research-grid">
-            {projects.map(project => <li>
-              <a class="home-card" href={url('project', project.id)}>
-                <div class="card-head">
-                  <CardGlyph seed={project.data.title} />
-                  {project.data.status && <span class="card-label">{project.data.status}</span>}
-                </div>
-                <div class="card-copy">
-                  <h3>{project.data.title}</h3>
-                  <p>{project.data.description}</p>
-                </div>
-                <div class="card-foot">
-                  <span>{project.data.tags?.[0] ?? 'Research'}</span>
-                  <span aria-hidden="true">↗</span>
-                </div>
-              </a>
-            </li>)}
-          </ol>
+          <p class="research-intro">I use statistical mechanics, topology and computation both to understand how networked systems organise and to design the interactions that make new forms of organisation possible.</p>
+          <div class="research-theme-grid">
+            {projects.map(project => <ResearchThemeCard project={project} publications={publicationsFor(project)} />)}
+          </div>
         </div>
       </section>
 
@@ -84,34 +76,6 @@ const courses = await published('courses');
                   <span aria-hidden="true">→</span>
                 </div>
               </article>
-            </li>)}
-          </ol>
-        </div>
-      </section>
-
-      <section class="home-section home-publications" id="publications">
-        <div class="container section-frame">
-          <header class="section-header">
-            <h2>Publications</h2>
-            <a href="/publications/">View all <span aria-hidden="true">↗</span></a>
-          </header>
-          <ol class="card-grid publication-grid">
-            {pubs.map(pub => <li>
-              <a class="home-card publication-card" href={url('publications', pub.id)}>
-                <div class="card-head">
-                  <CardGlyph seed={pub.data.title} />
-                  <span class="card-label">{pub.data.type}</span>
-                </div>
-                <div class="card-copy">
-                  <p class="publication-year">{pub.data.year}{pub.data.journal ? ` · ${pub.data.journal}` : ''}</p>
-                  <h3>{pub.data.title}</h3>
-                  <p>{pub.data.authors.join(', ')}</p>
-                </div>
-                <div class="card-foot">
-                  <span>{pub.data.status}</span>
-                  <span aria-hidden="true">↗</span>
-                </div>
-              </a>
             </li>)}
           </ol>
         </div>
@@ -171,19 +135,20 @@ const courses = await published('courses');
 
   .home-section { padding-block:clamp(4.75rem,8vw,7.5rem); }
   .home-section::before { background:linear-gradient(90deg,var(--home-scrim) 0 16%,transparent 45% 58%,var(--home-scrim) 100%); opacity:.76; }
-  .home-publications::before { background:linear-gradient(180deg,transparent,var(--home-scrim) 36%,var(--home-scrim-strong)); }
   .section-frame { position:relative; }
   .section-header { display:flex; align-items:end; justify-content:space-between; gap:2rem; margin-bottom:clamp(1.75rem,3vw,2.75rem); padding-bottom:.9rem; border-bottom:1px solid var(--border-med); }
   .section-header h2 { margin:0; font:600 clamp(1.8rem,2.9vw,2.8rem)/1 var(--font-display); letter-spacing:-.035em; }
   .section-header > a { flex:none; color:var(--text-2); font:600 .86rem/1.2 var(--font-sans); letter-spacing:.01em; text-decoration:none; }
   .section-header > a:hover { color:var(--signal); }
+  .section-kicker { margin:0 0 .45rem; color:var(--signal); font:400 .72rem/1.3 var(--font-sans); text-transform:lowercase; letter-spacing:.025em; }
+  .research-header { align-items:end; }
+  .research-intro { max-width:78ch; margin:-.75rem 0 clamp(1.8rem,3vw,2.7rem); color:var(--text-2); font-size:clamp(.98rem,.95rem + .15vw,1.08rem); line-height:1.7; }
+  .research-theme-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(.9rem,1.6vw,1.35rem); }
 
   .card-grid { display:grid; gap:clamp(.85rem,1.5vw,1.3rem); margin:0; padding:0; list-style:none; }
   .card-grid > li { min-width:0; display:flex; }
-  .research-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .course-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .post-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
-  .publication-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 
   .home-card { position:relative; width:100%; min-height:310px; display:flex; flex-direction:column; gap:1.4rem; padding:1.25rem; overflow:hidden; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); box-shadow:var(--shadow-card); color:var(--text); text-decoration:none; backdrop-filter:blur(7px); transition:transform var(--t-med),border-color var(--t-med),background var(--t-med),box-shadow var(--t-med); }
   .home-card:hover,.home-card:focus-within { transform:translateY(-3px); border-color:var(--signal-border); background:color-mix(in srgb,var(--panel-bg-hover) 95%,var(--signal-soft)); box-shadow:var(--shadow-lift); }
@@ -198,17 +163,15 @@ const courses = await published('courses');
   .card-foot { position:relative; z-index:1; display:flex; justify-content:space-between; gap:1rem; margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); color:var(--signal); font:400 .69rem/1.4 var(--font-sans); letter-spacing:.02em; text-transform:lowercase; }
   .card-foot span:first-child,.card-foot span:last-child { color:var(--signal); }
   .course-card { min-height:285px; }
-  .publication-card { min-height:285px; }
 
   @media (max-width:1200px) {
-    .research-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .post-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   }
   @media (max-width:900px) {
     .hero-frame { min-height:auto; padding-block:7rem 5rem; }
     .hero-copy { width:min(100%,820px); }
     .hero-identity { min-height:360px; }
-    .post-grid,.publication-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .post-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
   @media (max-width:640px) {
     .hero-frame { padding-block:6.5rem 3.5rem; }
@@ -218,8 +181,8 @@ const courses = await published('courses');
     .home-section { padding-block:4rem; }
     .section-header { align-items:center; gap:1rem; }
     .section-header h2 { font-size:clamp(1.65rem,8vw,2.2rem); }
-    .research-grid,.course-grid,.post-grid,.publication-grid { grid-template-columns:1fr; }
-    .home-card,.course-card,.publication-card { min-height:250px; }
+    .research-theme-grid,.course-grid,.post-grid { grid-template-columns:1fr; }
+    .home-card,.course-card { min-height:250px; }
   }
 </style>
 
