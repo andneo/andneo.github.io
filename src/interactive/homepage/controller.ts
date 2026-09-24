@@ -103,10 +103,14 @@ class HomepageBackgroundElement extends HTMLElement{
     };
 
     try{
+      // The renderer must measure a visible canvas. Constructing it while the
+      // HTML hidden attribute is present yields a zero-sized layout box.
+      canvas.hidden=false;
       renderer=await createRenderer(this.dataset.renderer||'network',canvas,lattice);
       if(disposed){renderer.dispose();return;}
 
-      canvas.hidden=false;poster.style.display='none';
+      poster.style.display='none';
+      renderer.resize();
       renderer.refreshTheme();
       renderer.setReducedMotion(motion.matches);
       updateGeometry();renderer.draw();
