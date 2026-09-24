@@ -30,13 +30,16 @@ class HomepageBackgroundElement extends HTMLElement{
     const requested=this.dataset.lattice as LatticeKind|undefined;
     const lattice=requested&&latticeKinds.has(requested)?requested:'kagome';
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
+    const motionParam=new URLSearchParams(location.search).get('motion');
+    const motionOverride=motionParam==='full'||motionParam==='reduce'?motionParam:null;
+    const wantsReducedMotion=()=>motionOverride==='reduce'||(motionOverride!=='full'&&motion.matches);
     const systemTheme=matchMedia('(prefers-color-scheme: dark)');
     const lowCapability=(navigator.hardwareConcurrency||4)<=4||matchMedia('(max-width:720px)').matches;
     const frameInterval=lowCapability?1000/20:1000/30;
 
     let renderer:HomepageRenderer|undefined;
     let frame=0,lastStep=0,lastPaint=0;
-    let visible=true,paused=motion.matches,disposed=false;
+    let visible=true,paused=wantsReducedMotion(),disposed=false;
 
     const quietRects=():FieldRect[]=>{
       const fieldRect=field.getBoundingClientRect();
@@ -71,13 +74,17 @@ class HomepageBackgroundElement extends HTMLElement{
 
     const sync=()=>{
       cancelAnimationFrame(frame);frame=0;lastStep=0;lastPaint=0;
+      canvas.dataset.motionPreference=motion.matches?'reduce':'no-preference';
+      canvas.dataset.motionOverride=motionOverride??'none';
       canvas.dataset.motion=paused?'static':'running';
-      canvas.dataset.motionReason=paused?'reduced-motion':document.hidden?'document-hidden':visible?'animated':'offscreen';
+      canvas.dataset.motionReason=paused
+        ?(motionOverride==='reduce'?'query-reduced-motion':'system-reduced-motion')
+        :document.hidden?'document-hidden':visible?'animated':'offscreen';
       if(renderer&&visible&&!paused&&!document.hidden)frame=requestAnimationFrame(tick);
     };
 
     const handleMotion=()=>{
-      paused=motion.matches;
+      paused=wantsReducedMotion();
       renderer?.setReducedMotion(paused);
       sync();
     };
@@ -116,7 +123,8 @@ class HomepageBackgroundElement extends HTMLElement{
       renderer.resize();
       updateGeometry();
       renderer.refreshTheme();
-      renderer.setReducedMotion(motion.matches);
+      paused=wantsReducedMotion();
+      renderer.setReducedMotion(paused);
       renderer.draw();
 
       intersection.observe(hero);resize.observe(field);
