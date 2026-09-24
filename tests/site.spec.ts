@@ -142,6 +142,68 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(quietAlpha).toBeLessThan(.002);
  expect(errors).toEqual([]);
 });
+test('hero lattice stays registered after responsive resize',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const field=page.locator('.homepage-field');
+ const base=page.locator('.homepage-field__base');
+ const dynamic=page.locator('.homepage-field__dynamic');
+ const active=page.locator('.homepage-field__active');
+
+ const assertRegistered=async()=>{
+  await page.waitForTimeout(180);
+  const geometry=await page.evaluate(()=>{
+   const field=document.querySelector<HTMLElement>('.homepage-field')!;
+   const base=document.querySelector<HTMLCanvasElement>('.homepage-field__base')!;
+   const dynamic=document.querySelector<HTMLCanvasElement>('.homepage-field__dynamic')!;
+   const active=document.querySelector<SVGSVGElement>('.homepage-field__active')!;
+   const fr=field.getBoundingClientRect();
+   const br=base.getBoundingClientRect();
+   const dr=dynamic.getBoundingClientRect();
+   const ar=active.getBoundingClientRect();
+   const vb=active.viewBox.baseVal;
+   return{
+    field:[fr.width,fr.height],
+    base:[br.width,br.height],
+    dynamic:[dr.width,dr.height],
+    active:[ar.width,ar.height],
+    viewBox:[vb.width,vb.height],
+    render:[Number(dynamic.dataset.renderWidth),Number(dynamic.dataset.renderHeight)],
+    inlineWidth:dynamic.style.width,
+    inlineHeight:dynamic.style.height,
+   };
+  });
+  for(const dims of [geometry.base,geometry.dynamic,geometry.active]){
+   expect(Math.abs(dims[0]-geometry.field[0])).toBeLessThan(1);
+   expect(Math.abs(dims[1]-geometry.field[1])).toBeLessThan(1);
+  }
+  expect(Math.abs(geometry.viewBox[0]-geometry.field[0])).toBeLessThan(1);
+  expect(Math.abs(geometry.viewBox[1]-geometry.field[1])).toBeLessThan(1);
+  expect(Math.abs(geometry.render[0]-geometry.field[0])).toBeLessThan(1);
+  expect(Math.abs(geometry.render[1]-geometry.field[1])).toBeLessThan(1);
+  expect(geometry.inlineWidth).toBe('');
+  expect(geometry.inlineHeight).toBe('');
+ };
+
+ await assertRegistered();
+ const before=Number(await dynamic.getAttribute('data-sim-steps'));
+
+ await page.setViewportSize({width:820,height:780});
+ await assertRegistered();
+ const mid=Number(await dynamic.getAttribute('data-sim-steps'));
+ expect(mid).toBeGreaterThan(before);
+
+ await page.setViewportSize({width:1600,height:960});
+ await assertRegistered();
+ const after=Number(await dynamic.getAttribute('data-sim-steps'));
+ expect(after).toBeGreaterThan(mid);
+
+ await expect(field).toBeVisible();
+ await expect(base).toBeVisible();
+ await expect(dynamic).toBeVisible();
+ await expect(active).toBeVisible();
+});
+
 test('hero animation is universal and pauses only when offscreen',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.emulateMedia({reducedMotion:'reduce'});

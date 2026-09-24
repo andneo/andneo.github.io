@@ -652,7 +652,8 @@ export function createNetworkRenderer(
   function resize(){
     if(disposed)return;
 
-    const rect=canvas.getBoundingClientRect();
+    const field=canvas.parentElement;
+    const rect=(field??canvas).getBoundingClientRect();
     width=Math.max(1,rect.width);
     height=Math.max(1,rect.height);
     const pixelBudgetDpr=Math.sqrt(3_500_000/Math.max(1,width*height));
@@ -662,10 +663,13 @@ export function createNetworkRenderer(
     canvas.height=Math.max(1,Math.round(height*dpr));
     baseCanvas.width=canvas.width;
     baseCanvas.height=canvas.height;
-    canvas.style.width=`${width}px`;
-    canvas.style.height=`${height}px`;
-    baseCanvas.style.width=`${width}px`;
-    baseCanvas.style.height=`${height}px`;
+    // CSS owns the display size (100% of .homepage-field). Only the backing
+    // stores and SVG coordinate system are resized here; pinning inline pixel
+    // dimensions would make later responsive resizes stale.
+    canvas.style.removeProperty('width');
+    canvas.style.removeProperty('height');
+    baseCanvas.style.removeProperty('width');
+    baseCanvas.style.removeProperty('height');
     activeSvg.setAttribute('viewBox',`0 0 ${width} ${height}`);
     updateActiveMask();
     configureLayer(baseCanvas,baseCtx);
@@ -673,6 +677,8 @@ export function createNetworkRenderer(
 
     graph=createLatticeGraph(lattice,width,height,lowCapability());
     canvas.dataset.lattice=lattice;
+    canvas.dataset.renderWidth=width.toFixed(2);
+    canvas.dataset.renderHeight=height.toFixed(2);
     canvas.dataset.dpr=dpr.toFixed(2);
     canvas.dataset.layers='base-dynamic';
     canvas.dataset.canvasBuffers='2';

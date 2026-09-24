@@ -104,14 +104,23 @@ class HomepageBackgroundElement extends HTMLElement{
       visible=Boolean(entry?.isIntersecting);sync();
     },{rootMargin:'80px'});
 
+    let resizeFrame=0;
     const resize=new ResizeObserver(()=>{
-      renderer?.resize();updateGeometry();
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame=requestAnimationFrame(()=>{
+        resizeFrame=0;
+        // Rebuild every geometry-dependent layer from the same settled layout
+        // snapshot. No animation frame can run between resize() and quiet-zone
+        // recomputation because both execute synchronously here.
+        renderer?.resize();
+        updateGeometry();
+      });
     });
 
     const themeObserver=new MutationObserver(refreshTheme);
 
     this.cleanup=()=>{
-      disposed=true;cancelAnimationFrame(frame);
+      disposed=true;cancelAnimationFrame(frame);cancelAnimationFrame(resizeFrame);
       intersection.disconnect();resize.disconnect();themeObserver.disconnect();
       document.removeEventListener('visibilitychange',sync);
       systemTheme.removeEventListener('change',refreshTheme);
