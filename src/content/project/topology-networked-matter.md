@@ -5,9 +5,9 @@ question: "How much of a material's behaviour is encoded by the way its microsco
 contribution: "I develop physically interpretable network descriptions based on rings, linking, entanglement and energy landscapes, and connect them to thermodynamics using molecular simulation and statistical mechanics."
 status: "ongoing"
 methods: ["topology", "network science", "statistical mechanics", "molecular simulation"]
-publications: ["topological-nature-llpt", "hierarchy-topological-transitions", "water-energy-landscape-2026", "ml-bop-energy-landscape", "two-state-ml-bop"]
+publications: ["topological-nature-llpt", "hierarchy-topological-transitions"]
 tags: ["topology"]
-topics: ["network liquids", "water", "phase transitions", "physical networks"]
+topics: ["network liquids", "ring topology", "physical networks", "phase transitions"]
 order: 1
 draft: false
 ---

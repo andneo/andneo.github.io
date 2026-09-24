@@ -40,13 +40,10 @@ const courses = await published('courses');
       <section class="home-section home-research" id="research">
         <div class="container section-frame">
           <header class="section-header research-header">
-            <div>
-              <p class="section-kicker">A common language for complex systems</p>
-              <h2>Research</h2>
-            </div>
+            <h2>Research</h2>
             <a href="/research/">Research overview <span aria-hidden="true">↗</span></a>
           </header>
-          <p class="research-intro">I use statistical mechanics, topology and computation both to understand how networked systems organise and to design the interactions that make new forms of organisation possible.</p>
+          <p class="research-intro">I use statistical mechanics, topology and computation as a common language for understanding and designing complex many-body systems.</p>
           <div class="research-theme-grid">
             {projects.map(project => <ResearchThemeCard project={project} publications={publicationsFor(project)} />)}
           </div>
@@ -129,9 +126,9 @@ const courses = await published('courses');
   .hero-bio { max-width:78ch; margin-top:clamp(1.45rem,2.6vw,2.1rem); color:var(--text-2); font-size:clamp(1.02rem,.98rem + .24vw,1.18rem); line-height:1.76; }
   .hero-bio :global(p) { margin:0; }
   .hero-bio :global(p + p) { margin-top:.85rem; }
-  .hero-themes { display:flex; flex-wrap:wrap; gap:.45rem 1.15rem; margin:clamp(1.35rem,2.2vw,1.8rem) 0 0; padding:0; list-style:none; color:var(--text-3); font:400 .78rem/1.4 var(--font-sans); letter-spacing:.015em; }
-  .hero-themes li { display:inline-flex; align-items:center; gap:.5rem; }
-  .hero-themes li::before { content:''; width:.34rem; height:.34rem; flex:none; border-radius:50%; background:var(--signal); opacity:.8; }
+  .hero-themes { display:flex; flex-wrap:wrap; gap:0; margin:clamp(1.35rem,2.2vw,1.8rem) 0 0; padding:0; list-style:none; color:var(--text-3); font:400 .78rem/1.4 var(--font-sans); letter-spacing:.015em; }
+  .hero-themes li { display:inline-flex; align-items:center; white-space:nowrap; }
+  .hero-themes li:not(:last-child)::after { content:'·'; margin-inline:.65rem; color:var(--signal); opacity:.9; }
 
   .home-section { padding-block:clamp(4.75rem,8vw,7.5rem); }
   .home-section::before { background:linear-gradient(90deg,var(--home-scrim) 0 16%,transparent 45% 58%,var(--home-scrim) 100%); opacity:.76; }
@@ -140,9 +137,8 @@ const courses = await published('courses');
   .section-header h2 { margin:0; font:600 clamp(1.8rem,2.9vw,2.8rem)/1 var(--font-display); letter-spacing:-.035em; }
   .section-header > a { flex:none; color:var(--text-2); font:600 .86rem/1.2 var(--font-sans); letter-spacing:.01em; text-decoration:none; }
   .section-header > a:hover { color:var(--signal); }
-  .section-kicker { margin:0 0 .45rem; color:var(--signal); font:400 .72rem/1.3 var(--font-sans); text-transform:lowercase; letter-spacing:.025em; }
   .research-header { align-items:end; }
-  .research-intro { max-width:78ch; margin:-.75rem 0 clamp(1.8rem,3vw,2.7rem); color:var(--text-2); font-size:clamp(.98rem,.95rem + .15vw,1.08rem); line-height:1.7; }
+  .research-intro { max-width:none; margin:-.65rem 0 clamp(1.8rem,3vw,2.7rem); color:var(--text-2); font-size:clamp(.92rem,.9rem + .12vw,1.02rem); line-height:1.7; white-space:nowrap; }
   .research-theme-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(.9rem,1.6vw,1.35rem); }
 
   .card-grid { display:grid; gap:clamp(.85rem,1.5vw,1.3rem); margin:0; padding:0; list-style:none; }
@@ -166,6 +162,9 @@ const courses = await published('courses');
 
   @media (max-width:1200px) {
     .post-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
+  @media (max-width:980px) {
+    .research-intro { white-space:normal; }
   }
   @media (max-width:900px) {
     .hero-frame { min-height:auto; padding-block:7rem 5rem; }

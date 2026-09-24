@@ -289,8 +289,31 @@ test('homepage research is organised as four themes with selected publication ev
  const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
  await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
  await expect(themes.nth(1)).toContainText('Programming Self-Assembly');
- await expect(themes.nth(2)).toContainText('Photonic Matter by Design');
+ await expect(themes.nth(2)).toContainText('Liquids, Glasses & Energy Landscapes');
  await expect(themes.nth(3)).toContainText('Self-Assembly in Life');
+ await expect(page.locator('#research .theme-index')).toHaveCount(0);
+ await expect(page.locator('#research .paper-arrow')).toHaveCount(0);
+ const topicDots=await page.locator('#research .theme-topics li:not(:last-child)').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node,'::after').content));
+ expect(topicDots.length).toBeGreaterThan(4);
+ expect(topicDots.every(content=>content.includes('·'))).toBe(true);
+ const heroDots=await page.locator('.hero-themes li:not(:last-child)').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node,'::after').content));
+ expect(heroDots).toHaveLength(3);
+ expect(heroDots.every(content=>content.includes('·'))).toBe(true);
+ const visualBackgrounds=await page.locator('#research .theme-visual').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).backgroundImage));
+ expect(new Set(visualBackgrounds).size).toBeGreaterThanOrEqual(3);
+ const introLines=await page.locator('#research .research-intro').evaluate(node=>Math.round(node.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(node).lineHeight)));
+ expect(introLines).toBe(1);
+
+ const programming=page.locator('#research .research-theme-card').filter({hasText:'Programming Self-Assembly'});
+ const baselineBackground=await programming.evaluate(node=>getComputedStyle(node).backgroundColor);
+ await programming.getByRole('link',{name:'Programming Self-Assembly'}).click();
+ await expect(page).toHaveURL(/\/research\/programming-self-assembly\/$/);
+ await page.goBack();
+ await page.mouse.move(1,1);
+ await page.waitForTimeout(220);
+ const restored=page.locator('#research .research-theme-card').filter({hasText:'Programming Self-Assembly'});
+ expect(await restored.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe(baselineBackground);
+
  const paperLinks=page.locator('#research .theme-papers a'); expect(await paperLinks.count()).toBeGreaterThanOrEqual(9);
  expect(await paperLinks.evaluateAll(nodes=>nodes.every(node=>(node.getAttribute('href')??'').startsWith('/publications/')))).toBe(true);
  const columns=await page.locator('#research .research-theme-grid').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length); expect(columns).toBe(2);
@@ -438,6 +461,7 @@ test('hero copy, typing roles and footer reflect the revised personal profile',a
  await expect(page.locator('.hero-bio')).toContainText('networked matter');
  await expect(page.locator('.hero-bio')).toContainText('inverse materials design');
  await expect(page.locator('.hero-themes li')).toHaveCount(4);
+ await expect(page.locator('.hero-themes')).toContainText('glassy matter');
 
  const typed=page.locator('[data-hero-typed]');
  await expect(typed).toHaveAttribute('data-roles',/computational scientist/);
