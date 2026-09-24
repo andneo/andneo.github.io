@@ -284,6 +284,51 @@ test('homepage hero is centered, expanded and stripped of redundant metadata',as
  expect(geometry.headingSize).toBeGreaterThan(38);
 });
 
+test('homepage navigation, section order and card labels use the revised UI typography',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/');
+
+ const navLabels=await page.locator('.site-nav a').allTextContents();
+ expect(navLabels.slice(0,4)).toEqual(['Research','Blog','Publications','Lecture Notes']);
+
+ const sectionOrder=await page.locator('.homepage-content > section').evaluateAll(nodes=>
+  nodes.map(node=>node.id).filter(id=>['research','posts','publications','courses'].includes(id))
+ );
+ expect(sectionOrder).toEqual(['research','posts','publications','courses']);
+ await expect(page.locator('#posts .section-header h2')).toHaveText('Blog posts');
+ await expect(page.locator('#publications .section-header h2')).toHaveText('Publications');
+ await expect(page.locator('#publications .section-header > a')).toContainText('View all');
+
+ const typography=await page.evaluate(()=>{
+  const nav=document.querySelector<HTMLElement>('.site-nav')!;
+  const bio=document.querySelector<HTMLElement>('.hero-bio')!;
+  const viewAll=document.querySelector<HTMLElement>('#research .section-header > a')!;
+  const label=document.querySelector<HTMLElement>('.card-label')!;
+  const labelStyle=getComputedStyle(label);
+  return{
+    navSize:Number.parseFloat(getComputedStyle(nav).fontSize),
+    bioFamily:getComputedStyle(bio).fontFamily,
+    labelFamily:labelStyle.fontFamily,
+    labelDisplay:labelStyle.display,
+    labelAlign:labelStyle.alignItems,
+    labelLineHeight:Number.parseFloat(labelStyle.lineHeight),
+    viewAllSize:Number.parseFloat(getComputedStyle(viewAll).fontSize),
+  };
+ });
+ expect(typography.navSize).toBeGreaterThanOrEqual(13);
+ expect(typography.viewAllSize).toBeGreaterThanOrEqual(13);
+ expect(typography.labelFamily).toBe(typography.bioFamily);
+ expect(typography.labelDisplay).toBe('inline-flex');
+ expect(typography.labelAlign).toBe('center');
+ expect(typography.labelLineHeight).toBeLessThanOrEqual(11);
+
+ const postTag=page.locator('#posts .post-card .card-foot span').first();
+ const lightColor=await postTag.evaluate(node=>getComputedStyle(node).color);
+ await page.getByRole('button',{name:'Dark theme'}).click();
+ const darkColor=await postTag.evaluate(node=>getComputedStyle(node).color);
+ expect(darkColor).not.toBe(lightColor);
+});
+
 test('header expands at the top and compacts after scroll without overflow',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
  const header=page.locator('[data-header]');const track=page.locator('[data-header-track]');

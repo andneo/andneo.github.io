@@ -24,15 +24,15 @@
       "href": "/research/"
     },
     {
+      "label": "Blog",
+      "href": "/posts/"
+    },
+    {
       "label": "Publications",
       "href": "/publications/"
     },
     {
-      "label": "Articles",
-      "href": "/posts/"
-    },
-    {
-      "label": "Courses",
+      "label": "Lecture Notes",
       "href": "/courses/"
     },
     {
