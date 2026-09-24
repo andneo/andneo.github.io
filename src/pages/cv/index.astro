@@ -160,11 +160,12 @@ const { workExperience,education,interests,workingPapers,teaching,presentations,
 <style>
 .cv-page {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  max-width: 900px;
+  grid-template-columns: 180px minmax(0,1fr);
+  width: min(var(--page-w),calc(100% - 2 * var(--page-pad)));
+  max-width: none;
   margin: 0 auto;
-  padding: 3rem 1.5rem 5rem;
-  gap: 3rem;
+  padding: 3rem 0 5rem;
+  gap: clamp(2rem,4vw,4rem);
   align-items: start;
 }
 

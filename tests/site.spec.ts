@@ -499,6 +499,51 @@ test('hero copy, typing roles and footer reflect the revised personal profile',a
 });
 
 
+test('detail layouts use the expanded header as their horizontal frame',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ const cases=[
+  ['/research/topology-networked-matter/','.reading-shell',850],
+  ['/posts/virial-theorem/','.reading-shell',850],
+  ['/publications/topological-nature-llpt/','.reading-shell',850],
+  ['/courses/numerical-methods/01-odes/','.course-shell',650],
+ ];
+
+ for(const [path,shellSelector,minMainWidth] of cases){
+  await page.goto(path as string);
+  await page.evaluate(()=>scrollTo(0,0));
+  const metrics=await page.evaluate(({shellSelector})=>{
+   const header=document.querySelector<HTMLElement>('[data-header-track]')!.getBoundingClientRect();
+   const shell=document.querySelector<HTMLElement>(shellSelector)!.getBoundingClientRect();
+   const main=document.querySelector<HTMLElement>(`${shellSelector} .reading-main`)!.getBoundingClientRect();
+   return{
+    headerLeft:header.left,headerRight:header.right,headerWidth:header.width,
+    shellLeft:shell.left,shellRight:shell.right,shellWidth:shell.width,
+    mainWidth:main.width,
+   };
+  },{shellSelector:shellSelector as string});
+  expect(Math.abs(metrics.shellLeft-metrics.headerLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.shellRight-metrics.headerRight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.shellWidth-metrics.headerWidth)).toBeLessThanOrEqual(2);
+  expect(metrics.mainWidth).toBeGreaterThan(minMainWidth as number);
+ }
+
+ await page.goto('/about/');
+ const about=await page.locator('main .container--narrow').boundingBox();
+ const header=await page.locator('[data-header-track]').boundingBox();
+ expect(about).not.toBeNull();
+ expect(header).not.toBeNull();
+ expect(Math.abs(about!.x-header!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(about!.width-header!.width)).toBeLessThanOrEqual(2);
+
+ await page.goto('/cv/');
+ const cv=await page.locator('.cv-page').boundingBox();
+ const cvHeader=await page.locator('[data-header-track]').boundingBox();
+ expect(cv).not.toBeNull();
+ expect(cvHeader).not.toBeNull();
+ expect(Math.abs(cv!.x-cvHeader!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(cv!.width-cvHeader!.width)).toBeLessThanOrEqual(2);
+});
+
 test('header expands at the top and compacts after scroll without overflow',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
  const header=page.locator('[data-header]');const track=page.locator('[data-header-track]');
