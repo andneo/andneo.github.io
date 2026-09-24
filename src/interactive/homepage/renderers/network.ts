@@ -25,6 +25,7 @@ interface Walker{
   vy:number;
   age:number;
   life:number;
+  ageSinceStuck:number;
   hue:number;
 }
 
@@ -41,9 +42,10 @@ export function createNetworkRenderer(
   let graph:LatticeGraph=createLatticeGraph(lattice,1,1,true);
   let obstacle:FieldRect|null=null;
   let field=new Float32Array(0);
-  let busy=new Float32Array(0);
+  let busy=new Uint16Array(0);
   let walkers:Walker[]=[];
   let frameCounter=0;
+  let transitionCount=0;
   let primary:[number,number,number]=[120,170,166];
   let secondary:[number,number,number]=[239,128,105];
   let tertiary:[number,number,number]=[103,133,150];
@@ -65,7 +67,7 @@ export function createNetworkRenderer(
 
   function buildField(){
     field=new Float32Array(graph.nodeCount);
-    busy=new Float32Array(graph.nodeCount);
+    busy=new Uint16Array(graph.nodeCount);
     const cx=width*.5,cy=height*.5;
     for(let i=0;i<graph.nodeCount;i++){
       const x=graph.x[i],y=graph.y[i];
@@ -92,7 +94,8 @@ export function createNetworkRenderer(
     walker.node=best;walker.previous=best;
     walker.x=graph.x[best];walker.y=graph.y[best];
     walker.vx=0;walker.vy=0;walker.age=0;
-    walker.life=(lowCapability()?210:320)+rng()*360;
+    walker.life=(lowCapability()?420:620)+rng()*520;
+    walker.ageSinceStuck=0;
     walker.hue=rng();
     busy[best]=1;
     return walker;
@@ -101,6 +104,7 @@ export function createNetworkRenderer(
   function rebuildWalkers(){
     walkers=Array.from({length:walkerTarget()},()=>spawnWalker());
     canvas.dataset.walkers=String(walkers.length);
+    canvas.dataset.transitions=String(transitionCount);
   }
 
   function chooseNeighbor(walker:Walker){
@@ -116,26 +120,53 @@ export function createNetworkRenderer(
     let best=walker.node,bestScore=-Infinity;
     for(let p=start;p<end;p++){
       const candidate=graph.neighbors[p];
-      if(candidate===walker.previous&&end-start>1&&rng()>.12)continue;
       const nx=graph.x[candidate],ny=graph.y[candidate];
       const dx=nx-cx,dy=ny-cy;
       const mag=Math.hypot(dx,dy)||1;
       const directional=(prevDx*dx+prevDy*dy)/(prevMag*mag);
       const score=
-        field[candidate]*1.28
-        -busy[candidate]*1.05
-        +directional*.22
-        +(rng()-.5)*.54;
+        field[candidate]*1.18
+        +directional*.12
+        +(rng()-.5)*.9;
       if(score>bestScore){bestScore=score;best=candidate;}
     }
     return best;
   }
 
+  function attemptAttractorMove(walker:Walker,render:boolean){
+    if(rng()>=.48)return;
+
+    const next=chooseNeighbor(walker);
+    if(next===walker.node){
+      walker.ageSinceStuck++;
+      return;
+    }
+
+    const available=busy[next]===0||busy[next]>15;
+    if(!available){
+      walker.ageSinceStuck++;
+      if(walker.ageSinceStuck>=10)spawnWalker(walker);
+      return;
+    }
+
+    const previous=walker.node;
+    walker.previous=previous;
+    walker.node=next;
+    walker.ageSinceStuck=0;
+    busy[next]=1;
+    transitionCount++;
+
+    if(render){
+      const color=walker.hue<.16?secondary:primary;
+      drawEdge(previous,next,walker.hue<.16?.68:.52,color,walker.hue<.16?1.75:1.25);
+    }
+  }
+
   function drawBaseGraph(){
     ctx.save();
     ctx.clearRect(0,0,width,height);
-    ctx.lineWidth=.65;
-    ctx.strokeStyle=`rgba(${tertiary[0]},${tertiary[1]},${tertiary[2]},.105)`;
+    ctx.lineWidth=.6;
+    ctx.strokeStyle=`rgba(${tertiary[0]},${tertiary[1]},${tertiary[2]},.07)`;
     ctx.beginPath();
     for(let e=0;e<graph.edges.length;e+=2){
       const a=graph.edges[e],b=graph.edges[e+1];
@@ -198,54 +229,60 @@ export function createNetworkRenderer(
     }
   }
 
-  function advanceWalker(walker:Walker,dt:number,render:boolean){
+  function advanceWalker(walker:Walker,render:boolean){
+    attemptAttractorMove(walker,render);
+
     const targetX=graph.x[walker.node],targetY=graph.y[walker.node];
-    const dx=targetX-walker.x,dy=targetY-walker.y;
-    const distance=Math.hypot(dx,dy);
-
-    if(distance<2.2){
-      const next=chooseNeighbor(walker);
-      if(next!==walker.node){
-        const previous=walker.node;
-        walker.previous=previous;
-        walker.node=next;
-        busy[next]=1;
-        if(render){
-          const color=walker.hue<.16?secondary:primary;
-          drawEdge(previous,next,walker.hue<.16?.62:.46,color,walker.hue<.16?1.65:1.15);
-        }
-      }
-    }
-
-    const tx=graph.x[walker.node],ty=graph.y[walker.node];
-    const spring=7.8,damping=Math.exp(-5.2*dt);
-    walker.vx=(walker.vx+(tx-walker.x)*spring*dt)*damping;
-    walker.vy=(walker.vy+(ty-walker.y)*spring*dt)*damping;
     const px=walker.x,py=walker.y;
-    walker.x+=walker.vx*dt;walker.y+=walker.vy*dt;
-    walker.age+=dt*60;
 
-    if(render&&Math.hypot(walker.x-px,walker.y-py)<18){
+    // Match the reference Pen's intentionally frame-based spring dynamics:
+    // strong attraction plus heavy velocity damping gives clearly visible
+    // pursuit of a moving lattice attractor without accumulating history.
+    const k=8;
+    const viscosity=.4;
+    const dx=walker.x-targetX;
+    const dy=walker.y-targetY;
+    walker.vx+=-k*dx;
+    walker.vy+=-k*dy;
+    walker.vx*=viscosity;
+    walker.vy*=viscosity;
+    walker.x+=.1*walker.vx;
+    walker.y+=.1*walker.vy;
+    walker.age++;
+
+    if(render){
       const color=walker.hue<.16?secondary:primary;
-      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(walker.x,walker.y);
-      ctx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<.16?.54:.36})`;
-      ctx.lineWidth=walker.hue<.16?1.35:.95;ctx.stroke();
+      if(Math.hypot(walker.x-px,walker.y-py)<24){
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(walker.x,walker.y);
+        ctx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<.16?.72:.5})`;
+        ctx.lineWidth=walker.hue<.16?1.55:1.05;ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.arc(targetX,targetY,walker.hue<.16?1.8:1.35,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<.16?.9:.7})`;
+      ctx.fill();
     }
 
     if(walker.age>walker.life)spawnWalker(walker);
   }
 
-  function decayBusy(dt:number){
-    const decay=Math.exp(-1.8*dt);
-    for(let i=0;i<busy.length;i++)busy[i]*=decay;
+  function ageBusy(){
+    for(let i=0;i<busy.length;i++){
+      if(busy[i]>0&&busy[i]<65535)busy[i]++;
+    }
   }
 
-  function step(deltaSeconds:number){
+  function decayBusy(_dt:number){
+    ageBusy();
+  }
+
+  function step(_deltaSeconds:number){
     if(disposed||reducedMotion)return;
-    const dt=clamp(deltaSeconds,1/120,.07);
-    decayBusy(dt);
-    for(const walker of walkers)advanceWalker(walker,dt,true);
+    ageBusy();
+    for(const walker of walkers)advanceWalker(walker,true);
     frameCounter++;
+    if(frameCounter%5===0)canvas.dataset.transitions=String(transitionCount);
   }
 
   function draw(){
@@ -272,10 +309,9 @@ export function createNetworkRenderer(
 
   function prime(iterations:number){
     drawBaseGraph();
-    const dt=1/28;
     for(let i=0;i<iterations;i++){
-      decayBusy(dt);
-      for(const walker of walkers)advanceWalker(walker,dt,true);
+      ageBusy();
+      for(const walker of walkers)advanceWalker(walker,true);
     }
     carveObstacle();
   }
@@ -298,7 +334,7 @@ export function createNetworkRenderer(
     disposed=true;
     walkers=[];
     field=new Float32Array(0);
-    busy=new Float32Array(0);
+    busy=new Uint16Array(0);
   }
 
   refreshTheme();resize();
