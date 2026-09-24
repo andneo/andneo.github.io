@@ -14,6 +14,9 @@ export interface LatticeGraph {
 interface Point { x: number; y: number; }
 interface Triangle { type: 0 | 1; a: Point; b: Point; c: Point; }
 
+const MAX_NODES = 4800;
+const MAX_EDGES = 11000;
+
 class GraphBuilder {
   points: Point[] = [];
   edges: Array<[number, number]> = [];
@@ -204,7 +207,7 @@ function pointOnSegment(a: Point, b: Point, fraction: number): Point {
   return { x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction };
 }
 
-function penrose(width: number, height: number, lowCapability: boolean) {
+function penrose(width: number, height: number, lowCapability: boolean, depthOverride?: number) {
   const phi = (1 + Math.sqrt(5)) * 0.5;
   let triangles: Triangle[] = [];
   const radius = Math.max(width, height) * 0.82;
@@ -220,7 +223,7 @@ function penrose(width: number, height: number, lowCapability: boolean) {
     triangles.push({ type: 0, a: { x: cx, y: cy }, b, c });
   }
 
-  const depth = lowCapability ? 5 : 6;
+  const depth = depthOverride ?? (lowCapability ? 5 : 6);
   for (let generation = 0; generation < depth; generation++) {
     const next: Triangle[] = [];
     for (const triangle of triangles) {
@@ -271,17 +274,39 @@ export function createLatticeGraph(
   height: number,
   lowCapability: boolean,
 ): LatticeGraph {
-  const spacing = lowCapability ? 34 : 28;
-  switch (kind) {
-    case 'square':
-      return square(width, height, spacing);
-    case 'honeycomb':
-      return honeycomb(width, height, spacing * 0.62);
-    case 'hexagonal':
-      return triangular(width, height, spacing);
-    case 'kagome':
-      return kagome(width, height, spacing * 0.64);
-    case 'penrose':
-      return penrose(width, height, lowCapability);
+  if (kind === 'penrose') {
+    let depth = lowCapability ? 5 : 6;
+    let graph = penrose(width, height, lowCapability, depth);
+    while ((graph.nodeCount > MAX_NODES || graph.edgeCount > MAX_EDGES) && depth > 3) {
+      depth--;
+      graph = penrose(width, height, lowCapability, depth);
+    }
+    return graph;
   }
+
+  let spacing = lowCapability ? 34 : 28;
+  let graph: LatticeGraph;
+  for (let attempt = 0; attempt < 7; attempt++) {
+    switch (kind) {
+      case 'square':
+        graph = square(width, height, spacing);
+        break;
+      case 'honeycomb':
+        graph = honeycomb(width, height, spacing * 0.62);
+        break;
+      case 'hexagonal':
+        // Configuration name "hexagonal" denotes the degree-6 triangular
+        // lattice (six nearest neighbours), not the degree-3 honeycomb graph.
+        graph = triangular(width, height, spacing);
+        break;
+      case 'kagome':
+        // Kagome is constructed above as the line graph of the honeycomb:
+        // honeycomb-edge midpoints become nodes and incident edges connect.
+        graph = kagome(width, height, spacing * 0.64);
+        break;
+    }
+    if (graph.nodeCount <= MAX_NODES && graph.edgeCount <= MAX_EDGES) return graph;
+    spacing *= 1.18;
+  }
+  return graph!;
 }

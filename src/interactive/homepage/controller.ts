@@ -110,10 +110,13 @@ class HomepageBackgroundElement extends HTMLElement{
       if(disposed){renderer.dispose();return;}
 
       poster.style.display='none';
+      // Explicit initialization order: visible layout -> real canvas/lattice size
+      // -> DOM-derived exclusion geometry -> theme/static state -> animation.
       renderer.resize();
+      updateGeometry();
       renderer.refreshTheme();
       renderer.setReducedMotion(motion.matches);
-      updateGeometry();renderer.draw();
+      renderer.draw();
 
       intersection.observe(hero);resize.observe(field);
       quietTargets.forEach(target=>resize.observe(target));

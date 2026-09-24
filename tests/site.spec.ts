@@ -17,6 +17,7 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
 test('hero lattice network is visible, animated and bounded',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const hero=page.locator('.home-hero');const canvas=hero.locator('.homepage-field canvas');
  await expect(canvas).toBeVisible();await expect(canvas).toHaveAttribute('data-motion','running');
@@ -25,26 +26,72 @@ test('hero lattice network is visible, animated and bounded',async({page})=>{
  const nodes=Number(await canvas.getAttribute('data-nodes'));
  const edges=Number(await canvas.getAttribute('data-edges'));
  const walkers=Number(await canvas.getAttribute('data-walkers'));
- expect(nodes).toBeGreaterThan(100);expect(nodes).toBeLessThan(5000);
- expect(edges).toBeGreaterThan(nodes);expect(edges).toBeLessThan(12000);
- expect(walkers).toBeGreaterThan(20);expect(walkers).toBeLessThanOrEqual(70);
+ expect(nodes).toBeGreaterThan(100);expect(nodes).toBeLessThanOrEqual(4800);
+ expect(edges).toBeGreaterThan(nodes);expect(edges).toBeLessThanOrEqual(11000);
+ expect(walkers).toBeGreaterThan(20);expect(walkers).toBeLessThanOrEqual(60);
  expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
  const layer=await page.locator('homepage-background').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
  const contentLayer=await page.locator('.hero-frame').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
  expect(layer).toBeGreaterThanOrEqual(1);expect(contentLayer).toBeGreaterThan(layer);
- const alpha=await canvas.evaluate((node:HTMLCanvasElement)=>{
+
+ const before=await canvas.evaluate((node:HTMLCanvasElement)=>{
   const ctx=node.getContext('2d')!;const data=ctx.getImageData(0,0,node.width,node.height).data;
-  let nonzero=0;for(let i=3;i<data.length;i+=4)if(data[i]>10)nonzero++;
-  return nonzero/(data.length/4);
+  let nonzero=0,samples=0;
+  for(let i=3;i<data.length;i+=64){if(data[i]>10)nonzero++;samples++;}
+  (node as HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray}).__networkSnapshot=data.slice();
+  return{
+   coverage:nonzero/samples,
+   transitions:Number(node.dataset.transitions||0),
+   travel:Number(node.dataset.travel||0),
+  };
  });
- expect(alpha).toBeGreaterThan(.005);
- const transitionsBefore=Number(await canvas.getAttribute('data-transitions'));
- const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
+ expect(before.coverage).toBeGreaterThan(.005);
+
  await page.waitForTimeout(800);
- const transitionsAfter=Number(await canvas.getAttribute('data-transitions'));
- const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
- expect(transitionsAfter).toBeGreaterThan(transitionsBefore);
- expect(after).not.toBe(before);
+ const after=await canvas.evaluate((node:HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray})=>{
+  const ctx=node.getContext('2d')!;const data=ctx.getImageData(0,0,node.width,node.height).data;
+  const previous=node.__networkSnapshot;
+  let changed=0,samples=0;
+  if(previous){
+   for(let i=0;i<data.length;i+=64){
+    const delta=Math.abs(data[i]-previous[i])+Math.abs(data[i+1]-previous[i+1])+Math.abs(data[i+2]-previous[i+2])+Math.abs(data[i+3]-previous[i+3]);
+    if(delta>20)changed++;
+    samples++;
+   }
+  }
+  delete node.__networkSnapshot;
+  return{
+   transitions:Number(node.dataset.transitions||0),
+   travel:Number(node.dataset.travel||0),
+   meanSpeed:Number(node.dataset.meanSpeed||0),
+   activeWalkers:Number(node.dataset.activeWalkers||0),
+   lastTransitionTime:Number(node.dataset.lastTransitionTime||0),
+   changedRatio:samples?changed/samples:0,
+  };
+ });
+ expect(after.transitions).toBeGreaterThan(before.transitions);
+ expect(after.travel).toBeGreaterThan(before.travel+25);
+ expect(after.meanSpeed).toBeGreaterThan(.05);
+ expect(after.activeWalkers).toBeGreaterThan(0);
+ expect(after.lastTransitionTime).toBeGreaterThan(0);
+ expect(after.changedRatio).toBeGreaterThan(.0005);
+
+ const quietAlpha=await page.evaluate(()=>{
+  const node=document.querySelector<HTMLCanvasElement>('.home-hero .homepage-field canvas')!;
+  const quiet=document.querySelector<HTMLElement>('.home-hero [data-field-quiet]')!;
+  const ctx=node.getContext('2d')!;const cr=node.getBoundingClientRect();const qr=quiet.getBoundingClientRect();
+  const sx=node.width/cr.width,sy=node.height/cr.height;
+  const inset=Math.min(24,qr.width*.15,qr.height*.15);
+  const x=Math.max(0,Math.floor((qr.left-cr.left+inset)*sx));
+  const y=Math.max(0,Math.floor((qr.top-cr.top+inset)*sy));
+  const w=Math.max(1,Math.floor((qr.width-inset*2)*sx));
+  const h=Math.max(1,Math.floor((qr.height-inset*2)*sy));
+  const data=ctx.getImageData(x,y,Math.min(w,node.width-x),Math.min(h,node.height-y)).data;
+  let visible=0;for(let i=3;i<data.length;i+=4)if(data[i]>8)visible++;
+  return visible/(data.length/4);
+ });
+ expect(quietAlpha).toBeLessThan(.002);
+ expect(errors).toEqual([]);
 });
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');

@@ -2,6 +2,8 @@ import type { FieldRect, HomepageRenderer } from './types';
 import { createLatticeGraph, type LatticeGraph, type LatticeKind } from './lattices';
 
 const clamp=(v:number,min:number,max:number)=>Math.min(max,Math.max(min,v));
+const CORAL_FRACTION=.13;
+const EDGE_SAMPLES=[0,.25,.5,.75,1] as const;
 
 function createRng(seed=0x5f3759df){
   let s=seed>>>0;
@@ -26,6 +28,7 @@ interface Walker{
   age:number;
   life:number;
   ageSinceStuck:number;
+  speed:number;
   hue:number;
 }
 
@@ -46,6 +49,8 @@ export function createNetworkRenderer(
   let walkers:Walker[]=[];
   let frameCounter=0;
   let transitionCount=0;
+  let motionDistance=0;
+  let lastTransitionTime=0;
   let primary:[number,number,number]=[120,170,166];
   let secondary:[number,number,number]=[239,128,105];
   let tertiary:[number,number,number]=[103,133,150];
@@ -63,6 +68,16 @@ export function createNetworkRenderer(
     const qy=Math.abs(y-cy)-hy;
     const ox=Math.max(qx,0),oy=Math.max(qy,0);
     return Math.hypot(ox,oy)+Math.min(Math.max(qx,qy),0)-radius;
+  }
+
+  function edgeIntersectsObstacle(a:number,b:number,clearance=8){
+    if(!obstacle)return false;
+    const ax=graph.x[a],ay=graph.y[a];
+    const bx=graph.x[b],by=graph.y[b];
+    for(const t of EDGE_SAMPLES){
+      if(roundedRectSdf(ax+(bx-ax)*t,ay+(by-ay)*t,obstacle)<clearance)return true;
+    }
+    return false;
   }
 
   function buildField(){
@@ -93,7 +108,7 @@ export function createNetworkRenderer(
     const walker=existing??({} as Walker);
     walker.node=best;walker.previous=best;
     walker.x=graph.x[best];walker.y=graph.y[best];
-    walker.vx=0;walker.vy=0;walker.age=0;
+    walker.vx=0;walker.vy=0;walker.speed=0;walker.age=0;
     walker.life=(lowCapability()?420:620)+rng()*520;
     walker.ageSinceStuck=0;
     walker.hue=rng();
@@ -121,6 +136,7 @@ export function createNetworkRenderer(
     for(let p=start;p<end;p++){
       const candidate=graph.neighbors[p];
       const nx=graph.x[candidate],ny=graph.y[candidate];
+      if(obstacle&&(roundedRectSdf(nx,ny,obstacle)<10||edgeIntersectsObstacle(walker.node,candidate)))continue;
       const dx=nx-cx,dy=ny-cy;
       const mag=Math.hypot(dx,dy)||1;
       const directional=(prevDx*dx+prevDy*dy)/(prevMag*mag);
@@ -155,11 +171,7 @@ export function createNetworkRenderer(
     walker.ageSinceStuck=0;
     busy[next]=1;
     transitionCount++;
-
-    if(render){
-      const color=walker.hue<.16?secondary:primary;
-      drawEdge(previous,next,walker.hue<.16?.68:.52,color,walker.hue<.16?1.75:1.25);
-    }
+    lastTransitionTime=performance.now();
   }
 
   function drawBaseGraph(){
@@ -170,7 +182,7 @@ export function createNetworkRenderer(
     ctx.beginPath();
     for(let e=0;e<graph.edges.length;e+=2){
       const a=graph.edges[e],b=graph.edges[e+1];
-      if(obstacle&&roundedRectSdf((graph.x[a]+graph.x[b])*.5,(graph.y[a]+graph.y[b])*.5,obstacle)<8)continue;
+      if(edgeIntersectsObstacle(a,b))continue;
       ctx.moveTo(graph.x[a],graph.y[a]);ctx.lineTo(graph.x[b],graph.y[b]);
     }
     ctx.stroke();
@@ -201,7 +213,8 @@ export function createNetworkRenderer(
     if(disposed)return;
     const rect=canvas.getBoundingClientRect();
     width=Math.max(1,rect.width);height=Math.max(1,rect.height);
-    const dpr=Math.min(devicePixelRatio||1,lowCapability()?1:1.25);
+    const pixelBudgetDpr=Math.sqrt(4_500_000/Math.max(1,width*height));
+    const dpr=Math.min(devicePixelRatio||1,lowCapability()?1:1.25,Math.max(.75,pixelBudgetDpr));
     canvas.width=Math.max(1,Math.round(width*dpr));
     canvas.height=Math.max(1,Math.round(height*dpr));
     canvas.style.width=`${width}px`;canvas.style.height=`${height}px`;
@@ -224,8 +237,10 @@ export function createNetworkRenderer(
     obstacle=next;
     canvas.dataset.quietZones=String(rects.length);
     if(changed){
-      buildField();rebuildWalkers();prime(reducedMotion?140:90);
-      canvas.dataset.primed='true';
+      buildField();rebuildWalkers();
+      if(reducedMotion)prime(lowCapability()?80:110);
+      else drawBaseGraph();
+      canvas.dataset.primed=reducedMotion?'static':'false';
     }
   }
 
@@ -248,19 +263,25 @@ export function createNetworkRenderer(
     walker.vy*=viscosity;
     walker.x+=.1*walker.vx;
     walker.y+=.1*walker.vy;
+    walker.speed=Math.hypot(walker.x-px,walker.y-py);
+    motionDistance+=walker.speed;
     walker.age++;
 
     if(render){
-      const color=walker.hue<.16?secondary:primary;
-      if(Math.hypot(walker.x-px,walker.y-py)<24){
+      const coral=walker.hue<CORAL_FRACTION;
+      const color=coral?secondary:primary;
+      if(walker.previous!==walker.node){
+        drawEdge(walker.previous,walker.node,coral?.68:.54,color,coral?1.7:1.3);
+      }
+      if(walker.speed<24){
         ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(walker.x,walker.y);
-        ctx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<.16?.72:.5})`;
-        ctx.lineWidth=walker.hue<.16?1.55:1.05;ctx.stroke();
+        ctx.strokeStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<CORAL_FRACTION?.72:.5})`;
+        ctx.lineWidth=walker.hue<CORAL_FRACTION?1.55:1.05;ctx.stroke();
       }
 
       ctx.beginPath();
-      ctx.arc(targetX,targetY,walker.hue<.16?1.8:1.35,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<.16?.9:.7})`;
+      ctx.arc(targetX,targetY,walker.hue<CORAL_FRACTION?1.8:1.35,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${color[0]},${color[1]},${color[2]},${walker.hue<CORAL_FRACTION?.9:.7})`;
       ctx.fill();
     }
 
@@ -277,42 +298,63 @@ export function createNetworkRenderer(
     ageBusy();
   }
 
+  function fadeAndReinforceBase(){
+    ctx.save();
+    ctx.globalCompositeOperation='destination-out';
+    ctx.fillStyle=`rgba(0,0,0,${lowCapability()?.075:.06})`;
+    ctx.fillRect(0,0,width,height);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle=`rgba(${tertiary[0]},${tertiary[1]},${tertiary[2]},.009)`;
+    ctx.lineWidth=.55;
+    ctx.beginPath();
+    for(let e=0;e<graph.edges.length;e+=2){
+      const a=graph.edges[e],b=graph.edges[e+1];
+      if(edgeIntersectsObstacle(a,b))continue;
+      ctx.moveTo(graph.x[a],graph.y[a]);
+      ctx.lineTo(graph.x[b],graph.y[b]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function updateDiagnostics(){
+    let speed=0,activeWalkers=0;
+    for(const walker of walkers){
+      speed+=walker.speed;
+      if(walker.previous!==walker.node)activeWalkers++;
+    }
+    canvas.dataset.transitions=String(transitionCount);
+    canvas.dataset.activeWalkers=String(activeWalkers);
+    canvas.dataset.meanSpeed=(walkers.length?speed/walkers.length:0).toFixed(3);
+    canvas.dataset.travel=motionDistance.toFixed(1);
+    canvas.dataset.lastTransitionTime=lastTransitionTime?String(Math.round(lastTransitionTime)):'0';
+  }
+
   function step(_deltaSeconds:number){
     if(disposed||reducedMotion)return;
+    fadeAndReinforceBase();
     ageBusy();
     for(const walker of walkers)advanceWalker(walker,true);
+    carveObstacle();
     frameCounter++;
-    if(frameCounter%5===0)canvas.dataset.transitions=String(transitionCount);
+    if(frameCounter%4===0)updateDiagnostics();
   }
 
   function draw(){
     if(disposed||reducedMotion)return;
-    if(frameCounter%2===0){
-      ctx.save();
-      ctx.globalCompositeOperation='destination-out';
-      ctx.fillStyle='rgba(0,0,0,.012)';
-      ctx.fillRect(0,0,width,height);
-      ctx.restore();
-
-      ctx.save();
-      ctx.strokeStyle=`rgba(${tertiary[0]},${tertiary[1]},${tertiary[2]},.026)`;
-      ctx.lineWidth=.55;ctx.beginPath();
-      for(let e=0;e<graph.edges.length;e+=2){
-        const a=graph.edges[e],b=graph.edges[e+1];
-        if(obstacle&&roundedRectSdf((graph.x[a]+graph.x[b])*.5,(graph.y[a]+graph.y[b])*.5,obstacle)<8)continue;
-        ctx.moveTo(graph.x[a],graph.y[a]);ctx.lineTo(graph.x[b],graph.y[b]);
-      }
-      ctx.stroke();ctx.restore();
-    }
     carveObstacle();
   }
 
   function prime(iterations:number){
     drawBaseGraph();
     for(let i=0;i<iterations;i++){
+      fadeAndReinforceBase();
       ageBusy();
       for(const walker of walkers)advanceWalker(walker,true);
     }
+    updateDiagnostics();
     carveObstacle();
   }
 
@@ -328,6 +370,7 @@ export function createNetworkRenderer(
     secondary=parseColor(style.getPropertyValue('--field-secondary'),secondary);
     tertiary=parseColor(style.getPropertyValue('--field-tertiary'),tertiary);
     drawBaseGraph();
+    if(reducedMotion)prime(lowCapability()?80:110);
   }
 
   function dispose(){
@@ -337,7 +380,7 @@ export function createNetworkRenderer(
     busy=new Uint16Array(0);
   }
 
-  refreshTheme();resize();
+  refreshTheme();
 
   return{
     resize,step,draw,
