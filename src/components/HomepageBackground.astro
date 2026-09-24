@@ -17,12 +17,20 @@ const lattice = site.HERO.lattice ?? 'kagome';
     <canvas class="homepage-field__base" aria-hidden="true" hidden></canvas>
     <canvas class="homepage-field__dynamic" aria-hidden="true" hidden></canvas>
     <svg class="homepage-field__active" aria-hidden="true" preserveAspectRatio="none">
-      <path data-active="primary-edge" class="active-edge primary" />
-      <path data-active="coral-edge" class="active-edge coral" />
-      <path data-active="primary-particle" class="active-dot particle primary" />
-      <path data-active="coral-particle" class="active-dot particle coral" />
-      <path data-active="primary-target" class="active-dot target primary" />
-      <path data-active="coral-target" class="active-dot target coral" />
+      <defs>
+        <mask id="homepage-active-mask" maskUnits="userSpaceOnUse">
+          <rect data-active-mask="background" x="0" y="0" fill="white" />
+          <rect data-active-mask="obstacle" width="0" height="0" fill="black" />
+        </mask>
+      </defs>
+      <g mask="url(#homepage-active-mask)">
+        <path data-active="primary-edge" class="active-edge primary" />
+        <path data-active="coral-edge" class="active-edge coral" />
+        <path data-active="primary-particle" class="active-dot particle primary" />
+        <path data-active="coral-particle" class="active-dot particle coral" />
+        <path data-active="primary-target" class="active-dot target primary" />
+        <path data-active="coral-target" class="active-dot target coral" />
+      </g>
     </svg>
   </div>
 </homepage-background>

@@ -119,6 +119,8 @@ export function createNetworkRenderer(
     primaryTarget:activeSvg.querySelector<SVGPathElement>('[data-active="primary-target"]'),
     coralTarget:activeSvg.querySelector<SVGPathElement>('[data-active="coral-target"]'),
   };
+  const activeMaskBackground=activeSvg.querySelector<SVGRectElement>('[data-active-mask="background"]');
+  const activeMaskObstacle=activeSvg.querySelector<SVGRectElement>('[data-active-mask="obstacle"]');
 
   const lowCapability=()=> (navigator.hardwareConcurrency||4)<=4 || matchMedia('(max-width:720px)').matches;
   const walkerTarget=()=> lowCapability()?34:58;
@@ -207,6 +209,25 @@ export function createNetworkRenderer(
     context.fillStyle='rgba(0,0,0,1)';
     context.fill();
     context.restore();
+  }
+
+  function updateActiveMask(){
+    activeMaskBackground?.setAttribute('width',String(width));
+    activeMaskBackground?.setAttribute('height',String(height));
+    if(!activeMaskObstacle)return;
+    if(!obstacle){
+      activeMaskObstacle.setAttribute('width','0');
+      activeMaskObstacle.setAttribute('height','0');
+      return;
+    }
+    const pad=12;
+    const radius=(obstacle.radius??28)+pad;
+    activeMaskObstacle.setAttribute('x',String(obstacle.left-pad));
+    activeMaskObstacle.setAttribute('y',String(obstacle.top-pad));
+    activeMaskObstacle.setAttribute('width',String(obstacle.right-obstacle.left+pad*2));
+    activeMaskObstacle.setAttribute('height',String(obstacle.bottom-obstacle.top+pad*2));
+    activeMaskObstacle.setAttribute('rx',String(radius));
+    activeMaskObstacle.setAttribute('ry',String(radius));
   }
 
   function distributionBin(x:number,y:number){
@@ -646,6 +667,7 @@ export function createNetworkRenderer(
     baseCanvas.style.width=`${width}px`;
     baseCanvas.style.height=`${height}px`;
     activeSvg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    updateActiveMask();
     configureLayer(baseCanvas,baseCtx);
     configureLayer(canvas,ctx);
 
@@ -680,6 +702,7 @@ export function createNetworkRenderer(
 
     obstacle=next;
     canvas.dataset.quietZones=String(rects.length);
+    updateActiveMask();
     if(!changed)return;
 
     buildField();
