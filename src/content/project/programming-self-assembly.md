@@ -5,7 +5,7 @@ question: "Can self-assembly be turned from trial-and-error into an inverse desi
 contribution: "I use optimisation, statistical mechanics and simulation to encode assembly information into building blocks, including frustration and ring-selection rules that stabilise both ordered and disordered materials."
 status: "ongoing"
 methods: ["inverse design", "optimisation", "self-assembly", "frustration"]
-publications: ["color-frustration", "diamond-ring-selection", "hierarchical-photonic-crystals"]
+publications: ["color-frustration", "diamond-ring-selection", "hierarchical-photonic-crystals", "patchy-rods-photonic-crystals", "single-colloidal-gyroids"]
 tags: ["design"]
 topics: ["inverse design", "disordered materials", "patchy particles", "self-assembly"]
 order: 2
