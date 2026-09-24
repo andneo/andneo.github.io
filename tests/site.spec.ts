@@ -376,8 +376,8 @@ test('homepage navigation, section order and card labels use the revised UI typo
  expect(sectionOrder).toEqual(['research','posts','courses']);
  await expect(page.locator('.homepage-content > #publications')).toHaveCount(0);
  await expect(page.locator('#posts .section-header h2')).toHaveText('Blog posts');
- await expect(page.locator('#publications .section-header h2')).toHaveText('Publications');
- await expect(page.locator('#publications .section-header > a')).toContainText('View all');
+ await expect(page.locator('#research .section-header h2')).toHaveText('Research');
+ await expect(page.locator('#research .section-header > a')).toContainText('Research overview');
 
  const typography=await page.evaluate(()=>{
   const nav=document.querySelector<HTMLElement>('.site-nav')!;
@@ -483,8 +483,11 @@ test('header expands at the top and compacts after scroll without overflow',asyn
 });
 test('homepage cards keep symmetric equal-height rows at desktop width',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.goto('/');
- for(const selector of ['.research-grid','.course-grid','.publication-grid']){
-  const heights=await page.locator(`${selector} > li`).evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().height)));
-  expect(Math.max(...heights)-Math.min(...heights)).toBeLessThanOrEqual(2);
- }
+ const themeHeights=await page.locator('.research-theme-grid > .research-theme-card').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().height)));
+ expect(themeHeights).toHaveLength(4);
+ expect(Math.abs(themeHeights[0]-themeHeights[1])).toBeLessThanOrEqual(2);
+ expect(Math.abs(themeHeights[2]-themeHeights[3])).toBeLessThanOrEqual(2);
+ const courseHeights=await page.locator('.course-grid > li').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().height)));
+ expect(courseHeights.length).toBeGreaterThan(0);
+ expect(Math.max(...courseHeights)-Math.min(...courseHeights)).toBeLessThanOrEqual(2);
 });
