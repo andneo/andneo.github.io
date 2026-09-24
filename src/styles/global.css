@@ -14,7 +14,7 @@
  --shadow-hairline:0 1px 0 rgb(23 33 40 / .05);
  --shadow-card:0 10px 30px -26px rgb(28 65 68 / .32);
  --shadow-lift:0 20px 46px -32px rgb(27 67 71 / .44);
- --field-primary:#477f7c; --field-secondary:#ce725e;
+ --field-primary:#477f7c; --field-secondary:#ce725e; --field-tertiary:#668492;
  --field-wash:transparent; --field-vignette:radial-gradient(ellipse at 50% 48%,transparent 0 45%,rgb(242 242 239 / .10) 72%,rgb(242 242 239 / .34) 100%);
  --home-scrim-strong:rgba(242,242,239,.91); --home-scrim:rgba(242,242,239,.58); --control-bg:rgba(248,248,245,.84);
  --panel-bg:rgba(248,248,245,.72); --panel-bg-hover:rgba(248,248,245,.89); --panel-border:rgb(23 33 40 / .14); --row-hover:rgb(61 119 116 / .045);
@@ -29,7 +29,7 @@
  --shadow-hairline:0 1px 0 rgb(255 255 255 / .04);
  --shadow-card:0 14px 36px -28px rgb(0 0 0 / .76);
  --shadow-lift:0 22px 54px -32px rgb(0 0 0 / .86);
- --field-primary:#78aaa6; --field-secondary:#ef8069;
+ --field-primary:#78aaa6; --field-secondary:#ef8069; --field-tertiary:#7696a3;
  --field-wash:transparent; --field-vignette:radial-gradient(ellipse at 50% 48%,transparent 0 45%,rgb(16 23 29 / .08) 72%,rgb(16 23 29 / .38) 100%);
  --home-scrim-strong:rgba(16,23,29,.90); --home-scrim:rgba(16,23,29,.57); --control-bg:rgba(23,33,40,.86);
  --panel-bg:rgba(23,33,40,.72); --panel-bg-hover:rgba(28,42,49,.89); --panel-border:rgb(242 238 234 / .15); --row-hover:rgb(127 174 170 / .055);
@@ -45,7 +45,7 @@
   --shadow-hairline:0 1px 0 rgb(255 255 255 / .04);
   --shadow-card:0 14px 36px -28px rgb(0 0 0 / .76);
   --shadow-lift:0 22px 54px -32px rgb(0 0 0 / .86);
-  --field-primary:#78aaa6; --field-secondary:#ef8069;
+  --field-primary:#78aaa6; --field-secondary:#ef8069; --field-tertiary:#7696a3;
   --field-wash:transparent; --field-vignette:radial-gradient(ellipse at 50% 48%,transparent 0 45%,rgb(16 23 29 / .08) 72%,rgb(16 23 29 / .38) 100%);
   --home-scrim-strong:rgba(16,23,29,.90); --home-scrim:rgba(16,23,29,.57); --control-bg:rgba(23,33,40,.86);
   --panel-bg:rgba(23,33,40,.72); --panel-bg-hover:rgba(28,42,49,.89); --panel-border:rgb(242 238 234 / .15); --row-hover:rgb(127 174 170 / .055);
