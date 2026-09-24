@@ -26,6 +26,8 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  const canvas=hero.locator('.homepage-field canvas');
  await expect(canvas).toBeVisible();
  await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-motion-preference','no-preference');
+ await expect(canvas).toHaveAttribute('data-motion-override','none');
  await expect(canvas).toHaveAttribute('data-motion-reason','animated');
  await expect(canvas).toHaveAttribute('data-lattice','kagome');
  await expect(canvas).toHaveAttribute('data-layers','base-trail-active');
@@ -115,9 +117,23 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(quietAlpha).toBeLessThan(.002);
  expect(errors).toEqual([]);
 });
+test('hero motion override can animate when system preference is reduced',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/?motion=full');
+ const canvas=page.locator('.home-hero .homepage-field canvas');
+ await expect(canvas).toHaveAttribute('data-motion-preference','reduce');
+ await expect(canvas).toHaveAttribute('data-motion-override','full');
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-motion-reason','animated');
+ const before=Number(await canvas.getAttribute('data-sim-steps'));
+ await page.waitForTimeout(500);
+ const after=Number(await canvas.getAttribute('data-sim-steps'));
+ expect(after).toBeGreaterThan(before+15);
+});
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-motion-reason','reduced-motion');await expect(field).toHaveAttribute('data-lattice','kagome');
+ const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-motion-preference','reduce');await expect(field).toHaveAttribute('data-motion-override','none');await expect(field).toHaveAttribute('data-motion-reason','system-reduced-motion');await expect(field).toHaveAttribute('data-lattice','kagome');
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
  const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(350);
