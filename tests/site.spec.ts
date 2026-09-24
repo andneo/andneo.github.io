@@ -20,6 +20,7 @@ test('hero trail field wraps the identity block and stays lightweight',async({pa
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const hero=page.locator('.home-hero');const canvas=hero.locator('.homepage-field canvas');
  await expect(canvas).toBeVisible();await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-primed','true');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
  const agents=Number(await canvas.getAttribute('data-agents'));expect(agents).toBeGreaterThan(40);expect(agents).toBeLessThanOrEqual(140);
  expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
