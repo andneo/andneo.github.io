@@ -16,26 +16,36 @@ test('navigation and mathematical content work without JavaScript',async({browse
  await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
  await expect(page.locator('.katex').first()).toBeVisible();await context.close();
 });
-test('hero trail field wraps the identity block and stays lightweight',async({page})=>{
+test('hero lattice network is visible, animated and bounded',async({page})=>{
  await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('/');
  const hero=page.locator('.home-hero');const canvas=hero.locator('.homepage-field canvas');
  await expect(canvas).toBeVisible();await expect(canvas).toHaveAttribute('data-motion','running');
- await expect(canvas).toHaveAttribute('data-primed','true');
+ await expect(canvas).toHaveAttribute('data-lattice','kagome');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
- const agents=Number(await canvas.getAttribute('data-agents'));expect(agents).toBeGreaterThan(40);expect(agents).toBeLessThanOrEqual(140);
+ const nodes=Number(await canvas.getAttribute('data-nodes'));
+ const edges=Number(await canvas.getAttribute('data-edges'));
+ const walkers=Number(await canvas.getAttribute('data-walkers'));
+ expect(nodes).toBeGreaterThan(100);expect(nodes).toBeLessThan(5000);
+ expect(edges).toBeGreaterThan(nodes);expect(edges).toBeLessThan(12000);
+ expect(walkers).toBeGreaterThan(20);expect(walkers).toBeLessThanOrEqual(70);
  expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
- expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
- const quiet=page.locator('[data-field-quiet]');
- const radius=await quiet.evaluate((node:HTMLElement)=>getComputedStyle(node).borderRadius);
- expect(parseFloat(radius)).toBeGreaterThanOrEqual(20);
+ const layer=await page.locator('homepage-background').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
+ const contentLayer=await page.locator('.hero-frame').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
+ expect(layer).toBeGreaterThanOrEqual(1);expect(contentLayer).toBeGreaterThan(layer);
+ const alpha=await canvas.evaluate((node:HTMLCanvasElement)=>{
+  const ctx=node.getContext('2d')!;const data=ctx.getImageData(0,0,node.width,node.height).data;
+  let nonzero=0;for(let i=3;i<data.length;i+=4)if(data[i]>10)nonzero++;
+  return nonzero/(data.length/4);
+ });
+ expect(alpha).toBeGreaterThan(.005);
  const before=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
- await page.waitForTimeout(900);
+ await page.waitForTimeout(800);
  const after=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  expect(after).not.toBe(before);
 });
 test('reduced motion, keyboard access, dark theme and legacy redirect',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
- const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');
+ const field=page.locator('.home-hero .homepage-field canvas');await expect(field).toHaveAttribute('data-motion','static');await expect(field).toHaveAttribute('data-lattice','kagome');
  expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
  const staticFrame=await field.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
  await page.waitForTimeout(350);

@@ -1,11 +1,14 @@
 import type { FieldRect, HomepageRenderer } from './renderers/types';
+import type { LatticeKind } from './renderers/lattices';
 
-async function createRenderer(name:string,canvas:HTMLCanvasElement):Promise<HomepageRenderer>{
+const latticeKinds=new Set<LatticeKind>(['square','honeycomb','hexagonal','kagome','penrose']);
+
+async function createRenderer(name:string,canvas:HTMLCanvasElement,lattice:LatticeKind):Promise<HomepageRenderer>{
   switch(name){
-    case 'hero-trails':
-    case 'field-trails':{
-      const {createHeroTrailRenderer}=await import('./renderers/trail-field');
-      return createHeroTrailRenderer(canvas);
+    case 'network':
+    case 'network-walkers':{
+      const {createNetworkRenderer}=await import('./renderers/network');
+      return createNetworkRenderer(canvas,lattice);
     }
     default:throw new Error(`Unknown homepage renderer: ${name}`);
   }
@@ -24,10 +27,12 @@ class HomepageBackgroundElement extends HTMLElement{
     const quietTargets=hero?[...hero.querySelectorAll<HTMLElement>('[data-field-quiet]')]:[];
     if(!canvas||!poster||!field||!hero)return;
 
+    const requested=this.dataset.lattice as LatticeKind|undefined;
+    const lattice=requested&&latticeKinds.has(requested)?requested:'kagome';
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     const systemTheme=matchMedia('(prefers-color-scheme: dark)');
     const lowCapability=(navigator.hardwareConcurrency||4)<=4||matchMedia('(max-width:720px)').matches;
-    const frameInterval=lowCapability?1000/18:1000/24;
+    const frameInterval=lowCapability?1000/20:1000/30;
 
     let renderer:HomepageRenderer|undefined;
     let frame=0,lastStep=0,lastPaint=0;
@@ -59,7 +64,7 @@ class HomepageBackgroundElement extends HTMLElement{
       if(!renderer||paused||!visible||document.hidden)return;
       frame=requestAnimationFrame(tick);
       if(now-lastPaint<frameInterval)return;
-      const delta=lastStep?Math.min((now-lastStep)/1000,.08):frameInterval/1000;
+      const delta=lastStep?Math.min((now-lastStep)/1000,.07):frameInterval/1000;
       lastStep=now;lastPaint=now;
       renderer.step(delta);renderer.draw();
     };
@@ -98,7 +103,7 @@ class HomepageBackgroundElement extends HTMLElement{
     };
 
     try{
-      renderer=await createRenderer(this.dataset.renderer||'hero-trails',canvas);
+      renderer=await createRenderer(this.dataset.renderer||'network',canvas,lattice);
       if(disposed){renderer.dispose();return;}
 
       canvas.hidden=false;poster.style.display='none';
@@ -113,7 +118,8 @@ class HomepageBackgroundElement extends HTMLElement{
       motion.addEventListener('change',handleMotion);
       systemTheme.addEventListener('change',refreshTheme);
       sync();
-    }catch{
+    }catch(error){
+      console.error('Homepage network renderer failed',error);
       renderer?.dispose();canvas.hidden=true;poster.style.display='';
     }
   }

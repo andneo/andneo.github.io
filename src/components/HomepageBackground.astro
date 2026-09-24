@@ -1,14 +1,17 @@
 ---
 import site from '../data/site.json';
+const lattice = site.HERO.lattice ?? 'kagome';
 ---
-<homepage-background data-renderer={site.HERO.renderer} data-enabled={String(site.HERO.enabled)}>
+<homepage-background
+  data-renderer={site.HERO.renderer}
+  data-lattice={lattice}
+  data-enabled={String(site.HERO.enabled)}
+>
   <div class="homepage-field" aria-hidden="true">
     <svg class="homepage-field__poster" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid slice">
-      <g>
-        <path d="M98 163c145-101 253-92 350-9s216 86 326-1 224-92 345 1" />
-        <path d="M58 224c174-122 319-104 422-15s210 77 310-8 230-104 370 5" />
-        <path d="M56 515c154 103 295 102 402 19s219-77 318 5 232 96 368-9" />
-        <path d="M102 578c139 84 258 83 358 8s215-70 318 4 217 80 338-4" />
+      <g class="poster-network">
+        <path d="M80 120 185 60l105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Z" />
+        <path d="M185 300 290 240l105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Zm210 0 105-60 105 60v120l-105 60-105-60Z" />
       </g>
     </svg>
     <canvas aria-hidden="true" hidden></canvas>
@@ -18,12 +21,12 @@ import site from '../data/site.json';
   import '../interactive/homepage/controller';
 </script>
 <style>
-  homepage-background { position:absolute; inset:0; z-index:0; display:block; pointer-events:none; overflow:hidden; }
-  .homepage-field { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
-  .homepage-field::after { content:''; position:absolute; inset:0; background:var(--field-vignette); pointer-events:none; }
-  .homepage-field__poster,canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
-  .homepage-field__poster { opacity:.45; }
-  .homepage-field__poster g { fill:none; stroke:var(--field-primary); stroke-width:1.2; opacity:.14; }
-  canvas { opacity:.9; }
+  homepage-background { position:absolute; inset:0; z-index:1; display:block; pointer-events:none; overflow:hidden; }
+  .homepage-field { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+  .homepage-field::after { content:''; position:absolute; inset:0; z-index:2; background:var(--field-vignette); pointer-events:none; }
+  .homepage-field__poster,canvas { position:absolute; inset:0; z-index:1; display:block; width:100%; height:100%; }
+  .homepage-field__poster { opacity:.75; }
+  .poster-network { fill:none; stroke:var(--field-primary); stroke-width:1; opacity:.2; }
+  canvas { opacity:1; }
   @media print { homepage-background { display:none !important; } }
 </style>
