@@ -284,6 +284,50 @@ test('homepage hero is centered, expanded and stripped of redundant metadata',as
  expect(geometry.headingSize).toBeGreaterThan(38);
 });
 
+test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/posts/');
+
+ await expect(page.locator('.blog-heading h1')).toHaveText('Notes from the computational side');
+ const cards=page.locator('[data-post-card]');
+ await expect(cards).toHaveCount(2);
+
+ const desktopColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(desktopColumns).toBe(4);
+
+ const buttons=page.locator('[data-post-filter]');
+ expect(await buttons.count()).toBeGreaterThan(2);
+ await expect(page.locator('[data-post-filter="all"]')).toHaveAttribute('aria-pressed','true');
+
+ await page.locator('[data-post-filter="n-body"]').click();
+ await expect(page.locator('[data-post-count]')).toHaveText('1 post');
+ await expect(page).toHaveURL(/\?topic=n-body$/);
+ expect(await cards.evaluateAll(nodes=>nodes.filter(node=>!(node as HTMLElement).hidden).length)).toBe(1);
+
+ await page.locator('[data-post-filter="tutorial"]').click();
+ await expect(page.locator('[data-post-count]')).toHaveText('2 posts');
+ expect(await cards.evaluateAll(nodes=>nodes.filter(node=>!(node as HTMLElement).hidden).length)).toBe(2);
+
+ const transition=await page.locator('.blog-card').first().evaluate(node=>getComputedStyle(node).transitionDuration);
+ expect(transition.split(',').every(value=>Number.parseFloat(value)<=.12)).toBe(true);
+
+ await page.setViewportSize({width:760,height:900});
+ await page.waitForTimeout(80);
+ const tabletColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(tabletColumns).toBe(2);
+
+ await page.setViewportSize({width:500,height:900});
+ await page.waitForTimeout(80);
+ const mobileColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(mobileColumns).toBe(1);
+});
+
 test('homepage navigation, section order and card labels use the revised UI typography',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/');

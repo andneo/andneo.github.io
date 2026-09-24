@@ -1,6 +1,184 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { published, url, topicsOf, topicSlug, byId } from '../../lib/content';
+
 const posts=(await published('post')).sort((a,b)=>b.data.date.valueOf()-a.data.date.valueOf()||byId(a,b));
+const cards=posts.map(post=>{
+  const topics=topicsOf(post);
+  return {
+    post,
+    topics,
+    topicSlugs:topics.map(topicSlug),
+    primary:topics[0] ?? 'article',
+  };
+});
+
+const counts=new Map<string,{label:string;count:number}>();
+for(const card of cards){
+  card.topics.forEach((label,index)=>{
+    const slug=card.topicSlugs[index];
+    const current=counts.get(slug);
+    counts.set(slug,{label,count:(current?.count??0)+1});
+  });
+}
+const filters=[...counts.entries()]
+  .map(([slug,value])=>({slug,...value}))
+  .sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label));
 ---
-<Base title="Articles" description="Scientific articles, explanations and computational notes."><div class="container page"><header class="page-heading"><p class="eyebrow">Writing</p><h1>Articles</h1></header><ul class="content-list">{posts.map(post=><li><p class="meta">{post.data.date.toISOString().slice(0,10)}</p><h2><a href={url('post',post.id)}>{post.data.title}</a></h2><p>{post.data.description}</p><p>{topicsOf(post).map(t=><a class="tag" href={`/topics/${topicSlug(t)}/`}>{t}</a>)}</p></li>)}</ul></div></Base>
+
+<Base title="Blog" description="Notes, derivations, simulations and computational explorations.">
+  <div class="container page blog-archive">
+    <header class="blog-heading">
+      <p class="eyebrow">Blog</p>
+      <h1>Notes from the computational side</h1>
+      <p>Derivations, numerical experiments, simulation notes and the occasional computational rabbit hole.</p>
+    </header>
+
+    <div class="blog-filter-shell">
+      <nav class="blog-filters" aria-label="Filter blog posts by topic" data-post-filters>
+        <button type="button" data-post-filter="all" aria-pressed="true">
+          <span>all</span><span class="filter-count">{posts.length}</span>
+        </button>
+        {filters.map(filter=>(
+          <button type="button" data-post-filter={filter.slug} aria-pressed="false">
+            <span>{filter.label}</span><span class="filter-count">{filter.count}</span>
+          </button>
+        ))}
+      </nav>
+      <p class="blog-result-count" aria-live="polite" data-post-count>
+        {posts.length} {posts.length===1?'post':'posts'}
+      </p>
+    </div>
+
+    <ul class="blog-grid" data-post-grid aria-label="Blog posts">
+      {cards.map(({post,topics,topicSlugs,primary})=>(
+        <li class="blog-grid-item" data-post-card data-topics={topicSlugs.join(' ')}>
+          <article class="blog-card">
+            <div class="blog-card-top">
+              <span class="blog-card-category">{primary}</span>
+              <time datetime={post.data.date.toISOString()}>
+                {post.data.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+              </time>
+            </div>
+
+            <h2>
+              <a href={url('post',post.id)}>{post.data.title}</a>
+            </h2>
+
+            {post.data.description && <p class="blog-card-description">{post.data.description}</p>}
+
+            <footer class="blog-card-footer">
+              <div class="blog-card-topics" aria-label="Topics">
+                {topics.map(topic=><span>{topic}</span>)}
+              </div>
+              <span class="blog-card-arrow" aria-hidden="true">↗</span>
+            </footer>
+          </article>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .blog-archive { padding-top:clamp(7.5rem,12vw,10rem); }
+  .blog-heading { max-width:760px; margin-bottom:clamp(2.4rem,5vw,4rem); }
+  .blog-heading h1 { max-width:15ch; margin:.5rem 0 1rem; font:600 clamp(2.35rem,4.5vw,4.3rem)/1 var(--font-display); letter-spacing:-.05em; }
+  .blog-heading > p:last-child { max-width:62ch; margin:0; color:var(--text-2); font-size:clamp(1rem,.98rem + .15vw,1.1rem); line-height:1.7; }
+
+  .blog-filter-shell { display:flex; align-items:flex-start; justify-content:space-between; gap:1.25rem; margin-bottom:1.4rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
+  .blog-filters { display:flex; flex-wrap:wrap; gap:.45rem; min-width:0; }
+  .blog-filters button { min-height:2rem; display:inline-flex; align-items:center; gap:.42rem; padding:.35rem .65rem; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--text-2); font:400 .72rem/1 var(--font-sans); text-transform:lowercase; cursor:pointer; transition:color 110ms ease,border-color 110ms ease,background 110ms ease,transform 110ms ease; }
+  .blog-filters button:hover { color:var(--signal); border-color:var(--signal-border); background:var(--signal-soft); }
+  .blog-filters button[aria-pressed="true"] { color:var(--signal); border-color:var(--signal-border); background:var(--signal-soft); }
+  .blog-filters button:active { transform:translateY(1px); }
+  .filter-count { min-width:1.15rem; height:1.15rem; display:grid; place-items:center; padding-inline:.25rem; border-radius:999px; background:var(--accent-light); color:var(--text-3); font-size:.62rem; font-variant-numeric:tabular-nums; }
+  .blog-filters button[aria-pressed="true"] .filter-count { background:color-mix(in srgb,var(--signal) 13%,transparent); color:var(--signal); }
+  .blog-result-count { flex:none; margin:.42rem 0 0; color:var(--text-3); font:400 .72rem/1.2 var(--font-sans); white-space:nowrap; }
+
+  .blog-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:0; padding:0; list-style:none; }
+  .blog-grid-item { min-width:0; }
+  .blog-grid-item[hidden] { display:none; }
+
+  .blog-card { position:relative; min-height:260px; height:100%; display:flex; flex-direction:column; padding:1.15rem; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); transition:transform 120ms cubic-bezier(.22,.61,.36,1),border-color 120ms ease,background 120ms ease,box-shadow 120ms ease; }
+  .blog-card:hover,.blog-card:focus-within { transform:translateY(-2px); border-color:var(--signal-border); background:color-mix(in srgb,var(--panel-bg-hover) 96%,var(--signal-soft)); box-shadow:var(--shadow-card); }
+  .blog-card-top { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:1rem; }
+  .blog-card-category { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--signal); font:400 .68rem/1.2 var(--font-sans); text-transform:lowercase; }
+  .blog-card time { flex:none; color:var(--text-3); font:400 .65rem/1.2 var(--font-sans); font-variant-numeric:tabular-nums; }
+  .blog-card h2 { margin:0; font:600 clamp(1.02rem,.98rem + .18vw,1.16rem)/1.3 var(--font-display); letter-spacing:-.02em; }
+  .blog-card h2 a { color:var(--text); text-decoration:none; }
+  .blog-card h2 a::after { content:''; position:absolute; inset:0; }
+  .blog-card-description { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; margin:.8rem 0 0; color:var(--text-2); font-size:.84rem; line-height:1.58; }
+  .blog-card-footer { display:flex; align-items:flex-end; justify-content:space-between; gap:.75rem; margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); }
+  .blog-card-topics { display:flex; flex-wrap:wrap; gap:.25rem .55rem; min-width:0; }
+  .blog-card-topics span { color:var(--cool); font:400 .63rem/1.3 var(--font-sans); text-transform:lowercase; }
+  .blog-card-arrow { flex:none; color:var(--signal); font-size:.9rem; line-height:1; transition:transform 120ms ease; }
+  .blog-card:hover .blog-card-arrow,.blog-card:focus-within .blog-card-arrow { transform:translate(.1rem,-.1rem); }
+
+  @media(max-width:1180px) { .blog-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media(max-width:820px) {
+    .blog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .blog-filter-shell { display:block; }
+    .blog-result-count { margin-top:.85rem; }
+  }
+  @media(max-width:560px) {
+    .blog-archive { padding-top:7rem; }
+    .blog-grid { grid-template-columns:1fr; }
+    .blog-card { min-height:225px; }
+    .blog-filters { flex-wrap:nowrap; margin-inline:calc(var(--page-pad) * -1); padding-inline:var(--page-pad); overflow-x:auto; scrollbar-width:none; }
+    .blog-filters::-webkit-scrollbar { display:none; }
+    .blog-filters button { flex:0 0 auto; }
+  }
+</style>
+
+<script>
+  const filterRoot=document.querySelector<HTMLElement>('[data-post-filters]');
+  const cards=[...document.querySelectorAll<HTMLElement>('[data-post-card]')];
+  const count=document.querySelector<HTMLElement>('[data-post-count]');
+
+  if(filterRoot&&cards.length){
+    const buttons=[...filterRoot.querySelectorAll<HTMLButtonElement>('[data-post-filter]')];
+    const valid=new Set(buttons.map(button=>button.dataset.postFilter??'all'));
+    const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
+
+    const update=(filter:string,animate=true)=>{
+      const active=valid.has(filter)?filter:'all';
+      let visible=0;
+
+      for(const card of cards){
+        const topics=(card.dataset.topics??'').split(/\s+/).filter(Boolean);
+        const show=active==='all'||topics.includes(active);
+        const wasHidden=card.hidden;
+        card.hidden=!show;
+        if(show){
+          visible++;
+          if(animate&&wasHidden&&!reduceMotion.matches){
+            card.animate(
+              [{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],
+              {duration:120,easing:'cubic-bezier(.22,.61,.36,1)'}
+            );
+          }
+        }
+      }
+
+      for(const button of buttons){
+        button.setAttribute('aria-pressed',String(button.dataset.postFilter===active));
+      }
+
+      if(count)count.textContent=`${visible} ${visible===1?'post':'posts'}`;
+
+      const next=new URL(location.href);
+      if(active==='all')next.searchParams.delete('topic');
+      else next.searchParams.set('topic',active);
+      history.replaceState(null,'',next);
+    };
+
+    filterRoot.addEventListener('click',event=>{
+      const button=(event.target as Element).closest<HTMLButtonElement>('[data-post-filter]');
+      if(button)update(button.dataset.postFilter??'all');
+    });
+
+    const initial=new URL(location.href).searchParams.get('topic')??'all';
+    update(initial,false);
+  }
+</script>
