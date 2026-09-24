@@ -289,6 +289,10 @@ test('homepage research is organised as four themes with selected publication ev
  const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
  await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
  await expect(themes.nth(0).locator('.theme-image')).toHaveAttribute('src','/images/research/topology-networked-matter.webp');
+ const topologyImage=themes.nth(0).locator('.theme-image');
+ expect(await topologyImage.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0&&img.naturalHeight>0)).toBe(true);
+ const visualHeights=await page.locator('#research .theme-visual').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));
+ expect(Math.max(...visualHeights)-Math.min(...visualHeights)).toBeLessThanOrEqual(2);
  await expect(themes.nth(0).locator('.research-glyph')).toHaveCount(0);
  await expect(themes.nth(1).locator('.research-glyph')).toHaveCount(1);
  await expect(themes.nth(1)).toContainText('Programming Self-Assembly');
