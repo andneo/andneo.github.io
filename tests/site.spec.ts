@@ -377,7 +377,14 @@ test('hero copy, typing roles and footer reflect the revised personal profile',a
  expect(sizes.nameSize).toBeLessThan(65);
  expect(sizes.footerBg).not.toBe(sizes.bodyBg);
 
- await expect(page.locator('.site-footer a[href="mailto:andreas.neophytou@uniroma1.it"]')).toBeVisible();
+ const footerLinks=page.locator('.site-footer .footer-social');
+ await expect(footerLinks).toHaveCount(4);
+ await expect(page.locator('.site-footer a[href="mailto:andreas.neophytou@uniroma1.it"]')).toHaveAttribute('aria-label','Email');
+ await expect(page.locator('.site-footer a[aria-label="GitHub"]')).toBeVisible();
+ await expect(page.locator('.site-footer a[aria-label="Google Scholar"]')).toBeVisible();
+ await expect(page.locator('.site-footer a[aria-label="ORCID"]')).toBeVisible();
+ await expect(page.locator('.site-footer .footer-social svg')).toHaveCount(4);
+ expect(await footerLinks.evaluateAll(nodes=>nodes.every(node=>(node.textContent??'').trim()===''))).toBe(true);
 });
 
 

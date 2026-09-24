@@ -47,10 +47,33 @@ const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.ur
       <div class="container footer-inner">
         <p>© {new Date().getFullYear()} {AUTHOR.name}</p>
         <nav aria-label="Contact and profiles">
-          <a href={`mailto:${AUTHOR.email}`}>Email</a>
-          {SOCIAL.github && <a href={SOCIAL.github}>GitHub</a>}
-          {SOCIAL.googleScholar && <a href={SOCIAL.googleScholar}>Scholar</a>}
-          {SOCIAL.orcid && <a href={SOCIAL.orcid}>ORCID</a>}
+          <a class="footer-social" href={`mailto:${AUTHOR.email}`} aria-label="Email" title="Email">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <path d="m4 7 8 6 8-6"></path>
+            </svg>
+          </a>
+          {SOCIAL.github && <a class="footer-social" href={SOCIAL.github} aria-label="GitHub" title="GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 22v-4.2c.04-1.03-.36-2.02-1.1-2.73 3.68-.41 7.55-1.81 7.55-8.18A6.38 6.38 0 0 0 19.75 2.5 5.93 5.93 0 0 0 19.59 0S18.53-.34 15 1.67a15.38 15.38 0 0 0-8 0C3.47-.34 2.41 0 2.41 0a5.93 5.93 0 0 0-.16 2.5A6.38 6.38 0 0 0 .55 6.9c0 6.35 3.87 7.75 7.55 8.18A3.7 3.7 0 0 0 7 17.65V22"></path>
+              <path d="M7 19c-3 .92-3-1.5-4.2-2"></path>
+            </svg>
+          </a>}
+          {SOCIAL.googleScholar && <a class="footer-social" href={SOCIAL.googleScholar} aria-label="Google Scholar" title="Google Scholar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m2 9 10-5 10 5-10 5Z"></path>
+              <path d="M6 12v5c3 2.2 9 2.2 12 0v-5"></path>
+              <path d="M22 9v6"></path>
+            </svg>
+          </a>}
+          {SOCIAL.orcid && <a class="footer-social" href={SOCIAL.orcid} aria-label="ORCID" title="ORCID">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8.2 10.4v5.2"></path>
+              <circle cx="8.2" cy="7.9" r=".65" class="footer-social-fill"></circle>
+              <path d="M11.6 10.4h2.1a2.6 2.6 0 0 1 0 5.2h-2.1Z"></path>
+            </svg>
+          </a>}
         </nav>
       </div>
     </footer>
