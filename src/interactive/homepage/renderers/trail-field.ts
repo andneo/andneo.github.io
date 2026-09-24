@@ -34,7 +34,7 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
   let secondary:[number,number,number]=[234,126,103];
 
   const lowCapability=()=> (navigator.hardwareConcurrency||4)<=4 || matchMedia('(max-width:720px)').matches;
-  const agentTarget=()=>lowCapability()?68:124;
+  const agentTarget=()=>lowCapability()?84:152;
 
   function roundedRectSdf(x:number,y:number,rect:FieldRect){
     const radius=rect.radius??28;
@@ -77,7 +77,7 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
     a.life=(lowCapability()?430:650)+rng()*650;
     a.offset=24+rng()*76;
     a.direction=rng()>.5?1:-1;
-    a.coral=rng()<.09;
+    a.coral=rng()<.14;
     return a;
   }
 
@@ -99,6 +99,22 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
     if(reducedMotion)settleStatic();
   }
 
+  function primeTrails(iterations:number){
+    ctx.clearRect(0,0,width,height);
+    for(let i=0;i<iterations;i++){
+      elapsed+=1/30;
+      for(const a of agents)updateAgent(a,1/30);
+      ctx.save();ctx.lineCap='round';
+      for(const a of agents){
+        if(Math.hypot(a.x-a.px,a.y-a.py)>36)continue;
+        ctx.beginPath();ctx.moveTo(a.px,a.py);ctx.lineTo(a.x,a.y);
+        ctx.strokeStyle=strokeFor(a);ctx.lineWidth=a.coral?1.45:1;ctx.stroke();
+      }
+      ctx.restore();
+    }
+    carveObstacle();
+  }
+
   function setQuietZones(rects:FieldRect[]){
     const next=rects[0]??null;
     if(!next){obstacle=null;return;}
@@ -110,8 +126,9 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
     canvas.dataset.quietZones=String(rects.length);
     if(changed){
       rebuildAgents();
-      ctx.clearRect(0,0,width,height);
-      if(reducedMotion)settleStatic();
+      primeTrails(lowCapability()?210:300);
+      canvas.dataset.primed='true';
+      if(reducedMotion)canvas.dataset.motion='static';
     }
   }
 
@@ -131,7 +148,7 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
     }
 
     const fm=Math.hypot(fx,fy)||1;fx/=fm;fy/=fm;
-    const speed=(lowCapability()?12.5:16)+(a.offset%28)*.1;
+    const speed=(lowCapability()?13.5:17.5)+(a.offset%28)*.1;
     const blend=1-Math.exp(-dt*2.8);
     a.vx=lerp(a.vx,fx*speed,blend);a.vy=lerp(a.vy,fy*speed,blend);
     a.x+=a.vx*dt;a.y+=a.vy*dt;a.age+=dt*60;
@@ -148,7 +165,7 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
 
   function strokeFor(a:Agent){
     const c=a.coral?secondary:primary;
-    const alpha=a.coral?0.40:0.26;
+    const alpha=a.coral?0.58:0.34;
     return`rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
   }
 
@@ -166,34 +183,21 @@ export function createHeroTrailRenderer(canvas:HTMLCanvasElement):HomepageRender
     if(disposed)return;
     if(!reducedMotion){
       ctx.save();ctx.globalCompositeOperation='destination-out';
-      ctx.fillStyle='rgba(0,0,0,.028)';ctx.fillRect(0,0,width,height);ctx.restore();
+      ctx.fillStyle='rgba(0,0,0,.018)';ctx.fillRect(0,0,width,height);ctx.restore();
     }
 
     ctx.save();ctx.globalCompositeOperation='source-over';ctx.lineCap='round';
     for(const a of agents){
       if(Math.hypot(a.x-a.px,a.y-a.py)>36)continue;
       ctx.beginPath();ctx.moveTo(a.px,a.py);ctx.lineTo(a.x,a.y);
-      ctx.strokeStyle=strokeFor(a);ctx.lineWidth=a.coral?1.2:.9;ctx.stroke();
+      ctx.strokeStyle=strokeFor(a);ctx.lineWidth=a.coral?1.55:1.05;ctx.stroke();
     }
     ctx.restore();
     carveObstacle();
   }
 
   function settleStatic(){
-    ctx.clearRect(0,0,width,height);
-    const iterations=lowCapability()?240:340;
-    for(let i=0;i<iterations;i++){
-      elapsed+=1/24;
-      for(const a of agents)updateAgent(a,1/24);
-      ctx.save();ctx.lineCap='round';
-      for(const a of agents){
-        if(Math.hypot(a.x-a.px,a.y-a.py)>36)continue;
-        ctx.beginPath();ctx.moveTo(a.px,a.py);ctx.lineTo(a.x,a.y);
-        ctx.strokeStyle=strokeFor(a);ctx.lineWidth=a.coral?1.1:.82;ctx.stroke();
-      }
-      ctx.restore();
-    }
-    carveObstacle();
+    primeTrails(lowCapability()?230:320);
   }
 
   function setReducedMotion(reduced:boolean){
