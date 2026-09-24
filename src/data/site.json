@@ -55,7 +55,8 @@
   "ACCENT_HUE": 38,
   "SITE_URL": "https://andneo.github.io",
   "HERO": {
-    "renderer": "hero-trails",
+    "renderer": "network",
+    "lattice": "kagome",
     "enabled": true
   }
 }
