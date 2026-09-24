@@ -3,6 +3,17 @@ import Base from '../../layouts/Base.astro';
 import { published, url, topicsOf, topicSlug, byId } from '../../lib/content';
 
 const posts=(await published('post')).sort((a,b)=>b.data.date.valueOf()-a.data.date.valueOf()||byId(a,b));
+const visualFor=(id:string,topics:string[])=>{
+  const normalized=topics.map(topic=>topic.toLowerCase());
+  if(normalized.some(topic=>topic.includes('n-body')))return 'orbits';
+  if(normalized.some(topic=>topic.includes('stellar')||topic.includes('virial')||topic.includes('mechanics')))return 'phase';
+  if(normalized.some(topic=>topic.includes('numerical')||topic.includes('simulation')))return 'steps';
+  const variants=['network','waves','orbits','phase'] as const;
+  let hash=0;
+  for(const char of id)hash=(hash*31+char.charCodeAt(0))>>>0;
+  return variants[hash%variants.length];
+};
+
 const cards=posts.map(post=>{
   const topics=topicsOf(post);
   return {
@@ -10,6 +21,7 @@ const cards=posts.map(post=>{
     topics,
     topicSlugs:topics.map(topicSlug),
     primary:topics[0] ?? 'article',
+    visual:visualFor(post.id,topics),
   };
 });
 
@@ -30,8 +42,8 @@ const filters=[...counts.entries()]
   <div class="container page blog-archive">
     <header class="blog-heading">
       <p class="eyebrow">Blog</p>
-      <h1>Notes from the computational side</h1>
-      <p>Derivations, numerical experiments, simulation notes and the occasional computational rabbit hole.</p>
+      <h1>Ideas worth working through</h1>
+      <p>Practical explanations, useful techniques, simulation notes and the occasional computational rabbit hole.</p>
     </header>
 
     <div class="blog-filter-shell">
@@ -51,9 +63,61 @@ const filters=[...counts.entries()]
     </div>
 
     <ul class="blog-grid" data-post-grid aria-label="Blog posts">
-      {cards.map(({post,topics,topicSlugs,primary})=>(
+      {cards.map(({post,topics,topicSlugs,primary,visual})=>(
         <li class="blog-grid-item" data-post-card data-topics={topicSlugs.join(' ')}>
           <article class="blog-card">
+            <div class:list={['blog-card-visual',`visual-${visual}`]} aria-hidden="true">
+              <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+                {visual==='orbits' && (
+                  <>
+                    <ellipse class="visual-line visual-line-soft" cx="158" cy="62" rx="108" ry="36" />
+                    <ellipse class="visual-line" cx="158" cy="62" rx="72" ry="22" transform="rotate(-18 158 62)" />
+                    <circle class="visual-node visual-node-main" cx="158" cy="62" r="5" />
+                    <circle class="visual-node" cx="247" cy="43" r="3.3" />
+                    <circle class="visual-node visual-node-coral" cx="92" cy="77" r="3.8" />
+                    <path class="visual-dash" d="M51 89C91 25 219 15 277 70" />
+                  </>
+                )}
+                {visual==='phase' && (
+                  <>
+                    <path class="visual-axis" d="M42 92H284M62 104V18" />
+                    <path class="visual-line" d="M62 79C92 28 121 31 151 65S215 102 278 35" />
+                    <path class="visual-line visual-line-coral" d="M62 57C105 86 135 89 170 62S234 26 278 48" />
+                    <circle class="visual-node" cx="151" cy="65" r="3.1" />
+                    <circle class="visual-node visual-node-coral" cx="229" cy="31" r="3.5" />
+                  </>
+                )}
+                {visual==='steps' && (
+                  <>
+                    <path class="visual-axis" d="M40 91H284" />
+                    <path class="visual-line visual-step" d="M42 84H91V71H140V60H189V45H238V31H281" />
+                    <path class="visual-dash" d="M42 80C85 74 117 67 151 55S226 35 281 25" />
+                    <circle class="visual-node visual-node-coral" cx="189" cy="45" r="3.6" />
+                  </>
+                )}
+                {visual==='network' && (
+                  <>
+                    <path class="visual-line visual-line-soft" d="M50 81 96 39 146 66 195 29 266 54M96 39l22 57m28-30 38 34m11-71 25 61M50 81l68 15 66 4 82-46" />
+                    <circle class="visual-node" cx="50" cy="81" r="3.4" />
+                    <circle class="visual-node visual-node-coral" cx="96" cy="39" r="4.1" />
+                    <circle class="visual-node" cx="146" cy="66" r="3.1" />
+                    <circle class="visual-node" cx="195" cy="29" r="3.5" />
+                    <circle class="visual-node visual-node-coral" cx="266" cy="54" r="3.7" />
+                    <circle class="visual-node" cx="118" cy="96" r="2.8" />
+                    <circle class="visual-node" cx="184" cy="100" r="2.8" />
+                  </>
+                )}
+                {visual==='waves' && (
+                  <>
+                    <path class="visual-line" d="M39 61C65 23 92 23 118 61S171 99 197 61s53-38 84 0" />
+                    <path class="visual-line visual-line-soft" d="M39 78C68 51 96 51 124 78s57 27 85 0 50-27 72-5" />
+                    <path class="visual-dash" d="M40 43H281" />
+                    <circle class="visual-node visual-node-coral" cx="197" cy="61" r="3.7" />
+                  </>
+                )}
+              </svg>
+            </div>
+
             <div class="blog-card-top">
               <span class="blog-card-category">{primary}</span>
               <time datetime={post.data.date.toISOString()}>
@@ -82,9 +146,9 @@ const filters=[...counts.entries()]
 
 <style>
   .blog-archive { padding-top:clamp(7.5rem,12vw,10rem); }
-  .blog-heading { max-width:760px; margin-bottom:clamp(2.4rem,5vw,4rem); }
-  .blog-heading h1 { max-width:15ch; margin:.5rem 0 1rem; font:600 clamp(2.35rem,4.5vw,4.3rem)/1 var(--font-display); letter-spacing:-.05em; }
-  .blog-heading > p:last-child { max-width:62ch; margin:0; color:var(--text-2); font-size:clamp(1rem,.98rem + .15vw,1.1rem); line-height:1.7; }
+  .blog-heading { max-width:none; margin-bottom:clamp(2.4rem,5vw,4rem); }
+  .blog-heading h1 { margin:.5rem 0 .8rem; font:600 clamp(2rem,2.8vw,2.8rem)/1.05 var(--font-display); letter-spacing:-.04em; white-space:nowrap; }
+  .blog-heading > p:last-child { max-width:none; margin:0; color:var(--text-2); font-size:clamp(.98rem,.95rem + .12vw,1.06rem); line-height:1.65; white-space:nowrap; }
 
   .blog-filter-shell { display:flex; align-items:flex-start; justify-content:space-between; gap:1.25rem; margin-bottom:1.4rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
   .blog-filters { display:flex; flex-wrap:wrap; gap:.45rem; min-width:0; }
@@ -100,8 +164,20 @@ const filters=[...counts.entries()]
   .blog-grid-item { min-width:0; }
   .blog-grid-item[hidden] { display:none; }
 
-  .blog-card { position:relative; min-height:260px; height:100%; display:flex; flex-direction:column; padding:1.15rem; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); transition:transform 120ms cubic-bezier(.22,.61,.36,1),border-color 120ms ease,background 120ms ease,box-shadow 120ms ease; }
+  .blog-card { position:relative; min-height:300px; height:100%; display:flex; flex-direction:column; padding:0 1.15rem 1.15rem; overflow:hidden; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); transition:transform 120ms cubic-bezier(.22,.61,.36,1),border-color 120ms ease,background 120ms ease,box-shadow 120ms ease; }
   .blog-card:hover,.blog-card:focus-within { transform:translateY(-2px); border-color:var(--signal-border); background:color-mix(in srgb,var(--panel-bg-hover) 96%,var(--signal-soft)); box-shadow:var(--shadow-card); }
+  .blog-card-visual { height:92px; margin:0 -1.15rem 1rem; overflow:hidden; border-bottom:1px solid var(--border); background:linear-gradient(135deg,color-mix(in srgb,var(--bg-off) 88%,var(--cool-soft)),color-mix(in srgb,var(--surface) 92%,var(--signal-soft))); }
+  .blog-card-visual svg { display:block; width:100%; height:100%; }
+  .visual-line,.visual-axis,.visual-dash { fill:none; vector-effect:non-scaling-stroke; stroke:var(--cool); stroke-width:1.25; stroke-linecap:round; stroke-linejoin:round; }
+  .visual-line-soft { opacity:.35; }
+  .visual-line-coral { stroke:var(--signal); opacity:.72; }
+  .visual-axis { stroke:var(--text-3); opacity:.3; stroke-width:.9; }
+  .visual-dash { stroke:var(--text-3); opacity:.36; stroke-dasharray:4 6; stroke-width:1; }
+  .visual-node { fill:var(--cool); stroke:var(--surface); stroke-width:1.3; vector-effect:non-scaling-stroke; }
+  .visual-node-main { fill:var(--text-2); }
+  .visual-node-coral { fill:var(--signal); }
+  .blog-card:hover .blog-card-visual .visual-line:not(.visual-line-coral),.blog-card:focus-within .blog-card-visual .visual-line:not(.visual-line-coral) { stroke:var(--cool-hover); }
+  .blog-card:hover .visual-node-coral,.blog-card:focus-within .visual-node-coral { transform-origin:center; }
   .blog-card-top { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:1rem; }
   .blog-card-category { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--signal); font:400 .68rem/1.2 var(--font-sans); text-transform:lowercase; }
   .blog-card time { flex:none; color:var(--text-3); font:400 .65rem/1.2 var(--font-sans); font-variant-numeric:tabular-nums; }
@@ -117,6 +193,7 @@ const filters=[...counts.entries()]
 
   @media(max-width:1180px) { .blog-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   @media(max-width:820px) {
+    .blog-heading h1,.blog-heading > p:last-child { white-space:normal; }
     .blog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .blog-filter-shell { display:block; }
     .blog-result-count { margin-top:.85rem; }
@@ -124,7 +201,8 @@ const filters=[...counts.entries()]
   @media(max-width:560px) {
     .blog-archive { padding-top:7rem; }
     .blog-grid { grid-template-columns:1fr; }
-    .blog-card { min-height:225px; }
+    .blog-card { min-height:275px; }
+    .blog-card-visual { height:88px; }
     .blog-filters { flex-wrap:nowrap; margin-inline:calc(var(--page-pad) * -1); padding-inline:var(--page-pad); overflow-x:auto; scrollbar-width:none; }
     .blog-filters::-webkit-scrollbar { display:none; }
     .blog-filters button { flex:0 0 auto; }

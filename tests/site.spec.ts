@@ -288,9 +288,25 @@ test('blog archive uses a compact responsive card grid with instant topic filter
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/posts/');
 
- await expect(page.locator('.blog-heading h1')).toHaveText('Notes from the computational side');
+ await expect(page.locator('.blog-heading h1')).toHaveText('Ideas worth working through');
+ await expect(page.locator('.blog-heading > p:last-child')).toHaveText('Practical explanations, useful techniques, simulation notes and the occasional computational rabbit hole.');
  const cards=page.locator('[data-post-card]');
  await expect(cards).toHaveCount(2);
+ await expect(page.locator('.blog-card-visual')).toHaveCount(2);
+ expect(await page.locator('.blog-card-visual').evaluateAll(nodes=>new Set(nodes.map(node=>node.className)).size)).toBeGreaterThan(1);
+
+ const headingMetrics=await page.evaluate(()=>{
+   const heading=document.querySelector<HTMLElement>('.blog-heading h1')!;
+   const lede=document.querySelector<HTMLElement>('.blog-heading > p:last-child')!;
+   return{
+     headingLines:Math.round(heading.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(heading).lineHeight)),
+     ledeLines:Math.round(lede.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(lede).lineHeight)),
+     headingSize:Number.parseFloat(getComputedStyle(heading).fontSize),
+   };
+ });
+ expect(headingMetrics.headingLines).toBe(1);
+ expect(headingMetrics.ledeLines).toBe(1);
+ expect(headingMetrics.headingSize).toBeLessThan(48);
 
  const desktopColumns=await page.locator('[data-post-grid]').evaluate(node=>
    getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
