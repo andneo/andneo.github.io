@@ -9,6 +9,9 @@ const CORAL_FRACTION=.13;
 const DISTRIBUTION_COLUMNS=6;
 const DISTRIBUTION_ROWS=3;
 const DISTRIBUTION_BIN_COUNT=DISTRIBUTION_COLUMNS*DISTRIBUTION_ROWS;
+const FOCUS_FRACTION=.38;
+const FOCUS_DISTANCE=48;
+const FOCUS_WIDTH=92;
 const EDGE_SAMPLES=[0,.25,.5,.75,1] as const;
 
 const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
@@ -47,6 +50,7 @@ interface Walker{
   age:number;
   life:number;
   ageSinceStuck:number;
+  focus:boolean;
   hue:number;
 }
 
@@ -79,6 +83,7 @@ export function createNetworkRenderer(
   let field=new Float32Array(0);
   let busy=new Uint16Array(0);
   let spawnBins:number[][]=[];
+  let focusNodes:number[]=[];
   let spawnCursor=0;
   let activityMask=0;
   let walkers:Walker[]=[];
@@ -91,7 +96,7 @@ export function createNetworkRenderer(
   let tertiary:[number,number,number]=[103,133,150];
 
   const lowCapability=()=> (navigator.hardwareConcurrency||4)<=4 || matchMedia('(max-width:720px)').matches;
-  const walkerTarget=()=> lowCapability()?30:52;
+  const walkerTarget=()=> lowCapability()?34:58;
 
   function roundedRectSdf(x:number,y:number,rect:FieldRect){
     const radius=rect.radius??28;
@@ -171,6 +176,7 @@ export function createNetworkRenderer(
     field=new Float32Array(graph.nodeCount);
     busy=new Uint16Array(graph.nodeCount);
     spawnBins=Array.from({length:DISTRIBUTION_BIN_COUNT},()=>[]);
+    focusNodes=[];
 
     for(let i=0;i<graph.nodeCount;i++){
       const x=graph.x[i];
@@ -197,6 +203,7 @@ export function createNetworkRenderer(
         obstacleDistance>=18
       ){
         spawnBins[distributionBin(x,y)].push(i);
+        if(Number.isFinite(obstacleDistance)&&obstacleDistance<=190)focusNodes.push(i);
       }
     }
 
@@ -205,27 +212,39 @@ export function createNetworkRenderer(
     canvas.dataset.edges=String(graph.edgeCount);
   }
 
-  function spawnWalker(existing?:Walker){
+  function spawnWalker(existing?:Walker,focusMode=existing?.focus??false){
     if(graph.nodeCount===0)throw new Error('Cannot spawn a network walker without graph nodes');
 
-    let selectedBin=spawnCursor++%DISTRIBUTION_BIN_COUNT;
-    for(let offset=0;offset<DISTRIBUTION_BIN_COUNT&&spawnBins[selectedBin].length===0;offset++){
-      selectedBin=(selectedBin+1)%DISTRIBUTION_BIN_COUNT;
+    let candidates:number[]|null=null;
+    if(focusMode&&focusNodes.length){
+      candidates=focusNodes;
+    }else{
+      let selectedBin=spawnCursor++%DISTRIBUTION_BIN_COUNT;
+      for(let offset=0;offset<DISTRIBUTION_BIN_COUNT&&spawnBins[selectedBin].length===0;offset++){
+        selectedBin=(selectedBin+1)%DISTRIBUTION_BIN_COUNT;
+      }
+      candidates=spawnBins[selectedBin].length?spawnBins[selectedBin]:null;
     }
-    const candidates=spawnBins[selectedBin];
 
-    let best=candidates[0]??Math.floor(rng()*graph.nodeCount);
+    let best=candidates?.[0]??Math.floor(rng()*graph.nodeCount);
     let bestScore=-Infinity;
-    const pool=candidates.length?candidates:null;
-    const attempts=pool?Math.min(pool.length,72):Math.min(graph.nodeCount,72);
+    const attempts=candidates?Math.min(candidates.length,72):Math.min(graph.nodeCount,72);
 
     for(let attempt=0;attempt<attempts;attempt++){
-      const candidate=pool
-        ?pool[Math.floor(rng()*pool.length)]
+      const candidate=candidates
+        ?candidates[Math.floor(rng()*candidates.length)]
         :Math.floor(rng()*graph.nodeCount);
-      if(obstacle&&roundedRectSdf(graph.x[candidate],graph.y[candidate],obstacle)<18)continue;
+      const x=graph.x[candidate];
+      const y=graph.y[candidate];
+      const obstacleDistance=obstacle?roundedRectSdf(x,y,obstacle):Infinity;
+      if(obstacleDistance<18)continue;
+
       const occupied=busy[candidate]>0&&busy[candidate]<=15?80:0;
-      const score=field[candidate]-occupied+rng()*30;
+      const focusBonus=focusMode&&Number.isFinite(obstacleDistance)
+        ?105*Math.exp(-Math.pow((obstacleDistance-FOCUS_DISTANCE)/FOCUS_WIDTH,2))
+        :0;
+      const fieldWeight=focusMode?.38:.10;
+      const score=field[candidate]*fieldWeight+focusBonus-occupied+rng()*(focusMode?32:52);
       if(score>bestScore){
         bestScore=score;
         best=candidate;
@@ -244,8 +263,9 @@ export function createNetworkRenderer(
     walker.frameTravel=0;
     walker.totalTravel=existingTravel;
     walker.age=0;
-    walker.life=800+Math.floor(rng()*400);
+    walker.life=(focusMode?520:760)+Math.floor(rng()*(focusMode?360:420));
     walker.ageSinceStuck=0;
+    walker.focus=focusMode;
     walker.hue=rng();
     busy[best]=1;
     return walker;
@@ -254,8 +274,12 @@ export function createNetworkRenderer(
   function rebuildWalkers(){
     spawnCursor=0;
     activityMask=0;
-    walkers=Array.from({length:walkerTarget()},()=>spawnWalker());
+    const total=walkerTarget();
+    const focusCount=Math.round(total*FOCUS_FRACTION);
+    walkers=Array.from({length:total},(_,index)=>spawnWalker(undefined,index<focusCount));
     canvas.dataset.walkers=String(walkers.length);
+    canvas.dataset.focusWalkers=String(focusCount);
+    canvas.dataset.explorerWalkers=String(total-focusCount);
   }
 
   function chooseNeighbor(walker:Walker){
@@ -284,11 +308,25 @@ export function createNetworkRenderer(
       const dy=nextY-currentY;
       const magnitude=Math.hypot(dx,dy)||1;
       const directional=(previousDx*dx+previousDy*dy)/(previousMagnitude*magnitude);
-      const immediateReverse=candidate===walker.previous?-12:0;
+      const immediateReverse=candidate===walker.previous?-14:0;
+      const obstacleDistance=obstacle?roundedRectSdf(nextX,nextY,obstacle):Infinity;
 
-      // The reference Pen compares a 0..255 scalar field with 30 units of
-      // stochastic "disobedience". Keep those scales comparable here.
-      const score=field[candidate]+30*rng()+10*directional+immediateReverse;
+      let score:number;
+      if(walker.focus){
+        // Focus walkers make the perimeter visually active without turning it
+        // into the global attractor for the whole simulation.
+        const focusBonus=Number.isFinite(obstacleDistance)
+          ?92*Math.exp(-Math.pow((obstacleDistance-FOCUS_DISTANCE)/FOCUS_WIDTH,2))
+          :0;
+        score=field[candidate]*.34+focusBonus+34*rng()+13*directional+immediateReverse;
+      }else{
+        // Explorers are intentionally weakly coupled to the scalar field.
+        // Never-visited and long-unvisited nodes receive a bonus so activity
+        // keeps diffusing through regions that would otherwise go dormant.
+        const visitAge=busy[candidate];
+        const explorationBonus=visitAge===0?38:Math.min(24,visitAge*.24);
+        score=field[candidate]*.11+explorationBonus+48*rng()+16*directional+immediateReverse;
+      }
       if(score>bestScore){
         bestScore=score;
         best=candidate;
@@ -473,6 +511,8 @@ export function createNetworkRenderer(
     let visibleMovers=0;
     let activeEdges=0;
     let walkerMask=0;
+    let explorerMask=0;
+    let nearBoxWalkers=0;
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
 
     for(const walker of walkers){
@@ -480,7 +520,13 @@ export function createNetworkRenderer(
       maxFrameTravel=Math.max(maxFrameTravel,walker.frameTravel);
       if(walker.frameTravel>=1.5)visibleMovers++;
       if(walker.previous!==walker.node)activeEdges++;
-      walkerMask|=1<<distributionBin(walker.x,walker.y);
+      const bin=distributionBin(walker.x,walker.y);
+      walkerMask|=1<<bin;
+      if(!walker.focus)explorerMask|=1<<bin;
+      if(obstacle){
+        const distance=roundedRectSdf(walker.x,walker.y,obstacle);
+        if(distance>=0&&distance<=150)nearBoxWalkers++;
+      }
       minX=Math.min(minX,walker.x);maxX=Math.max(maxX,walker.x);
       minY=Math.min(minY,walker.y);maxY=Math.max(maxY,walker.y);
     }
@@ -493,7 +539,9 @@ export function createNetworkRenderer(
     canvas.dataset.activeWalkers=String(visibleMovers);
     canvas.dataset.activeEdges=String(activeEdges);
     canvas.dataset.walkerBins=String(bitCount(walkerMask));
+    canvas.dataset.explorerBins=String(bitCount(explorerMask));
     canvas.dataset.activityBins=String(bitCount(activityMask));
+    canvas.dataset.nearBoxWalkers=String(nearBoxWalkers);
     canvas.dataset.walkerSpanX=spanX.toFixed(3);
     canvas.dataset.walkerSpanY=spanY.toFixed(3);
     canvas.dataset.meanTravel=(walkers.length?totalFrameTravel/walkers.length:0).toFixed(3);

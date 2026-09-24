@@ -61,7 +61,7 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  });
  expect(before.coverage).toBeGreaterThan(.001);
 
- await page.waitForTimeout(800);
+ await page.waitForTimeout(1200);
 
  const after=await canvas.evaluate((node:HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray})=>{
   const ctx=node.getContext('2d')!;
@@ -85,7 +85,11 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
    meanTravel:Number(node.dataset.meanTravel||0),
    maxTravel:Number(node.dataset.maxTravel||0),
    walkerBins:Number(node.dataset.walkerBins||0),
+   explorerBins:Number(node.dataset.explorerBins||0),
    activityBins:Number(node.dataset.activityBins||0),
+   nearBoxWalkers:Number(node.dataset.nearBoxWalkers||0),
+   focusWalkers:Number(node.dataset.focusWalkers||0),
+   explorerWalkers:Number(node.dataset.explorerWalkers||0),
    walkerSpanX:Number(node.dataset.walkerSpanX||0),
    walkerSpanY:Number(node.dataset.walkerSpanY||0),
    lastTransitionTime:Number(node.dataset.lastTransitionTime||0),
@@ -102,10 +106,16 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(after.maxTravel).toBeGreaterThan(4);
  // The active simulation must occupy the hero, not collapse into the annulus
  // surrounding the text exclusion rectangle.
- expect(after.walkerBins).toBeGreaterThanOrEqual(12);
- expect(after.activityBins).toBeGreaterThanOrEqual(10);
- expect(after.walkerSpanX).toBeGreaterThan(.68);
- expect(after.walkerSpanY).toBeGreaterThan(.62);
+ expect(after.focusWalkers).toBeGreaterThan(15);
+ expect(after.explorerWalkers).toBeGreaterThan(after.focusWalkers);
+ // Explorer traffic must remain distributed across most of the hero while a
+ // separate focus population keeps the text perimeter visually active.
+ expect(after.walkerBins).toBeGreaterThanOrEqual(13);
+ expect(after.explorerBins).toBeGreaterThanOrEqual(12);
+ expect(after.activityBins).toBeGreaterThanOrEqual(14);
+ expect(after.nearBoxWalkers).toBeGreaterThanOrEqual(10);
+ expect(after.walkerSpanX).toBeGreaterThan(.72);
+ expect(after.walkerSpanY).toBeGreaterThan(.66);
  expect(after.lastTransitionTime).toBeGreaterThan(0);
  expect(after.changedRatio).toBeGreaterThan(.0015);
 
