@@ -288,6 +288,9 @@ test('homepage research is organised as four themes with selected publication ev
  await page.setViewportSize({width:1440,height:1000}); await page.goto('/');
  const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
  await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
+ await expect(themes.nth(0).locator('.theme-image')).toHaveAttribute('src','/images/research/topology-networked-matter.webp');
+ await expect(themes.nth(0).locator('.research-glyph')).toHaveCount(0);
+ await expect(themes.nth(1).locator('.research-glyph')).toHaveCount(1);
  await expect(themes.nth(1)).toContainText('Programming Self-Assembly');
  await expect(themes.nth(2)).toContainText('Liquids, Glasses & Energy Landscapes');
  await expect(themes.nth(3)).toContainText('Self-Assembly in Life');
