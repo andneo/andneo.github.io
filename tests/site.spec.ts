@@ -30,6 +30,7 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  await expect(canvas).toHaveAttribute('data-motion-override','none');
  await expect(canvas).toHaveAttribute('data-motion-reason','animated');
  await expect(canvas).toHaveAttribute('data-lattice','kagome');
+ await expect(canvas).toHaveAttribute('data-field-mode','global');
  await expect(canvas).toHaveAttribute('data-layers','base-trail-active');
  await expect(canvas).toHaveAttribute('data-quiet-zones','1');
 
@@ -83,6 +84,10 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
    activeEdges:Number(node.dataset.activeEdges||0),
    meanTravel:Number(node.dataset.meanTravel||0),
    maxTravel:Number(node.dataset.maxTravel||0),
+   walkerBins:Number(node.dataset.walkerBins||0),
+   activityBins:Number(node.dataset.activityBins||0),
+   walkerSpanX:Number(node.dataset.walkerSpanX||0),
+   walkerSpanY:Number(node.dataset.walkerSpanY||0),
    lastTransitionTime:Number(node.dataset.lastTransitionTime||0),
    changedRatio:samples?changed/samples:0,
   };
@@ -95,6 +100,12 @@ test('hero lattice network has human-scale motion on real graph edges',async({pa
  expect(after.activeEdges).toBeGreaterThan(4);
  expect(after.meanTravel).toBeGreaterThan(1.5);
  expect(after.maxTravel).toBeGreaterThan(4);
+ // The active simulation must occupy the hero, not collapse into the annulus
+ // surrounding the text exclusion rectangle.
+ expect(after.walkerBins).toBeGreaterThanOrEqual(12);
+ expect(after.activityBins).toBeGreaterThanOrEqual(10);
+ expect(after.walkerSpanX).toBeGreaterThan(.68);
+ expect(after.walkerSpanY).toBeGreaterThan(.62);
  expect(after.lastTransitionTime).toBeGreaterThan(0);
  expect(after.changedRatio).toBeGreaterThan(.0015);
 

@@ -6,6 +6,9 @@ const MAX_SUBSTEPS=5;
 const RETARGET_PROBABILITY=.5;
 const TRAIL_FADE=.055;
 const CORAL_FRACTION=.13;
+const DISTRIBUTION_COLUMNS=6;
+const DISTRIBUTION_ROWS=3;
+const DISTRIBUTION_BIN_COUNT=DISTRIBUTION_COLUMNS*DISTRIBUTION_ROWS;
 const EDGE_SAMPLES=[0,.25,.5,.75,1] as const;
 
 const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
@@ -75,6 +78,9 @@ export function createNetworkRenderer(
   let obstacle:FieldRect|null=null;
   let field=new Float32Array(0);
   let busy=new Uint16Array(0);
+  let spawnBins:number[][]=[];
+  let spawnCursor=0;
+  let activityMask=0;
   let walkers:Walker[]=[];
   let transitionCount=0;
   let simulationSteps=0;
@@ -141,24 +147,60 @@ export function createNetworkRenderer(
     context.restore();
   }
 
+  function distributionBin(x:number,y:number){
+    const column=Math.min(DISTRIBUTION_COLUMNS-1,Math.max(0,Math.floor(x/Math.max(1,width)*DISTRIBUTION_COLUMNS)));
+    const row=Math.min(DISTRIBUTION_ROWS-1,Math.max(0,Math.floor(y/Math.max(1,height)*DISTRIBUTION_ROWS)));
+    return row*DISTRIBUTION_COLUMNS+column;
+  }
+
+  function markActivity(x:number,y:number){
+    activityMask|=1<<distributionBin(x,y);
+  }
+
+  function bitCount(value:number){
+    let count=0;
+    let remaining=value>>>0;
+    while(remaining){
+      remaining&=remaining-1;
+      count++;
+    }
+    return count;
+  }
+
   function buildField(){
     field=new Float32Array(graph.nodeCount);
     busy=new Uint16Array(graph.nodeCount);
-    const cx=width*.5;
-    const cy=height*.5;
+    spawnBins=Array.from({length:DISTRIBUTION_BIN_COUNT},()=>[]);
 
     for(let i=0;i<graph.nodeCount;i++){
       const x=graph.x[i];
       const y=graph.y[i];
-      const d=obstacle
-        ? roundedRectSdf(x,y,obstacle)
-        : Math.hypot(x-cx,y-cy)-Math.min(width,height)*.22;
-      const band=Math.exp(-Math.pow((d-58)/105,2));
-      const wave=.5+.25*Math.sin(x*.010+y*.004)+.25*Math.cos(y*.012-x*.006);
-      const boundary=(x<16||x>width-16||y<16||y>height-16)?-45:0;
-      field[i]=d<10?-1000:220*band+24*wave+boundary;
+      const nx=x/Math.max(1,width);
+      const ny=y/Math.max(1,height);
+      const obstacleDistance=obstacle?roundedRectSdf(x,y,obstacle):Infinity;
+
+      // The scalar field should structure motion across the whole hero. The
+      // identity rectangle is an obstacle only; it must not create an annular
+      // high-value band that attracts every walker to the text.
+      const waveA=Math.sin((nx*2.15+ny*.72)*Math.PI*2);
+      const waveB=Math.cos((ny*2.55-nx*.83)*Math.PI*2+.65);
+      const waveC=Math.sin((nx*1.05+ny*1.65)*Math.PI*2+1.35);
+      const globalField=126+34*waveA+27*waveB+18*waveC;
+      const nearObstacle=Number.isFinite(obstacleDistance)&&obstacleDistance<96
+        ?-74*Math.pow(1-clamp(obstacleDistance,0,96)/96,2)
+        :0;
+      const boundary=(x<16||x>width-16||y<16||y>height-16)?-42:0;
+      field[i]=obstacleDistance<12?-1000:globalField+nearObstacle+boundary;
+
+      if(
+        x>=8&&x<=width-8&&y>=8&&y<=height-8&&
+        obstacleDistance>=18
+      ){
+        spawnBins[distributionBin(x,y)].push(i);
+      }
     }
 
+    canvas.dataset.fieldMode='global';
     canvas.dataset.nodes=String(graph.nodeCount);
     canvas.dataset.edges=String(graph.edgeCount);
   }
@@ -166,13 +208,23 @@ export function createNetworkRenderer(
   function spawnWalker(existing?:Walker){
     if(graph.nodeCount===0)throw new Error('Cannot spawn a network walker without graph nodes');
 
-    let best=0;
+    let selectedBin=spawnCursor++%DISTRIBUTION_BIN_COUNT;
+    for(let offset=0;offset<DISTRIBUTION_BIN_COUNT&&spawnBins[selectedBin].length===0;offset++){
+      selectedBin=(selectedBin+1)%DISTRIBUTION_BIN_COUNT;
+    }
+    const candidates=spawnBins[selectedBin];
+
+    let best=candidates[0]??Math.floor(rng()*graph.nodeCount);
     let bestScore=-Infinity;
-    const attempts=Math.min(graph.nodeCount,64);
+    const pool=candidates.length?candidates:null;
+    const attempts=pool?Math.min(pool.length,72):Math.min(graph.nodeCount,72);
+
     for(let attempt=0;attempt<attempts;attempt++){
-      const candidate=Math.floor(rng()*graph.nodeCount);
-      if(obstacle&&roundedRectSdf(graph.x[candidate],graph.y[candidate],obstacle)<14)continue;
-      const occupied=busy[candidate]>0&&busy[candidate]<=15?90:0;
+      const candidate=pool
+        ?pool[Math.floor(rng()*pool.length)]
+        :Math.floor(rng()*graph.nodeCount);
+      if(obstacle&&roundedRectSdf(graph.x[candidate],graph.y[candidate],obstacle)<18)continue;
+      const occupied=busy[candidate]>0&&busy[candidate]<=15?80:0;
       const score=field[candidate]-occupied+rng()*30;
       if(score>bestScore){
         bestScore=score;
@@ -200,6 +252,8 @@ export function createNetworkRenderer(
   }
 
   function rebuildWalkers(){
+    spawnCursor=0;
+    activityMask=0;
     walkers=Array.from({length:walkerTarget()},()=>spawnWalker());
     canvas.dataset.walkers=String(walkers.length);
   }
@@ -277,6 +331,7 @@ export function createNetworkRenderer(
     busy[next]=1;
     transitionCount++;
     lastTransitionTime=performance.now();
+    markActivity(graph.x[walker.node],graph.y[walker.node]);
     drawTrailEdge(walker.previous,walker.node,walker);
     return true;
   }
@@ -417,19 +472,30 @@ export function createNetworkRenderer(
     let maxFrameTravel=0;
     let visibleMovers=0;
     let activeEdges=0;
+    let walkerMask=0;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
 
     for(const walker of walkers){
       totalFrameTravel+=walker.frameTravel;
       maxFrameTravel=Math.max(maxFrameTravel,walker.frameTravel);
       if(walker.frameTravel>=1.5)visibleMovers++;
       if(walker.previous!==walker.node)activeEdges++;
+      walkerMask|=1<<distributionBin(walker.x,walker.y);
+      minX=Math.min(minX,walker.x);maxX=Math.max(maxX,walker.x);
+      minY=Math.min(minY,walker.y);maxY=Math.max(maxY,walker.y);
     }
 
+    const spanX=walkers.length?(maxX-minX)/Math.max(1,width):0;
+    const spanY=walkers.length?(maxY-minY)/Math.max(1,height):0;
     canvas.dataset.transitions=String(transitionCount);
     canvas.dataset.simSteps=String(simulationSteps);
     canvas.dataset.renderFrames=String(renderFrames);
     canvas.dataset.activeWalkers=String(visibleMovers);
     canvas.dataset.activeEdges=String(activeEdges);
+    canvas.dataset.walkerBins=String(bitCount(walkerMask));
+    canvas.dataset.activityBins=String(bitCount(activityMask));
+    canvas.dataset.walkerSpanX=spanX.toFixed(3);
+    canvas.dataset.walkerSpanY=spanY.toFixed(3);
     canvas.dataset.meanTravel=(walkers.length?totalFrameTravel/walkers.length:0).toFixed(3);
     canvas.dataset.maxTravel=maxFrameTravel.toFixed(3);
     canvas.dataset.probeTravel=(walkers[0]?.totalTravel??0).toFixed(1);
