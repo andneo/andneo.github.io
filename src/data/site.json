@@ -1,12 +1,12 @@
 {
   "SITE_NAME": "networked matter lab",
   "AUTHOR": {
-    "name": "Dr. Jane Smith",
-    "title": "Astrophysicist",
+    "name": "Andreas Neophytou",
+    "title": "Computational Scientist",
     "institution": "University of Cambridge",
     "department": "Institute of Astronomy",
-    "email": "js123@cam.ac.uk",
-    "bio": "I hold a PhD in Astrophysics from the University of Cambridge, specialising in\nstellar dynamics, galactic evolution, and numerical methods. I believe in open science and\ntry to contribute by sharing my <a href=\"/publications\">papers</a>,\n<a href=\"/post\">blog posts</a>, and <a href=\"/course\">lecture notes</a>.",
+    "email": "andreas.neophytou@uniroma1.it",
+    "bio": "<p>I use statistical mechanics, topology and computation to understand how complex systems organise themselves — and how to make them do something useful.</p><p>My work moves between networked matter, inverse materials design and biological self-assembly. I build simulations, graph-based descriptions and optimisation tools that turn complicated many-body behaviour into simple, physically interpretable models.</p>",
     "avatar": "/images/avatar.jpg",
     "cvPdf": "/files/cv.pdf"
   },
@@ -57,6 +57,19 @@
   "HERO": {
     "renderer": "network",
     "lattice": "kagome",
-    "enabled": true
+    "enabled": true,
+    "roles": [
+      "computational scientist",
+      "statistical physicist",
+      "network scientist",
+      "topology enthusiast",
+      "materials designer"
+    ],
+    "themes": [
+      "networked matter",
+      "inverse design",
+      "self-assembly",
+      "scientific computing"
+    ]
   }
 }

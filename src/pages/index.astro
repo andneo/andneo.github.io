@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import HomepageBackground from '../components/HomepageBackground.astro';
 import CardGlyph from '../components/CardGlyph.astro';
-import { AUTHOR, CONTACT, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
+import { AUTHOR, HERO, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
 import { published, byId, url } from '../lib/content';
 
 const projects = (await published('project')).sort((a,b) => a.data.order - b.data.order || byId(a,b)).slice(0, HOME_RESEARCH_COUNT);
@@ -18,9 +18,17 @@ const courses = await published('courses');
         <div class="container hero-frame">
           <div class="hero-copy">
             <div class="hero-identity" data-field-quiet>
-              <p class="hero-role">{AUTHOR.title}</p>
+              <p class="hero-role">
+                <span class="sr-only">{HERO.roles.join(', ')}</span>
+                <span class="hero-role-motion" aria-hidden="true">
+                  <span>i'm a&nbsp;</span><span class="hero-typed" data-hero-typed data-roles={JSON.stringify(HERO.roles)}></span><span class="hero-typed-cursor">▍</span>
+                </span>
+              </p>
               <h1>{AUTHOR.name}</h1>
               <div class="hero-bio" set:html={AUTHOR.bio} />
+              <ul class="hero-themes" aria-label="Research themes">
+                {HERO.themes.map(theme => <li>{theme}</li>)}
+              </ul>
             </div>
           </div>
         </div>
@@ -136,29 +144,30 @@ const courses = await published('courses');
         </div>
       </section>
 
-      <section class="home-contact" id="contact">
-        <div class="container contact-frame">
-          <h2>Contact</h2>
-          <p><a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a></p>
-          <p>{CONTACT.location}</p>
-        </div>
-      </section>
     </div>
   </div>
 </Base>
 <style>
   .homepage-root { position: relative; isolation: isolate; overflow: clip; }
   .homepage-content { position: relative; z-index: 1; }
-  .home-hero,.home-section,.home-contact { position: relative; }
+  .home-hero,.home-section { position: relative; }
   .home-hero { overflow:hidden; background:var(--bg); }
-  .home-section::before,.home-contact::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; }
+  .home-section::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; }
 
   .hero-frame { position:relative; z-index:2; min-height:clamp(650px,80svh,840px); display:flex; align-items:center; justify-content:center; padding-block:clamp(7rem,13vh,10rem) clamp(5rem,10vh,7rem); }
   .hero-copy { width:min(100%,1040px); margin-inline:auto; }
   .hero-identity { width:100%; min-height:clamp(350px,44svh,440px); display:flex; flex-direction:column; justify-content:center; padding:clamp(2.2rem,4.5vw,4.4rem) clamp(2rem,5vw,5rem); border:1px solid var(--panel-border); border-radius:clamp(28px,3.2vw,42px); background:color-mix(in srgb,var(--surface) 78%,transparent); box-shadow:0 22px 70px -58px rgb(30 32 34 / .45); backdrop-filter:blur(4px); }
-  .hero-role { margin:0 0 1rem; color:var(--signal); font:650 .76rem/1.2 var(--font-sans); letter-spacing:.105em; text-transform:uppercase; }
-  h1 { max-width:20ch; margin:0; font:600 clamp(2.45rem,4.4vw,4.25rem)/1 var(--font-display); letter-spacing:-.05em; }
-  .hero-bio { max-width:78ch; margin-top:clamp(1.6rem,3vw,2.45rem); color:var(--text-2); font-size:clamp(1.02rem,.98rem + .24vw,1.18rem); line-height:1.76; }
+  .hero-role { min-height:1.55em; margin:0 0 .9rem; color:var(--signal); font:450 clamp(.9rem,.87rem + .14vw,1rem)/1.45 var(--font-sans); letter-spacing:.015em; }
+  .hero-role-motion { display:inline-flex; align-items:baseline; }
+  .hero-typed-cursor { display:inline-block; margin-left:.12em; font-weight:300; animation:hero-cursor-blink .8s step-end infinite; }
+  @keyframes hero-cursor-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+  h1 { max-width:20ch; margin:0; font:600 clamp(2.2rem,3.8vw,3.75rem)/1 var(--font-display); letter-spacing:-.048em; }
+  .hero-bio { max-width:78ch; margin-top:clamp(1.45rem,2.6vw,2.1rem); color:var(--text-2); font-size:clamp(1.02rem,.98rem + .24vw,1.18rem); line-height:1.76; }
+  .hero-bio :global(p) { margin:0; }
+  .hero-bio :global(p + p) { margin-top:.85rem; }
+  .hero-themes { display:flex; flex-wrap:wrap; gap:.45rem 1.15rem; margin:clamp(1.35rem,2.2vw,1.8rem) 0 0; padding:0; list-style:none; color:var(--text-3); font:400 .78rem/1.4 var(--font-sans); letter-spacing:.015em; }
+  .hero-themes li { display:inline-flex; align-items:center; gap:.5rem; }
+  .hero-themes li::before { content:''; width:.34rem; height:.34rem; flex:none; border-radius:50%; background:var(--signal); opacity:.8; }
 
   .home-section { padding-block:clamp(4.75rem,8vw,7.5rem); }
   .home-section::before { background:linear-gradient(90deg,var(--home-scrim) 0 16%,transparent 45% 58%,var(--home-scrim) 100%); opacity:.76; }
@@ -179,25 +188,17 @@ const courses = await published('courses');
   .home-card { position:relative; width:100%; min-height:310px; display:flex; flex-direction:column; gap:1.4rem; padding:1.25rem; overflow:hidden; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); box-shadow:var(--shadow-card); color:var(--text); text-decoration:none; backdrop-filter:blur(7px); transition:transform var(--t-med),border-color var(--t-med),background var(--t-med),box-shadow var(--t-med); }
   .home-card:hover,.home-card:focus-within { transform:translateY(-3px); border-color:var(--signal-border); background:color-mix(in srgb,var(--panel-bg-hover) 95%,var(--signal-soft)); box-shadow:var(--shadow-lift); }
   .card-head { min-height:4rem; display:flex; align-items:start; justify-content:space-between; gap:1rem; }
-  .card-label { max-width:10rem; min-height:1.7rem; display:inline-flex; align-items:center; justify-content:center; padding:.24rem .58rem; border:1px solid var(--border); border-radius:999px; color:var(--text-3); font:650 .64rem/1 var(--font-sans); letter-spacing:.06em; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-label { max-width:10rem; min-height:1.7rem; display:inline-flex; align-items:center; justify-content:center; padding:.24rem .58rem; border:1px solid var(--border); border-radius:999px; color:var(--text-3); font:400 .66rem/1 var(--font-sans); letter-spacing:.025em; text-transform:lowercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .card-copy { min-width:0; }
   .card-copy time,.publication-year { display:block; margin:0 0 .65rem; color:var(--text-3); font:600 .68rem/1.4 var(--font-sans); letter-spacing:.025em; }
   .home-card h3 { margin:0 0 .75rem; font:600 clamp(1.08rem,1.2vw,1.34rem)/1.2 var(--font-display); letter-spacing:-.022em; text-wrap:balance; }
   .home-card h3 a { color:inherit; text-decoration:none; }
   .home-card h3 a::after { content:''; position:absolute; inset:0; }
   .home-card p { margin:0; color:var(--text-2); font-size:.86rem; line-height:1.6; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
-  .card-foot { position:relative; z-index:1; display:flex; justify-content:space-between; gap:1rem; margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-3); font:650 .67rem/1.4 var(--font-sans); letter-spacing:.04em; text-transform:uppercase; }
-  .card-foot span:last-child { color:var(--signal); }
-  .post-card .card-foot span:first-child { color:var(--post-tag); }
+  .card-foot { position:relative; z-index:1; display:flex; justify-content:space-between; gap:1rem; margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); color:var(--signal); font:400 .69rem/1.4 var(--font-sans); letter-spacing:.02em; text-transform:lowercase; }
+  .card-foot span:first-child,.card-foot span:last-child { color:var(--signal); }
   .course-card { min-height:285px; }
   .publication-card { min-height:285px; }
-
-  .home-contact { padding-block:clamp(5rem,9vw,8rem); }
-  .home-contact::before { background:linear-gradient(180deg,var(--home-scrim),var(--bg) 90%); }
-  .contact-frame { display:grid; grid-template-columns:1fr 1fr 1fr; gap:2rem; align-items:end; padding-top:1.5rem; border-top:1px solid var(--border-med); }
-  .contact-frame h2 { margin:0; font:600 clamp(1.8rem,2.9vw,2.8rem)/1 var(--font-display); letter-spacing:-.035em; }
-  .contact-frame p { margin:0; color:var(--text-2); }
-  .contact-frame p:last-child { text-align:right; }
 
   @media (max-width:1200px) {
     .research-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -212,14 +213,50 @@ const courses = await published('courses');
   @media (max-width:640px) {
     .hero-frame { padding-block:6.5rem 3.5rem; }
     .hero-identity { min-height:340px; padding:1.6rem 1.25rem 1.8rem; border-radius:24px; }
-    h1 { font-size:clamp(2.35rem,10.8vw,3.35rem); }
+    h1 { font-size:clamp(2.15rem,9.8vw,3rem); }
     .hero-bio { margin-top:1.4rem; }
     .home-section { padding-block:4rem; }
     .section-header { align-items:center; gap:1rem; }
     .section-header h2 { font-size:clamp(1.65rem,8vw,2.2rem); }
     .research-grid,.course-grid,.post-grid,.publication-grid { grid-template-columns:1fr; }
     .home-card,.course-card,.publication-card { min-height:250px; }
-    .contact-frame { grid-template-columns:1fr; gap:.8rem; }
-    .contact-frame p:last-child { text-align:left; }
   }
 </style>
+
+<script>
+  const typedRole = document.querySelector<HTMLElement>('[data-hero-typed]');
+  if (typedRole) {
+    const roles: string[] = JSON.parse(typedRole.dataset.roles ?? '[]');
+    let roleIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+
+    const tick = () => {
+      if (!roles.length) return;
+      const word = roles[roleIndex];
+
+      if (!deleting) {
+        charIndex++;
+        typedRole.textContent = word.slice(0, charIndex);
+        if (charIndex === word.length) {
+          deleting = true;
+          setTimeout(tick, 1800);
+          return;
+        }
+        setTimeout(tick, 70);
+      } else {
+        charIndex--;
+        typedRole.textContent = word.slice(0, charIndex);
+        if (charIndex === 0) {
+          deleting = false;
+          roleIndex = (roleIndex + 1) % roles.length;
+          setTimeout(tick, 350);
+          return;
+        }
+        setTimeout(tick, 35);
+      }
+    };
+
+    tick();
+  }
+</script>
