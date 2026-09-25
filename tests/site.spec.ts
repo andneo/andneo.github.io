@@ -231,6 +231,43 @@ test('hero animation is universal and pauses only when offscreen',async({page})=
  await page.waitForTimeout(500);
  expect(Number(await canvas.getAttribute('data-sim-steps'))).toBeGreaterThan(paused+15);
 });
+test('light theme uses a warm bone surface system and icon-only theme control',async({page})=>{
+ await page.emulateMedia({colorScheme:'light'});
+ await page.goto('/');
+
+ const palette=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  return{
+   bg:root.getPropertyValue('--bg').trim(),
+   bgOff:root.getPropertyValue('--bg-off').trim(),
+   surface:root.getPropertyValue('--surface').trim(),
+   text3:root.getPropertyValue('--text-3').trim(),
+   signal:root.getPropertyValue('--signal').trim(),
+   cool:root.getPropertyValue('--cool').trim(),
+  };
+ });
+ expect(palette.bg).toBe('#eee9df');
+ expect(palette.bgOff).toBe('#e5dfd3');
+ expect(palette.surface).toBe('#f7f2e9');
+ expect(palette.bg).not.toBe('#ffffff');
+
+ const theme=page.getByRole('button',{name:'Dark theme'});
+ await expect(theme).toBeVisible();
+ await expect(theme.locator('.theme-icon-moon')).toBeVisible();
+ await expect(theme.locator('.theme-icon-sun')).toBeHidden();
+ expect((await theme.textContent())?.trim()).toBe('');
+
+ await theme.click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ const lightAction=page.getByRole('button',{name:'Light theme'});
+ await expect(lightAction.locator('.theme-icon-sun')).toBeVisible();
+ await expect(lightAction.locator('.theme-icon-moon')).toBeHidden();
+
+ await lightAction.click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
+});
+
 test('keyboard access, dark theme and legacy redirect remain intact',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
  const field=page.locator('.home-hero .homepage-field__dynamic');

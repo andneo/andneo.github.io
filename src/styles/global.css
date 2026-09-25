@@ -1,24 +1,24 @@
 :root {
  color-scheme:light;
- --bg:#f4f3f0; --bg-off:#ebeae6; --bg-subtle:#dfdfda; --surface:#faf9f6;
- --text:#1f2428; --text-2:#51585d; --text-3:#687078; --text-inv:#fbfaf7;
- --accent:#666d72; --accent-hover:#4f565b; --accent-light:rgb(102 109 114 / .09); --accent-border:rgb(102 109 114 / .30); --accent-dim:#7b8287;
- --signal:#a85343; --signal-hover:#924536; --signal-soft:rgb(168 83 67 / .10); --signal-border:rgb(168 83 67 / .34);
- --cool:#58717e; --cool-hover:#455e6a; --cool-soft:rgb(88 113 126 / .10); --cool-border:rgb(88 113 126 / .32);
- --border:rgb(31 36 40 / .12); --border-med:rgb(31 36 40 / .24);
+ --bg:#eee9df; --bg-off:#e5dfd3; --bg-subtle:#d8d0c3; --surface:#f7f2e9;
+ --text:#202326; --text-2:#50565a; --text-3:#626a70; --text-inv:#faf7f1;
+ --accent:#62696d; --accent-hover:#4d5458; --accent-light:rgb(98 105 109 / .09); --accent-border:rgb(98 105 109 / .30); --accent-dim:#767d81;
+ --signal:#a34f3f; --signal-hover:#8f4335; --signal-soft:rgb(163 79 63 / .10); --signal-border:rgb(163 79 63 / .35);
+ --cool:#526b78; --cool-hover:#405a67; --cool-soft:rgb(82 107 120 / .10); --cool-border:rgb(82 107 120 / .33);
+ --border:rgb(32 35 38 / .13); --border-med:rgb(32 35 38 / .25);
  --font-sans:Inter,"SF Pro Text","Helvetica Neue","Segoe UI",Arial,sans-serif;
  --font-serif:Charter,"Bitstream Charter","Iowan Old Style",Georgia,serif;
  --font-display:Inter,"SF Pro Display","Helvetica Neue","Segoe UI",Arial,sans-serif;
  --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",ui-monospace,monospace;
  --page-w:1480px; --content-w:72ch; --sidebar-w:220px; --page-pad:clamp(1rem,3.4vw,3.5rem); --gap:2rem; --grid-gap:clamp(1rem,2vw,2rem);
  --r:8px; --r-lg:14px; --t:150ms ease; --t-med:260ms cubic-bezier(.22,.61,.36,1); --t-slow:420ms cubic-bezier(.22,.61,.36,1);
- --shadow-hairline:0 1px 0 rgb(31 36 40 / .05);
- --shadow-card:0 10px 30px -26px rgb(36 39 42 / .26);
- --shadow-lift:0 20px 46px -32px rgb(40 42 44 / .38);
- --field-primary:#777e82; --field-secondary:#c56e5b; --field-tertiary:#718996;
- --field-wash:transparent; --field-vignette:radial-gradient(ellipse at 50% 48%,transparent 0 45%,rgb(244 243 240 / .10) 72%,rgb(244 243 240 / .34) 100%);
- --home-scrim-strong:rgba(244,243,240,.91); --home-scrim:rgba(244,243,240,.58); --control-bg:rgba(250,249,246,.84);
- --panel-bg:rgba(250,249,246,.72); --panel-bg-hover:rgba(250,249,246,.91); --panel-border:rgb(31 36 40 / .14); --row-hover:rgb(168 83 67 / .05);
+ --shadow-hairline:0 1px 0 rgb(32 35 38 / .05);
+ --shadow-card:0 10px 30px -26px rgb(57 49 40 / .24);
+ --shadow-lift:0 20px 46px -32px rgb(54 47 39 / .34);
+ --field-primary:#737a7e; --field-secondary:#bf6a58; --field-tertiary:#6b8490;
+ --field-wash:transparent; --field-vignette:radial-gradient(ellipse at 50% 48%,transparent 0 45%,rgb(238 233 223 / .10) 72%,rgb(238 233 223 / .36) 100%);
+ --home-scrim-strong:rgba(238,233,223,.91); --home-scrim:rgba(238,233,223,.60); --control-bg:rgba(247,242,233,.86);
+ --panel-bg:rgba(247,242,233,.74); --panel-bg-hover:rgba(247,242,233,.93); --panel-border:rgb(32 35 38 / .15); --row-hover:rgb(163 79 63 / .055);
 }
 :root[data-theme=dark] {
  color-scheme:dark;
@@ -81,7 +81,8 @@ h1,h2,h3,h4,[id] { scroll-margin-top:2rem; }
 .site-nav a:hover { color:var(--signal); background:var(--signal-soft); }
 .site-nav a[aria-current] { color:var(--text); background:var(--accent-light); text-decoration:none; }
 .theme-button,.btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; min-height:2.35rem; padding:.5rem .82rem; border:1px solid var(--border-med); border-radius:999px; background:transparent; color:var(--text); font:600 .72rem/1.2 var(--font-sans); letter-spacing:.01em; text-decoration:none; transition:border-color var(--t),background var(--t),color var(--t),transform var(--t); }
-.theme-button { flex:none; min-height:2.1rem; padding:.4rem .7rem; border-color:var(--border); background:color-mix(in srgb,var(--bg) 45%,transparent); font-size:.74rem; }
+.theme-button { flex:none; width:2.2rem; height:2.2rem; min-height:2.2rem; padding:0; border-color:var(--border); background:color-mix(in srgb,var(--bg) 45%,transparent); }
+.theme-button svg { width:1.08rem; height:1.08rem; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .btn-primary { border-color:var(--accent); background:var(--accent); color:var(--text-inv); }
 .btn:hover,.theme-button:hover { border-color:var(--signal-border); color:var(--signal); background:var(--signal-soft); }
 .btn-primary:hover { border-color:var(--signal); background:var(--signal); color:var(--text-inv); }
