@@ -246,10 +246,29 @@ test('light theme uses a warm bone surface system and icon-only theme control',a
    cool:root.getPropertyValue('--cool').trim(),
   };
  });
- expect(palette.bg).toBe('#eee9df');
- expect(palette.bgOff).toBe('#e5dfd3');
- expect(palette.surface).toBe('#f7f2e9');
+ expect(palette.bg).toBe('#ede8de');
+ expect(palette.bgOff).toBe('#e3ddd2');
+ expect(palette.surface).toBe('#f4f1eb');
  expect(palette.bg).not.toBe('#ffffff');
+
+ const contrast=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  const parse=(value:string)=>{
+   const hex=value.trim().replace('#','');
+   return [0,2,4].map(i=>Number.parseInt(hex.slice(i,i+2),16)/255);
+  };
+  const luminance=(value:string)=>{
+   const [r,g,b]=parse(value).map(c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4));
+   return .2126*r+.7152*g+.0722*b;
+  };
+  const ratio=(a:string,b:string)=>{
+   const [hi,lo]=[luminance(a),luminance(b)].sort((x,y)=>y-x);
+   return (hi+.05)/(lo+.05);
+  };
+  const bgOff=root.getPropertyValue('--bg-off').trim();
+  return ['--text-3','--accent','--signal','--cool'].map(name=>ratio(root.getPropertyValue(name).trim(),bgOff));
+ });
+ expect(contrast.every(ratio=>ratio>=4.5)).toBe(true);
 
  const theme=page.getByRole('button',{name:'Dark theme'});
  await expect(theme).toBeVisible();
@@ -259,6 +278,16 @@ test('light theme uses a warm bone surface system and icon-only theme control',a
 
  await theme.click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ const darkPalette=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  return{
+   bg:root.getPropertyValue('--bg').trim(),
+   surface:root.getPropertyValue('--surface').trim(),
+   signal:root.getPropertyValue('--signal').trim(),
+   cool:root.getPropertyValue('--cool').trim(),
+  };
+ });
+ expect(darkPalette).toEqual({bg:'#191817',surface:'#242220',signal:'#e88770',cool:'#82a1b0'});
  const lightAction=page.getByRole('button',{name:'Light theme'});
  await expect(lightAction.locator('.theme-icon-sun')).toBeVisible();
  await expect(lightAction.locator('.theme-icon-moon')).toBeHidden();
