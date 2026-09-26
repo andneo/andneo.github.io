@@ -33,6 +33,7 @@
     data-energy-residual="0"
     data-geometric-linking="0"
     data-min-link-clearance="0"
+    data-min-environment-clearance="0"
   >
     <div class="topology-lab__toolbar">
       <div class="topology-lab__modes" role="group" aria-label="Network view">
@@ -598,9 +599,50 @@
       return min;
     }
 
+    private pointSegmentDistance(p:Vec3,a:Vec3,b:Vec3){
+      const vx=b.x-a.x;
+      const vy=b.y-a.y;
+      const vz=b.z-a.z;
+      const wx=p.x-a.x;
+      const wy=p.y-a.y;
+      const wz=p.z-a.z;
+      const vv=vx*vx+vy*vy+vz*vz;
+      const t=vv>1e-12?Math.max(0,Math.min(1,(wx*vx+wy*vy+wz*vz)/vv)):0;
+      const q={x:a.x+t*vx,y:a.y+t*vy,z:a.z+t*vz};
+      return Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z);
+    }
+
+    private minEnvironmentClearance(link:LinkPair){
+      const special=new Set(link.specialEdges.keys());
+      const samples=[...this.loopSamples(link,'a'),...this.loopSamples(link,'b')];
+      let min=Infinity;
+
+      for(const edge of this.edges){
+        if(special.has(edge.key))continue;
+        if(link.nodeIds.has(edge.a)||link.nodeIds.has(edge.b))continue;
+
+        const {a,b}=this.unwrapEdge(edge);
+        for(const p of samples){
+          min=Math.min(min,this.pointSegmentDistance(p,a,b));
+        }
+      }
+
+      return min;
+    }
+
+    private curveChunks(points:Vec3[],size=5){
+      const chunks:Vec3[][]=[];
+      for(let start=0;start<points.length-1;start+=size-1){
+        const chunk=points.slice(start,Math.min(points.length,start+size));
+        if(chunk.length>=2)chunks.push(chunk);
+      }
+      return chunks;
+    }
+
     private updateGeometryDiagnostics(){
       let linking=0;
       let clearance=Infinity;
+      let environmentClearance=Infinity;
 
       for(const link of this.links){
         const a=this.loopSamples(link,'a');
@@ -608,10 +650,12 @@
         const current=this.gaussLinking(a,b);
         linking=Math.max(linking,Math.abs(current));
         clearance=Math.min(clearance,this.minPointClearance(a,b));
+        environmentClearance=Math.min(environmentClearance,this.minEnvironmentClearance(link));
       }
 
       this.dataset.geometricLinking=this.links.length?linking.toFixed(3):'0';
       this.dataset.minLinkClearance=this.links.length?clearance.toFixed(3):'0';
+      this.dataset.minEnvironmentClearance=this.links.length?environmentClearance.toFixed(3):'0';
       this.dataset.linkingNumber=this.links.length&&linking>.75?'1':'0';
     }
 
@@ -689,17 +733,22 @@
 
         const kind=special?(special.info.loop==='a'?'signal':'cool'):'base';
         const muted=this.mode==='links'&&!special;
-        const floor=curve.map(p=>({x:p.x,y:p.y,z:this.floorZ}));
-        const depth=projected.reduce((sum,p)=>sum+p.depth,0)/projected.length;
+        const pieces=special?this.curveChunks(curve,5):[curve];
 
-        primitives.push({
-          type:'tube',
-          d:this.path(curve,project),
-          shadow:this.path(floor,project),
-          depth,
-          kind,
-          muted,
-        });
+        for(const piece of pieces){
+          const pieceProjected=piece.map(project);
+          const floor=piece.map(p=>({x:p.x,y:p.y,z:this.floorZ}));
+          const depth=pieceProjected.reduce((sum,p)=>sum+p.depth,0)/pieceProjected.length;
+
+          primitives.push({
+            type:'tube',
+            d:this.path(piece,project),
+            shadow:this.path(floor,project),
+            depth,
+            kind,
+            muted,
+          });
+        }
       }
 
       for(let id=0;id<this.nodePos.length;id++){
