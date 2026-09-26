@@ -410,48 +410,76 @@ test('homepage research is organised as four themes with selected publication ev
  expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
-test('topology research page uses a fixed 3D periodic network with genuine linked rings',async({page})=>{
+test('topology research page renders a relaxed fixed-camera 3D linked network',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/research/topology-networked-matter/');
 
  const lab=page.locator('topology-network-lab');
  await expect(lab).toBeVisible();
  await expect(lab).toHaveAttribute('data-periodic','xy');
- await expect(lab).toHaveAttribute('data-engine','harmonic-relaxation');
- await expect(lab).toHaveAttribute('data-renderer','fixed-camera-3d-svg');
+ await expect(lab).toHaveAttribute('data-engine','harmonic-elastic-relaxation');
+ await expect(lab).toHaveAttribute('data-renderer','fixed-camera-layered-svg');
  await expect(lab).toHaveAttribute('data-relaxed','true');
  await expect(lab).toHaveAttribute('data-draggable','false');
- await expect(lab).toHaveAttribute('data-nodes','160');
- await expect(lab).toHaveAttribute('data-edges','320');
- await expect(lab).toHaveAttribute('data-rings','160');
+ await expect(lab).toHaveAttribute('data-nodes','198');
+ await expect(lab).toHaveAttribute('data-edges','396');
+ await expect(lab).toHaveAttribute('data-rings','96');
  await expect(lab).toHaveAttribute('data-entanglements','0');
  await expect(lab).toHaveAttribute('data-linking-number','0');
  await expect(lab.getByRole('button',{name:'Reveal depth'})).toHaveCount(0);
 
  const svg=lab.locator('svg');
  await expect(svg).toBeVisible();
- expect(await svg.locator('.network-node').count()).toBeGreaterThan(40);
- expect(await svg.locator('.network-tube').count()).toBeGreaterThan(40);
+ expect(await svg.locator('.network-node-body').count()).toBeGreaterThan(50);
+ expect(await svg.locator('.network-tube').count()).toBeGreaterThan(50);
+ expect(await svg.locator('.network-shadow').count()).toBeGreaterThan(50);
+ expect(await svg.locator('.network-node-highlight').count()).toBeGreaterThan(50);
+ await expect(svg.locator('defs')).toHaveCount(0);
+
  const smoothPaths=await svg.locator('.network-tube').evaluateAll(nodes=>nodes.filter(node=>(node.getAttribute('d')??'').includes('C')).length);
- expect(smoothPaths).toBeGreaterThan(20);
+ expect(smoothPaths).toBeGreaterThan(40);
+
+ const scene=await page.evaluate(()=>{
+   const stage=document.querySelector<HTMLElement>('.topology-lab__stage')!;
+   const svg=document.querySelector<SVGSVGElement>('.topology-lab__svg')!;
+   const nodes=[...svg.querySelectorAll<SVGCircleElement>('.network-node-body')];
+   const tube=svg.querySelector<SVGPathElement>('.network-tube')!;
+   return{
+     background:getComputedStyle(stage).backgroundImage,
+     tubeStroke:getComputedStyle(tube).stroke,
+     nodeFill:getComputedStyle(nodes[0]).fill,
+     coords:nodes.map(node=>[Number(node.getAttribute('cx')),Number(node.getAttribute('cy'))]),
+     box:svg.getBoundingClientRect().toJSON(),
+   };
+ });
+ expect(scene.background).not.toBe('none');
+ expect(scene.tubeStroke).not.toBe('rgb(0, 0, 0)');
+ expect(scene.nodeFill).not.toBe('rgb(0, 0, 0)');
+ expect(scene.coords.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)&&x>-50&&y>-50&&x<scene.box.width+50&&y<scene.box.height+50)).toBe(true);
 
  await lab.getByRole('button',{name:'Rings'}).click();
  await expect(lab).toHaveAttribute('data-mode','rings');
  await expect(lab.getByRole('button',{name:'Rings'})).toHaveAttribute('aria-pressed','true');
- expect(await svg.locator('.ring-hit').count()).toBeGreaterThan(10);
+ await expect(svg.locator('.ring-hit')).toHaveCount(96);
 
  await lab.getByRole('button',{name:'Entangle selected ring'}).click();
  await expect(lab).toHaveAttribute('data-mode','links');
  await expect(lab).toHaveAttribute('data-entanglements','1');
  await expect(lab).toHaveAttribute('data-linking-number','1');
+ await expect(lab).toHaveAttribute('data-relaxed','true');
  await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
- expect(await svg.locator('.network-tube--signal').count()).toBeGreaterThan(0);
- expect(await svg.locator('.network-tube--cool').count()).toBeGreaterThan(0);
- await expect(page.locator('[data-readout-copy]')).toContainText('linking number');
+ expect(await svg.locator('.network-tube--signal').count()).toBeGreaterThanOrEqual(4);
+ expect(await svg.locator('.network-tube--cool').count()).toBeGreaterThanOrEqual(4);
+ await expect(page.locator('[data-readout-copy]')).toContainText('linking number one');
+
+ const residual=Number(await lab.getAttribute('data-energy-residual'));
+ expect(Number.isFinite(residual)).toBe(true);
+ expect(residual).toBeLessThan(2e-4);
 
  await lab.getByRole('button',{name:'Reset'}).click();
  await expect(lab).toHaveAttribute('data-entanglements','0');
  await expect(lab).toHaveAttribute('data-linking-number','0');
+ await expect(lab).toHaveAttribute('data-mode','network');
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
