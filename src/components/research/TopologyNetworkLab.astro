@@ -28,7 +28,11 @@
     data-rings="96"
     data-entanglements="0"
     data-linking-number="0"
-    data-link-model="anchored-hopf"\n    data-max-bond-strain="0"\n    data-energy-residual="0"
+    data-link-model="anchored-hopf"
+    data-max-bond-strain="0"
+    data-energy-residual="0"
+    data-geometric-linking="0"
+    data-min-link-clearance="0"
   >
     <div class="topology-lab__toolbar">
       <div class="topology-lab__modes" role="group" aria-label="Network view">
@@ -383,42 +387,29 @@
       return{x:sum.x/4,y:sum.y/4,z:sum.z/4};
     }
 
-    private linkedPoint(link:LinkPair,loop:'a'|'b',t:number):Vec3{
-      const cell=loop==='a'?link.a:link.b;
-      const anchors=this.ringNodes(cell).map(id=>this.nodeBase[id]);
-      const u=((t%1)+1)%1*4;
-      const k=Math.floor(u)%4;
-      const f=u-Math.floor(u);
-      const a0=anchors[k];
-      const a1=anchors[(k+1)%4];
-
-      // The square path is the fully relaxed coarse-network embedding.
-      const square={
-        x:a0.x+(a1.x-a0.x)*f,
-        y:a0.y+(a1.y-a0.y)*f,
-        z:this.baseZ,
-      };
-
-      // Between junctions, smoothly pull the strand toward one member of a
-      // standard Hopf pair. The blend is exactly zero at every junction, so
-      // all coarse nodes remain on the unit square lattice.
+    private hopfPoint(link:LinkPair,loop:'a'|'b',theta:number):Vec3{
       const ca=this.cellCenter(link.a);
       const cb=this.cellCenter(link.b);
       const mid={x:(ca.x+cb.x)/2,y:(ca.y+cb.y)/2};
-      const radius=.85;
-      const offset=.02;
-      const height=this.baseZ+1.32;
-      const theta=2*Math.PI*t-3*Math.PI/4;
-      const hopf=loop==='a'
-        ?{x:mid.x-offset+radius*Math.cos(theta),y:mid.y+radius*Math.sin(theta),z:height}
-        :{x:mid.x+offset+radius*Math.cos(theta),y:mid.y,z:height+radius*Math.sin(theta)};
+      const radius=.80;
+      const offset=.40;
+      const height=this.baseZ+1.12;
 
-      const blend=.90*Math.pow(Math.sin(4*Math.PI*t),2);
-      return{
-        x:square.x+(hopf.x-square.x)*blend,
-        y:square.y+(hopf.y-square.y)*blend,
-        z:square.z+(hopf.z-square.z)*blend,
-      };
+      return loop==='a'
+        ?{
+          x:mid.x-offset+radius*Math.cos(theta),
+          y:mid.y+radius*Math.sin(theta),
+          z:height,
+        }
+        :{
+          x:mid.x+offset+radius*Math.cos(theta),
+          y:mid.y,
+          z:height+radius*Math.sin(theta),
+        };
+    }
+
+    private smoothstep(t:number){
+      return t*t*(3-2*t);
     }
 
     private relax(){
@@ -447,7 +438,7 @@
 
     private syncData(){
       this.dataset.entanglements=String(this.links.length);
-      this.dataset.linkingNumber=this.links.length?'1':'0';
+      this.updateGeometryDiagnostics();
       const stat=this.closest('.topology-lab')?.querySelector('[data-stat-entanglements]');
       if(stat)stat.textContent=String(this.links.length);
     }
@@ -506,16 +497,122 @@
     }
 
     private specialCurve(info:{loop:'a'|'b';quarter:number},link:LinkPair){
-      const t0=info.quarter/4;
-      return Array.from({length:25},(_,k)=>{
-        const t=t0+(k/24)/4;
-        return this.linkedPoint(link,info.loop,t);
-      });
+      const cell=info.loop==='a'?link.a:link.b;
+      const anchors=this.ringNodes(cell).map(id=>this.nodeBase[id]);
+      const q=info.quarter;
+      const startAnchor=anchors[q];
+      const endAnchor=anchors[(q+1)%4];
+
+      const theta0=-3*Math.PI/4+q*Math.PI/2;
+      const theta1=theta0+Math.PI/2;
+      const delta=.25;
+      const h0=this.hopfPoint(link,info.loop,theta0+delta);
+      const h1=this.hopfPoint(link,info.loop,theta1-delta);
+
+      const points:Vec3[]=[];
+
+      // Smoothly leave the lattice junction and enter the elevated Hopf backbone.
+      for(let k=0;k<8;k++){
+        const u=k/7;
+        const s=this.smoothstep(u);
+        points.push({
+          x:startAnchor.x+(h0.x-startAnchor.x)*s,
+          y:startAnchor.y+(h0.y-startAnchor.y)*s,
+          z:startAnchor.z+(h0.z-startAnchor.z)*s,
+        });
+      }
+
+      // Follow the linked backbone itself.
+      for(let k=1;k<25;k++){
+        const u=k/24;
+        const theta=(theta0+delta)+(theta1-theta0-2*delta)*u;
+        points.push(this.hopfPoint(link,info.loop,theta));
+      }
+
+      // Return smoothly to the next original lattice junction.
+      for(let k=1;k<8;k++){
+        const u=k/7;
+        const s=this.smoothstep(u);
+        points.push({
+          x:h1.x+(endAnchor.x-h1.x)*s,
+          y:h1.y+(endAnchor.y-h1.y)*s,
+          z:h1.z+(endAnchor.z-h1.z)*s,
+        });
+      }
+
+      return points;
     }
 
-    private hash(a:number,b:number){
-      const x=Math.sin(a*127.1+b*311.7)*43758.5453;
-      return x-Math.floor(x);
+    private loopSamples(link:LinkPair,loop:'a'|'b'){
+      const out:Vec3[]=[];
+      for(let quarter=0;quarter<4;quarter++){
+        const edge=this.specialCurve({loop,quarter},link);
+        if(quarter>0)edge.shift();
+        out.push(...edge);
+      }
+      return out;
+    }
+
+    private gaussLinking(a:Vec3[],b:Vec3[]){
+      const midpoint=(p:Vec3,q:Vec3)=>({x:(p.x+q.x)/2,y:(p.y+q.y)/2,z:(p.z+q.z)/2});
+      const cross=(u:Vec3,v:Vec3)=>({
+        x:u.y*v.z-u.z*v.y,
+        y:u.z*v.x-u.x*v.z,
+        z:u.x*v.y-u.y*v.x,
+      });
+      let total=0;
+
+      for(let i=0;i<a.length;i++){
+        const a0=a[i];
+        const a1=a[(i+1)%a.length];
+        const da={x:a1.x-a0.x,y:a1.y-a0.y,z:a1.z-a0.z};
+        const ma=midpoint(a0,a1);
+
+        for(let j=0;j<b.length;j++){
+          const b0=b[j];
+          const b1=b[(j+1)%b.length];
+          const db={x:b1.x-b0.x,y:b1.y-b0.y,z:b1.z-b0.z};
+          const mb=midpoint(b0,b1);
+          const r={x:ma.x-mb.x,y:ma.y-mb.y,z:ma.z-mb.z};
+          const r2=r.x*r.x+r.y*r.y+r.z*r.z;
+          const denom=Math.pow(r2,1.5);
+          if(denom<1e-9)continue;
+          const cr=cross(da,db);
+          total+=(r.x*cr.x+r.y*cr.y+r.z*cr.z)/denom;
+        }
+      }
+
+      return total/(4*Math.PI);
+    }
+
+    private minPointClearance(a:Vec3[],b:Vec3[]){
+      let min=Infinity;
+      for(const p of a){
+        for(const q of b){
+          const dx=p.x-q.x;
+          const dy=p.y-q.y;
+          const dz=p.z-q.z;
+          min=Math.min(min,Math.hypot(dx,dy,dz));
+        }
+      }
+      return min;
+    }
+
+    private updateGeometryDiagnostics(){
+      let linking=0;
+      let clearance=Infinity;
+
+      for(const link of this.links){
+        const a=this.loopSamples(link,'a');
+        const b=this.loopSamples(link,'b');
+        const current=this.gaussLinking(a,b);
+        linking=Math.max(linking,Math.abs(current));
+        clearance=Math.min(clearance,this.minPointClearance(a,b));
+      }
+
+      this.dataset.geometricLinking=this.links.length?linking.toFixed(3):'0';
+      this.dataset.minLinkClearance=this.links.length?clearance.toFixed(3):'0';
+      this.dataset.linkingNumber=this.links.length&&linking>.75?'1':'0';
     }
 
     private path(points:Vec3[],project:(p:Vec3)=>{x:number;y:number;depth:number}){
