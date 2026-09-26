@@ -417,7 +417,7 @@ test('topology research page renders a relaxed fixed-camera 3D linked network',a
  const lab=page.locator('topology-network-lab');
  await expect(lab).toBeVisible();
  await expect(lab).toHaveAttribute('data-periodic','xy');
- await expect(lab).toHaveAttribute('data-engine','harmonic-elastic-relaxation');
+ await expect(lab).toHaveAttribute('data-engine','rest-length-chain-embedding');
  await expect(lab).toHaveAttribute('data-renderer','fixed-camera-layered-svg');
  await expect(lab).toHaveAttribute('data-relaxed','true');
  await expect(lab).toHaveAttribute('data-draggable','false');
@@ -466,15 +466,27 @@ test('topology research page renders a relaxed fixed-camera 3D linked network',a
  await expect(lab).toHaveAttribute('data-mode','links');
  await expect(lab).toHaveAttribute('data-entanglements','1');
  await expect(lab).toHaveAttribute('data-linking-number','1');
+ await expect(lab).toHaveAttribute('data-link-model','anchored-hopf');
  await expect(lab).toHaveAttribute('data-relaxed','true');
  await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
  expect(await svg.locator('.network-tube--signal').count()).toBeGreaterThanOrEqual(4);
  expect(await svg.locator('.network-tube--cool').count()).toBeGreaterThanOrEqual(4);
  await expect(page.locator('[data-readout-copy]')).toContainText('linking number one');
 
- const residual=Number(await lab.getAttribute('data-energy-residual'));
- expect(Number.isFinite(residual)).toBe(true);
- expect(residual).toBeLessThan(2e-4);
+ const diagnostics=await lab.evaluate((node:HTMLElement)=>({
+   residual:Number(node.dataset.energyResidual),
+   maxBondStrain:Number(node.dataset.maxBondStrain),
+   geometricLinking:Number(node.dataset.geometricLinking),
+   minLinkClearance:Number(node.dataset.minLinkClearance),
+   minEnvironmentClearance:Number(node.dataset.minEnvironmentClearance),
+ }));
+ expect(Number.isFinite(diagnostics.residual)).toBe(true);
+ expect(diagnostics.residual).toBeLessThan(1e-10);
+ expect(diagnostics.maxBondStrain).toBeLessThan(1e-10);
+ expect(diagnostics.geometricLinking).toBeGreaterThan(.75);
+ expect(diagnostics.geometricLinking).toBeLessThan(1.25);
+ expect(diagnostics.minLinkClearance).toBeGreaterThan(.10);
+ expect(diagnostics.minEnvironmentClearance).toBeGreaterThan(.50);
 
  await lab.getByRole('button',{name:'Reset'}).click();
  await expect(lab).toHaveAttribute('data-entanglements','0');
