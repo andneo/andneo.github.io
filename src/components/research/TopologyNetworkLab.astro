@@ -102,33 +102,33 @@
   .topology-lab__stage.is-switching .topology-lab__svg{opacity:.38;transform:scale(.998)}
   .topology-lab__hint{position:absolute;z-index:2;right:.8rem;bottom:.65rem;padding:.32rem .5rem;border-radius:999px;background:var(--control-bg);color:var(--text-3);font:400 .61rem/1 var(--font-sans);pointer-events:none;backdrop-filter:blur(5px)}
 
-  .network-shadow{fill:none;stroke:rgba(0,0,0,.18);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;filter:blur(.8px)}
-  :root[data-theme=dark] .network-shadow{stroke:rgba(0,0,0,.48)}
-  .network-tube{fill:none;stroke:var(--cool);stroke-width:6.6;stroke-linecap:round;stroke-linejoin:round}
-  .network-tube-highlight{fill:none;stroke:rgba(255,255,255,.46);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-  :root[data-theme=dark] .network-tube-highlight{stroke:rgba(255,255,255,.28)}
-  .network-tube--signal{stroke:var(--signal)}
-  .network-tube--cool{stroke:var(--cool)}
-  .network-tube--muted{opacity:.18}
-  .network-tube-highlight.network-tube--muted{opacity:.05}
-  .network-shadow.network-tube--muted{opacity:.025}
+  :global(.network-shadow){fill:none;stroke:rgba(0,0,0,.18);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;filter:blur(.8px)}
+  :global(:root[data-theme=dark]) :global(.network-shadow){stroke:rgba(0,0,0,.48)}
+  :global(.network-tube){fill:none;stroke:var(--cool);stroke-width:6.6;stroke-linecap:round;stroke-linejoin:round}
+  :global(.network-tube-highlight){fill:none;stroke:rgba(255,255,255,.46);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  :global(:root[data-theme=dark]) :global(.network-tube-highlight){stroke:rgba(255,255,255,.28)}
+  :global(.network-tube--signal){stroke:var(--signal)}
+  :global(.network-tube--cool){stroke:var(--cool)}
+  :global(.network-tube--muted){opacity:.18}
+  :global(.network-tube-highlight.network-tube--muted){opacity:.05}
+  :global(.network-shadow.network-tube--muted){opacity:.025}
 
-  .network-node-shadow{fill:rgba(0,0,0,.20);filter:blur(.8px)}
-  :root[data-theme=dark] .network-node-shadow{fill:rgba(0,0,0,.50)}
-  .network-node-body{stroke:var(--surface);stroke-width:.75}
-  .network-node-base{fill:var(--cool)}
-  .network-node-signal{fill:var(--signal)}
-  .network-node-cool{fill:var(--cool)}
-  .network-node-highlight{fill:rgba(255,255,255,.72);pointer-events:none}
-  :root[data-theme=dark] .network-node-highlight{fill:rgba(255,255,255,.50)}
-  .network-node-muted{opacity:.24}
+  :global(.network-node-shadow){fill:rgba(0,0,0,.20);filter:blur(.8px)}
+  :global(:root[data-theme=dark]) :global(.network-node-shadow){fill:rgba(0,0,0,.50)}
+  :global(.network-node-body){stroke:var(--surface);stroke-width:.75}
+  :global(.network-node-base){fill:var(--cool)}
+  :global(.network-node-signal){fill:var(--signal)}
+  :global(.network-node-cool){fill:var(--cool)}
+  :global(.network-node-highlight){fill:rgba(255,255,255,.72);pointer-events:none}
+  :global(:root[data-theme=dark]) :global(.network-node-highlight){fill:rgba(255,255,255,.50)}
+  :global(.network-node-muted){opacity:.24}
 
-  .ring-face{fill:var(--cool-soft);stroke:var(--cool-border);stroke-width:1;opacity:.12;pointer-events:none}
-  .ring-face--selected{fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.8;opacity:.78}
-  .ring-face--linked{fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.45;opacity:.60}
-  .ring-hit{fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
-  .ring-hit:focus{outline:none}
-  .ring-hit:focus-visible{stroke:var(--signal);stroke-width:2;fill:var(--signal-soft)}
+  :global(.ring-face){fill:var(--cool-soft);stroke:var(--cool-border);stroke-width:1;opacity:.12;pointer-events:none}
+  :global(.ring-face--selected){fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.8;opacity:.78}
+  :global(.ring-face--linked){fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.45;opacity:.60}
+  :global(.ring-hit){fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
+  :global(.ring-hit:focus){outline:none}
+  :global(.ring-hit:focus-visible){stroke:var(--signal);stroke-width:2;fill:var(--signal-soft)}
 
   .topology-lab__readout{display:grid;grid-template-columns:minmax(10rem,auto) 1fr;gap:1rem;padding:.8rem 1rem;border-top:1px solid var(--border);background:var(--surface)}
   .topology-lab__readout [data-readout-title]{color:var(--signal);font:600 .7rem/1.35 var(--font-sans)}
