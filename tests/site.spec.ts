@@ -355,6 +355,7 @@ test('homepage research is organised as four themes with selected publication ev
  const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
  await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
  await expect(themes.nth(0).locator('.theme-image')).toHaveAttribute('src','/images/research/topology-networked-matter.webp');
+ await expect(themes.nth(0).locator('.theme-visual-link')).toHaveAttribute('href','/research/topology-networked-matter/');
  const topologyImage=themes.nth(0).locator('.theme-image');
  expect(await topologyImage.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0&&img.naturalHeight>0)).toBe(true);
  const visualHeights=await page.locator('#research .theme-visual').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));
@@ -394,7 +395,19 @@ test('homepage research is organised as four themes with selected publication ev
  await expect(page.getByRole('link',{name:/Topological nature of the liquid/i})).toBeVisible();
  await expect(page.getByRole('link',{name:/Designing the Self-Assembly of Disordered Materials/i})).toBeVisible();
  await expect(page.getByRole('link',{name:/Effect of coat-protein concentration/i})).toBeVisible();
- await page.goto('/research/'); await expect(page.locator('.research-page-grid .research-theme-card')).toHaveCount(4);
+ await page.goto('/research/');
+ await expect(page.locator('.research-page-grid .research-theme-card')).toHaveCount(4);
+ const headingMetrics=await page.evaluate(()=>{
+  const heading=document.querySelector<HTMLElement>('.research-page-heading h1')!;
+  const lede=document.querySelector<HTMLElement>('.research-page-heading > p:last-child')!;
+  return{
+   headingLines:Math.round(heading.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(heading).lineHeight)),
+   ledeRight:lede.getBoundingClientRect().right,
+   frameRight:document.querySelector<HTMLElement>('.research-page')!.getBoundingClientRect().right,
+  };
+ });
+ expect(headingMetrics.headingLines).toBe(1);
+ expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
@@ -568,7 +581,6 @@ test('hero copy, typing roles and footer reflect the revised personal profile',a
 test('detail layouts use the expanded header as their horizontal frame',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  const cases=[
-  ['/research/topology-networked-matter/','.reading-shell',850],
   ['/posts/virial-theorem/','.reading-shell',850],
   ['/publications/topological-nature-llpt/','.reading-shell',850],
   ['/courses/numerical-methods/01-odes/','.course-shell',650],
@@ -592,6 +604,18 @@ test('detail layouts use the expanded header as their horizontal frame',async({p
   expect(Math.abs(metrics.shellWidth-metrics.headerWidth)).toBeLessThanOrEqual(2);
   expect(metrics.mainWidth).toBeGreaterThan(minMainWidth as number);
  }
+
+ await page.goto('/research/topology-networked-matter/');
+ await expect(page.locator('.reading-toc')).toHaveCount(0);
+ const researchFrame=await page.locator('.research-detail').boundingBox();
+ const researchMain=await page.locator('.research-detail-main').boundingBox();
+ const researchHeader=await page.locator('[data-header-track]').boundingBox();
+ expect(researchFrame).not.toBeNull();
+ expect(researchMain).not.toBeNull();
+ expect(researchHeader).not.toBeNull();
+ expect(Math.abs(researchFrame!.x-researchHeader!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(researchFrame!.width-researchHeader!.width)).toBeLessThanOrEqual(2);
+ expect(researchMain!.width).toBeGreaterThan(1200);
 
  await page.goto('/about/');
  const about=await page.locator('main .container--narrow').boundingBox();

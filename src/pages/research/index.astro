@@ -18,9 +18,10 @@ const publicationsFor=(project:typeof projects[number])=>project.data.publicatio
   </div>
 </Base>
 <style>
-  .research-page{padding-top:clamp(7.5rem,12vw,10rem)}.research-page-heading{max-width:960px;margin-bottom:clamp(2.5rem,5vw,4.5rem)}
-  .research-page-heading h1{max-width:18ch;margin:.5rem 0 1.1rem;font:600 clamp(2.4rem,4.5vw,4.4rem)/1 var(--font-display);letter-spacing:-.05em}
-  .research-page-heading>p:last-child{max-width:78ch;margin:0;color:var(--text-2);font-size:clamp(1rem,.97rem + .18vw,1.1rem);line-height:1.72}
+  .research-page{padding-top:clamp(7.5rem,12vw,10rem)}.research-page-heading{width:100%;max-width:none;margin-bottom:clamp(2.5rem,5vw,4.5rem)}
+  .research-page-heading h1{max-width:none;margin:.5rem 0 1.1rem;font:600 clamp(2.4rem,4vw,3.8rem)/1 var(--font-display);letter-spacing:-.05em;white-space:nowrap}
+  .research-page-heading>p:last-child{width:100%;max-width:none;margin:0;color:var(--text-2);font-size:clamp(1rem,.97rem + .18vw,1.1rem);line-height:1.72}
   .research-page-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(.95rem,1.7vw,1.4rem)}
+  @media(max-width:900px){.research-page-heading h1{white-space:normal}}
   @media(max-width:760px){.research-page-grid{grid-template-columns:1fr}}
 </style>
