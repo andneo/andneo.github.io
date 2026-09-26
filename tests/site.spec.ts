@@ -410,6 +410,44 @@ test('homepage research is organised as four themes with selected publication ev
  expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
+test('topology research page has a periodic on-demand interactive network',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/research/topology-networked-matter/');
+
+ const lab=page.locator('topology-network-lab');
+ await expect(lab).toBeVisible();
+ await expect(lab).toHaveAttribute('data-periodic','xy');
+ await expect(lab).toHaveAttribute('data-engine','on-demand-spring');
+ await expect(lab).toHaveAttribute('data-dpr-cap','1.5');
+ await expect(lab).toHaveAttribute('data-nodes','112');
+ await expect(lab).toHaveAttribute('data-edges','224');
+ await expect(lab).toHaveAttribute('data-rings','112');
+ await expect(lab).toHaveAttribute('data-entanglements','0');
+
+ const canvas=lab.locator('canvas');
+ await expect(canvas).toBeVisible();
+ const backing=await canvas.evaluate((node:HTMLCanvasElement)=>({width:node.width,height:node.height,cssWidth:node.getBoundingClientRect().width,cssHeight:node.getBoundingClientRect().height}));
+ expect(backing.width).toBeGreaterThan(0);
+ expect(backing.height).toBeGreaterThan(0);
+ expect(backing.width/backing.cssWidth).toBeLessThanOrEqual(1.51);
+ expect(backing.height/backing.cssHeight).toBeLessThanOrEqual(1.51);
+
+ await lab.getByRole('button',{name:'Rings'}).click();
+ await expect(lab).toHaveAttribute('data-mode','rings');
+ await expect(lab.getByRole('button',{name:'Rings'})).toHaveAttribute('aria-pressed','true');
+
+ await lab.getByRole('button',{name:'Introduce entanglement'}).click();
+ await expect(lab).toHaveAttribute('data-mode','entangle');
+ await expect(lab).toHaveAttribute('data-entanglements','1');
+ await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
+
+ await lab.getByRole('button',{name:'Reveal depth'}).click();
+ await expect(lab.getByRole('button',{name:'Reveal depth'})).toHaveAttribute('aria-pressed','true');
+
+ await lab.getByRole('button',{name:'Reset'}).click();
+ await expect(lab).toHaveAttribute('data-entanglements','0');
+});
+
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/posts/');

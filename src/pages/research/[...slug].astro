@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import Resources from '../../components/content/Resources.astro';
 import PublicationList from '../../components/content/PublicationList.astro';
 import Figure from '../../components/content/Figure.astro';
+import TopologyNetworkLab from '../../components/research/TopologyNetworkLab.astro';
 import {published,url} from '../../lib/content';
 import {assetExists} from '../../lib/media';
 export async function getStaticPaths(){return (await published('project')).map(project=>({params:{slug:project.id},props:{project}}));}
@@ -16,6 +17,7 @@ const posts=(await published('post')).filter(p=>p.data.projects.includes(project
 <Base title={d.title} description={d.description} image={d.image&&assetExists(d.image)?d.image:undefined}>
  <div class="research-detail container page"><article class="reading-main research-detail-main">
   <a href="/research/">Research</a><h1>{d.title}</h1><p class="subtitle">{d.description}</p>
+  {project.id==='topology-networked-matter'&&<TopologyNetworkLab/>}
   {d.question&&<section><h2>Research question</h2><p>{d.question}</p></section>}
   {d.contribution&&<section><h2>Contribution</h2><p>{d.contribution}</p></section>}
   {d.role&&<p><strong>My role:</strong> {d.role}</p>}

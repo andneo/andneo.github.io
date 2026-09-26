@@ -1,0 +1,426 @@
+---
+---
+<section class="topology-lab" aria-labelledby="topology-lab-title">
+  <div class="topology-lab__heading">
+    <div>
+      <p class="eyebrow">Interactive model</p>
+      <h2 id="topology-lab-title">Same graph. Different embedding.</h2>
+      <p>A periodic elastic network can keep the same node connectivity while its strands acquire different physical entanglements. Explore the rings, introduce a local entanglement, then reveal the hidden depth at the crossing.</p>
+    </div>
+    <dl class="topology-lab__stats" aria-label="Network statistics">
+      <div><dt>nodes</dt><dd data-stat-nodes>112</dd></div>
+      <div><dt>edges</dt><dd data-stat-edges>224</dd></div>
+      <div><dt>4-rings</dt><dd data-stat-rings>112</dd></div>
+      <div><dt>entanglements</dt><dd data-stat-entanglements>0</dd></div>
+    </dl>
+  </div>
+
+  <topology-network-lab
+    class="topology-lab__instrument"
+    data-mode="network"
+    data-periodic="xy"
+    data-engine="on-demand-spring"
+    data-dpr-cap="1.5"
+    data-nodes="112"
+    data-edges="224"
+    data-rings="112"
+    data-entanglements="0"
+  >
+    <div class="topology-lab__toolbar">
+      <div class="topology-lab__modes" role="group" aria-label="Network view">
+        <button type="button" data-mode-button="network" aria-pressed="true">Network</button>
+        <button type="button" data-mode-button="rings" aria-pressed="false">Rings</button>
+        <button type="button" data-mode-button="entangle" aria-pressed="false">Entangle</button>
+        <button type="button" data-mode-button="links" aria-pressed="false">Linked rings</button>
+      </div>
+      <div class="topology-lab__actions">
+        <button type="button" data-entangle-action>Introduce entanglement</button>
+        <button type="button" data-depth-action aria-pressed="false">Reveal depth</button>
+        <button type="button" data-reset-action>Reset</button>
+      </div>
+    </div>
+
+    <div class="topology-lab__stage">
+      <canvas
+        class="topology-lab__canvas"
+        tabindex="0"
+        aria-label="Interactive periodic elastic network. Drag to pan and click a square ring to select it."
+      ></canvas>
+      <div class="topology-lab__hint" aria-hidden="true">drag to pan · click a ring to select it</div>
+    </div>
+
+    <div class="topology-lab__readout" aria-live="polite">
+      <span data-readout-title>Periodic network</span>
+      <span data-readout-copy>The network wraps continuously in both directions; there is no physical boundary in the model.</span>
+    </div>
+  </topology-network-lab>
+</section>
+
+<style>
+  .topology-lab{margin:clamp(2rem,4vw,4rem) 0 clamp(3rem,6vw,5.5rem)}
+  .topology-lab__heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(2rem,5vw,5rem);align-items:end;margin-bottom:1.25rem}
+  .topology-lab__heading h2{margin:.4rem 0 .75rem;font:600 clamp(1.8rem,3vw,3rem)/1.03 var(--font-display);letter-spacing:-.045em}
+  .topology-lab__heading>div>p:last-child{max-width:78ch;margin:0;color:var(--text-2);line-height:1.7}
+  .topology-lab__stats{display:grid;grid-template-columns:repeat(2,minmax(5rem,auto));gap:.55rem 1.2rem;margin:0}
+  .topology-lab__stats div{display:grid;grid-template-columns:auto auto;gap:.65rem;align-items:baseline}
+  .topology-lab__stats dt{color:var(--text-3);font:400 .65rem/1.2 var(--font-sans);text-transform:lowercase}
+  .topology-lab__stats dd{margin:0;color:var(--cool);font:600 .85rem/1 var(--font-sans);font-variant-numeric:tabular-nums}
+  .topology-lab__instrument{display:block;border:1px solid var(--panel-border);border-radius:var(--r-lg);overflow:hidden;background:color-mix(in srgb,var(--panel-bg) 96%,var(--cool-soft));box-shadow:var(--shadow-card)}
+  .topology-lab__toolbar{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.7rem .8rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--surface) 90%,transparent)}
+  .topology-lab__modes,.topology-lab__actions{display:flex;flex-wrap:wrap;gap:.4rem}
+  .topology-lab button{min-height:2rem;padding:.38rem .68rem;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--text-2);font:500 .7rem/1 var(--font-sans);cursor:pointer;transition:background var(--t),border-color var(--t),color var(--t),transform var(--t)}
+  .topology-lab button:hover{border-color:var(--cool-border);color:var(--text)}
+  .topology-lab button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .topology-lab [data-mode-button][aria-pressed=true]{border-color:var(--cool-border);background:var(--cool-soft);color:var(--cool)}
+  .topology-lab [data-entangle-action]{border-color:var(--signal-border);color:var(--signal)}
+  .topology-lab [data-depth-action][aria-pressed=true]{background:var(--signal-soft);border-color:var(--signal-border);color:var(--signal)}
+  .topology-lab__stage{position:relative;aspect-ratio:16/7;min-height:330px;overflow:hidden;background:
+    radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--cool-soft) 58%,transparent),transparent 55%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 74%,transparent),color-mix(in srgb,var(--bg-off) 92%,transparent))}
+  .topology-lab__canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  .topology-lab__canvas:active{cursor:grabbing}
+  .topology-lab__hint{position:absolute;right:.8rem;bottom:.65rem;padding:.32rem .5rem;border-radius:999px;background:color-mix(in srgb,var(--surface) 76%,transparent);color:var(--text-3);font:400 .61rem/1 var(--font-sans);pointer-events:none;backdrop-filter:blur(5px)}
+  .topology-lab__readout{display:grid;grid-template-columns:minmax(9rem,auto) 1fr;gap:1rem;padding:.8rem 1rem;border-top:1px solid var(--border);background:color-mix(in srgb,var(--surface) 88%,transparent)}
+  .topology-lab__readout [data-readout-title]{color:var(--signal);font:600 .7rem/1.35 var(--font-sans)}
+  .topology-lab__readout [data-readout-copy]{color:var(--text-2);font:400 .72rem/1.45 var(--font-sans)}
+  @media(max-width:900px){
+    .topology-lab__heading{grid-template-columns:1fr}
+    .topology-lab__stats{grid-template-columns:repeat(4,auto);justify-content:start}
+    .topology-lab__stats div{display:block}.topology-lab__stats dt{display:block;margin-bottom:.2rem}
+    .topology-lab__toolbar{align-items:flex-start;flex-direction:column}
+  }
+  @media(max-width:620px){
+    .topology-lab__stage{aspect-ratio:4/3;min-height:360px}
+    .topology-lab__stats{grid-template-columns:repeat(2,auto)}
+    .topology-lab__readout{grid-template-columns:1fr;gap:.25rem}
+    .topology-lab__hint{display:none}
+  }
+</style>
+
+<script>
+  class TopologyNetworkLab extends HTMLElement {
+    private canvas!:HTMLCanvasElement;
+    private ctx!:CanvasRenderingContext2D;
+    private nx=14;
+    private ny=8;
+    private beadCount=5;
+    private edges:any[]=[];
+    private edgeMap=new Map<string,any>();
+    private selected={i:Math.floor(this.nx/2),j:Math.floor(this.ny/2)};
+    private hover:{i:number,j:number}|null=null;
+    private entangled=new Map<string,{i:number,j:number,orientation:'h'|'v',edges:string[]}>();
+    private mode='network';
+    private pan={x:0,y:0};
+    private depth=false;
+    private pointer:{id:number,x:number,y:number,startX:number,startY:number,moved:boolean}|null=null;
+    private raf=0;
+    private settling=false;
+    private visible=true;
+    private reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    private dpr=1;
+    private ro?:ResizeObserver;
+    private io?:IntersectionObserver;
+    private mo?:MutationObserver;
+
+    connectedCallback(){
+      this.canvas=this.querySelector('canvas')!;
+      this.ctx=this.canvas.getContext('2d',{alpha:true})!;
+      this.buildNetwork();
+      this.bind();
+      this.ro=new ResizeObserver(()=>this.resize());
+      this.ro.observe(this);
+      this.io=new IntersectionObserver(entries=>{this.visible=entries[0]?.isIntersecting??true;if(this.visible)this.draw();});
+      this.io.observe(this);
+      this.mo=new MutationObserver(()=>this.draw());
+      this.mo.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+      this.resize();
+      this.updateReadout();
+    }
+
+    disconnectedCallback(){
+      cancelAnimationFrame(this.raf);
+      this.ro?.disconnect();this.io?.disconnect();this.mo?.disconnect();
+    }
+
+    private edgeKey(kind:'h'|'v',i:number,j:number){return `${kind}-${((i%this.nx)+this.nx)%this.nx}-${((j%this.ny)+this.ny)%this.ny}`;}
+    private hash(a:number,b:number,c=0){const x=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return x-Math.floor(x);}
+    private nearest(value:number,ref:number,period:number){return value+Math.round((ref-value)/period)*period;}
+
+    private buildNetwork(){
+      this.edges=[];this.edgeMap.clear();
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++){
+        this.addEdge('h',i,j,{x:i,y:j},{x:i+1,y:j});
+        this.addEdge('v',i,j,{x:i,y:j},{x:i,y:j+1});
+      }
+    }
+
+    private addEdge(kind:'h'|'v',i:number,j:number,a:{x:number,y:number},b:{x:number,y:number}){
+      const key=this.edgeKey(kind,i,j);
+      const base=[];const points=[];
+      const nx=-(b.y-a.y),ny=(b.x-a.x);
+      for(let k=1;k<=this.beadCount;k++){
+        const t=k/(this.beadCount+1);
+        const wobble=(this.hash(i,j,k+(kind==='h'?0:19))-.5)*.055*Math.sin(Math.PI*t);
+        const p={x:a.x+(b.x-a.x)*t+nx*wobble,y:a.y+(b.y-a.y)*t+ny*wobble,z:0};
+        base.push({...p});points.push({...p,vx:0,vy:0,vz:0});
+      }
+      const edge={key,kind,i,j,a,b,base,target:base.map(p=>({...p})),points,entangled:false,accent:0};
+      this.edges.push(edge);this.edgeMap.set(key,edge);
+    }
+
+    private bind(){
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>button.addEventListener('click',()=>{
+        this.mode=button.dataset.modeButton||'network';
+        this.dataset.mode=this.mode;
+        this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+        this.updateReadout();this.draw();
+      }));
+      this.querySelector<HTMLButtonElement>('[data-entangle-action]')?.addEventListener('click',()=>{
+        this.mode='entangle';this.dataset.mode='entangle';
+        this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.modeButton==='entangle')));
+        this.entangleSelected();
+      });
+      this.querySelector<HTMLButtonElement>('[data-depth-action]')?.addEventListener('click',e=>{
+        this.depth=!this.depth;(e.currentTarget as HTMLButtonElement).setAttribute('aria-pressed',String(this.depth));this.draw();
+      });
+      this.querySelector<HTMLButtonElement>('[data-reset-action]')?.addEventListener('click',()=>this.reset());
+
+      this.canvas.addEventListener('pointerdown',e=>{
+        this.canvas.setPointerCapture(e.pointerId);
+        this.pointer={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false};
+      });
+      this.canvas.addEventListener('pointermove',e=>{
+        if(this.pointer&&this.pointer.id===e.pointerId){
+          const dx=e.clientX-this.pointer.x,dy=e.clientY-this.pointer.y;
+          if(Math.hypot(e.clientX-this.pointer.startX,e.clientY-this.pointer.startY)>5)this.pointer.moved=true;
+          if(this.pointer.moved){
+            const r=this.canvas.getBoundingClientRect();
+            this.pan.x+=dx/r.width*this.nx;this.pan.y+=dy/r.height*this.ny;
+            this.pointer.x=e.clientX;this.pointer.y=e.clientY;this.draw();
+          }
+        }else{
+          this.hover=this.cellAt(e.clientX,e.clientY);this.draw();
+        }
+      });
+      const finish=(e:PointerEvent)=>{
+        if(!this.pointer||this.pointer.id!==e.pointerId)return;
+        if(!this.pointer.moved){
+          const cell=this.cellAt(e.clientX,e.clientY);
+          if(cell){this.selected=cell;if(this.mode==='network')this.mode='rings';this.syncModeButtons();this.updateReadout();this.draw();}
+        }
+        this.pointer=null;
+      };
+      this.canvas.addEventListener('pointerup',finish);
+      this.canvas.addEventListener('pointercancel',finish);
+      this.canvas.addEventListener('pointerleave',()=>{if(!this.pointer){this.hover=null;this.draw();}});
+      this.canvas.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();this.entangleSelected();}
+        if(e.key==='ArrowLeft'){this.selected.i=(this.selected.i-1+this.nx)%this.nx;this.draw();}
+        if(e.key==='ArrowRight'){this.selected.i=(this.selected.i+1)%this.nx;this.draw();}
+        if(e.key==='ArrowUp'){this.selected.j=(this.selected.j-1+this.ny)%this.ny;this.draw();}
+        if(e.key==='ArrowDown'){this.selected.j=(this.selected.j+1)%this.ny;this.draw();}
+      });
+    }
+
+    private syncModeButtons(){
+      this.dataset.mode=this.mode;
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.modeButton===this.mode)));
+    }
+
+    private cellAt(clientX:number,clientY:number){
+      const r=this.canvas.getBoundingClientRect();
+      const x=((clientX-r.left)/r.width*this.nx-this.pan.x);
+      const y=((clientY-r.top)/r.height*this.ny-this.pan.y);
+      return{i:((Math.floor(x)%this.nx)+this.nx)%this.nx,j:((Math.floor(y)%this.ny)+this.ny)%this.ny};
+    }
+
+    private entangleSelected(){
+      const {i,j}=this.selected;const key=`${i}-${j}`;
+      if(this.entangled.has(key)){this.updateReadout('Already entangled','Choose another ring, or reset the network before reusing this one.');return;}
+      const orientation=(this.entangled.size%2===0?'h':'v') as 'h'|'v';
+      const keys=orientation==='h'
+        ?[this.edgeKey('h',i,j),this.edgeKey('h',i,j+1)]
+        :[this.edgeKey('v',i,j),this.edgeKey('v',i+1,j)];
+      const edges=keys.map(k=>this.edgeMap.get(k)).filter(Boolean);
+      edges.forEach((edge,index)=>this.setEntangledTarget(edge,{i,j},orientation,index));
+      this.entangled.set(key,{i,j,orientation,edges:keys});
+      this.dataset.entanglements=String(this.entangled.size);
+      const stat=document.querySelector('[data-stat-entanglements]');if(stat)stat.textContent=String(this.entangled.size);
+      if(this.reduceMotion){
+        edges.forEach(edge=>edge.points.forEach((p:any,k:number)=>Object.assign(p,edge.target[k],{vx:0,vy:0,vz:0})));
+        this.draw();
+      }else{
+        this.settling=true;this.startLoop();
+      }
+      this.updateReadout('Embedding changed','The coarse graph is unchanged: the same nodes remain connected. Only the paths taken by two opposite strands have been exchanged.');
+    }
+
+    private setEntangledTarget(edge:any,cell:{i:number,j:number},orientation:'h'|'v',index:number){
+      edge.entangled=true;edge.accent=index;
+      edge.target=edge.base.map((_:any,k:number)=>{
+        const t=(k+1)/(this.beadCount+1);
+        const bump=.88*Math.pow(Math.sin(Math.PI*t),2);
+        const wave=.035*Math.sin(3*Math.PI*t+(index*Math.PI));
+        let x=cell.i,y=cell.j,z=.20*Math.sin(2*Math.PI*t)*(index===0?1:-1);
+        if(orientation==='h'){
+          x=cell.i+t+wave;
+          y=index===0?cell.j+bump:cell.j+1-bump;
+        }else{
+          y=cell.j+t+wave;
+          x=index===0?cell.i+bump:cell.i+1-bump;
+        }
+        const current=edge.points[k];
+        x=this.nearest(x,current.x,this.nx);y=this.nearest(y,current.y,this.ny);
+        return{x,y,z};
+      });
+    }
+
+    private reset(){
+      this.entangled.clear();this.dataset.entanglements='0';
+      const stat=document.querySelector('[data-stat-entanglements]');if(stat)stat.textContent='0';
+      this.edges.forEach(edge=>{
+        edge.entangled=false;edge.accent=0;
+        edge.target=edge.base.map((p:any,k:number)=>({
+          x:this.nearest(p.x,edge.points[k].x,this.nx),
+          y:this.nearest(p.y,edge.points[k].y,this.ny),z:0
+        }));
+      });
+      if(this.reduceMotion){
+        this.edges.forEach(edge=>edge.points.forEach((p:any,k:number)=>Object.assign(p,edge.target[k],{vx:0,vy:0,vz:0})));
+        this.draw();
+      }else{this.settling=true;this.startLoop();}
+      this.updateReadout('Periodic network','The network wraps continuously in both directions; there is no physical boundary in the model.');
+    }
+
+    private startLoop(){
+      if(this.raf||!this.visible)return;
+      const step=()=>{
+        this.raf=0;if(!this.visible)return;
+        let error=0;
+        for(const edge of this.edges){
+          for(let k=0;k<edge.points.length;k++){
+            const p=edge.points[k],t=edge.target[k];
+            const dx=t.x-p.x,dy=t.y-p.y,dz=t.z-p.z;
+            p.vx=(p.vx+dx*.065)*.82;p.vy=(p.vy+dy*.065)*.82;p.vz=(p.vz+dz*.065)*.82;
+            p.x+=p.vx;p.y+=p.vy;p.z+=p.vz;
+            error+=Math.abs(dx)+Math.abs(dy)+Math.abs(dz)+Math.abs(p.vx)+Math.abs(p.vy)+Math.abs(p.vz);
+          }
+        }
+        this.draw();
+        if(error>.012){this.raf=requestAnimationFrame(step);}else{this.settling=false;}
+      };
+      this.raf=requestAnimationFrame(step);
+    }
+
+    private resize(){
+      const r=this.canvas.getBoundingClientRect();
+      this.dpr=Math.min(devicePixelRatio||1,1.5);
+      const w=Math.max(1,Math.round(r.width*this.dpr)),h=Math.max(1,Math.round(r.height*this.dpr));
+      if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
+      this.draw();
+    }
+
+    private palette(){
+      const s=getComputedStyle(document.documentElement);
+      return{
+        cool:s.getPropertyValue('--cool').trim(),
+        signal:s.getPropertyValue('--signal').trim(),
+        text3:s.getPropertyValue('--text-3').trim(),
+        surface:s.getPropertyValue('--surface').trim(),
+        bg:s.getPropertyValue('--bg').trim(),
+      };
+    }
+
+    private screen(x:number,y:number,z=0,shiftX=0,shiftY=0){
+      const w=this.canvas.width/this.dpr,h=this.canvas.height/this.dpr;
+      const cellX=w/this.nx,cellY=h/this.ny;
+      const tilt=this.depth?z*Math.min(cellX,cellY)*.95:0;
+      return{x:(x+this.pan.x+shiftX)/this.nx*w+tilt*.18,y:(y+this.pan.y+shiftY)/this.ny*h-tilt};
+    }
+
+    private draw(){
+      if(!this.ctx||!this.visible)return;
+      const ctx=this.ctx,p=this.palette(),w=this.canvas.width/this.dpr,h=this.canvas.height/this.dpr;
+      ctx.setTransform(this.dpr,0,0,this.dpr,0,0);ctx.clearRect(0,0,w,h);
+      ctx.lineCap='round';ctx.lineJoin='round';
+      const faded=this.mode!=='network';
+      for(const edge of this.edges)if(!edge.entangled)this.drawEdge(edge,p.cool,faded?.24:.58,1.55);
+      for(const edge of this.edges)if(edge.entangled)this.drawEdge(edge,edge.accent===0?p.signal:p.cool,.92,2.8,true);
+
+      if(this.mode==='rings'||this.mode==='entangle'||this.mode==='links'){
+        for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++){
+          const key=`${i}-${j}`;const selected=i===this.selected.i&&j===this.selected.j;
+          const hovered=this.hover&&i===this.hover.i&&j===this.hover.j;
+          const linked=this.entangled.has(key);
+          if(this.mode==='links'&&!linked&&!selected&&!hovered)continue;
+          this.drawRing(i,j,selected||hovered?p.signal:p.cool,selected?0.18:linked?0.10:0.035,selected||hovered?2.2:1);
+        }
+      }
+
+      this.drawNodes(p.cool,faded?.34:.85);
+    }
+
+    private drawEdge(edge:any,color:string,alpha:number,width:number,overpass=false){
+      const shiftsX=[-this.nx,0,this.nx],shiftsY=[-this.ny,0,this.ny];
+      const pts=[{x:edge.a.x,y:edge.a.y,z:0},...edge.points,{x:edge.b.x,y:edge.b.y,z:0}];
+      for(const sx of shiftsX)for(const sy of shiftsY){
+        if(overpass){
+          const segments=[] as any[];
+          for(let k=0;k<pts.length-1;k++)segments.push({a:pts[k],b:pts[k+1],z:(pts[k].z+pts[k+1].z)/2,k});
+          segments.sort((a,b)=>a.z-b.z);
+          for(const seg of segments)this.drawSegment(seg.a,seg.b,sx,sy,color,alpha,width,seg.z);
+        }else{
+          this.ctx.beginPath();
+          pts.forEach((point,index)=>{const q=this.screen(point.x,point.y,point.z,sx,sy);index?this.ctx.lineTo(q.x,q.y):this.ctx.moveTo(q.x,q.y);});
+          this.ctx.globalAlpha=alpha;this.ctx.strokeStyle=color;this.ctx.lineWidth=width;this.ctx.stroke();
+        }
+      }
+      this.ctx.globalAlpha=1;
+    }
+
+    private drawSegment(a:any,b:any,sx:number,sy:number,color:string,alpha:number,width:number,z:number){
+      const ctx=this.ctx,p=this.palette(),pa=this.screen(a.x,a.y,a.z,sx,sy),pb=this.screen(b.x,b.y,b.z,sx,sy);
+      if(Math.abs(z)>.025){
+        ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.globalAlpha=.92;ctx.strokeStyle=p.surface;ctx.lineWidth=width+4.3;ctx.stroke();
+      }
+      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();ctx.globalAlpha=1;
+    }
+
+    private drawRing(i:number,j:number,color:string,fillAlpha:number,lineWidth:number){
+      const ctx=this.ctx;
+      for(const sx of [-this.nx,0,this.nx])for(const sy of [-this.ny,0,this.ny]){
+        const a=this.screen(i,j,0,sx,sy),b=this.screen(i+1,j,0,sx,sy),c=this.screen(i+1,j+1,0,sx,sy),d=this.screen(i,j+1,0,sx,sy);
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();
+        ctx.globalAlpha=fillAlpha;ctx.fillStyle=color;ctx.fill();
+        ctx.globalAlpha=Math.min(.72,fillAlpha*3.8+.08);ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
+
+    private drawNodes(color:string,alpha:number){
+      const ctx=this.ctx,w=this.canvas.width/this.dpr,h=this.canvas.height/this.dpr,r=Math.max(1.45,Math.min(w/this.nx,h/this.ny)*.045);
+      ctx.fillStyle=color;ctx.globalAlpha=alpha;
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++)for(const sx of [-this.nx,0,this.nx])for(const sy of [-this.ny,0,this.ny]){
+        const q=this.screen(i,j,0,sx,sy);
+        if(q.x<-r||q.x>w+r||q.y<-r||q.y>h+r)continue;
+        ctx.beginPath();ctx.arc(q.x,q.y,r,0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }
+
+    private updateReadout(title?:string,copy?:string){
+      const t=this.querySelector('[data-readout-title]'),c=this.querySelector('[data-readout-copy]');
+      if(title&&copy){if(t)t.textContent=title;if(c)c.textContent=copy;return;}
+      const key=`${this.selected.i}-${this.selected.j}`;
+      const linked=this.entangled.has(key);
+      const messages:any={
+        network:['Periodic network','Drag to pan. Opposite boundaries are identified, so the lattice continues seamlessly beyond every edge of the viewport.'],
+        rings:['Four-member rings',`Ring (${this.selected.i}, ${this.selected.j}) is selected. The coarse graph contains one elementary four-member ring per periodic cell.`],
+        entangle:['Change the embedding',linked?'This ring already contains an introduced entanglement. Select another ring to continue.':'Introduce an entanglement to exchange the paths of two opposite strands while keeping the coarse node connectivity fixed.'],
+        links:['Entangled regions',this.entangled.size? `${this.entangled.size} local entanglement${this.entangled.size===1?'':'s'} introduced. Unmodified structure is faded so the altered strand paths remain legible.`:'Introduce an entanglement first, then use this view to isolate the modified rings.'],
+      };
+      const [a,b]=messages[this.mode]||messages.network;if(t)t.textContent=a;if(c)c.textContent=b;
+    }
+  }
+  if(!customElements.get('topology-network-lab'))customElements.define('topology-network-lab',TopologyNetworkLab);
+</script>
