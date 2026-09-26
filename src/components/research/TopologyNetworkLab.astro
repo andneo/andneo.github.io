@@ -60,7 +60,7 @@
 
     <div class="topology-lab__readout" aria-live="polite">
       <span data-readout-title>Periodic elastic network</span>
-      <span data-readout-copy>The simulated graph is periodic in both directions. Only an interior window is rendered, so no network boundary appears in the view.</span>
+      <span data-readout-copy>The simulated graph is periodic in both directions. Only an interior window is rendered, and every visible coarse bond remains at its unit rest spacing.</span>
     </div>
   </topology-network-lab>
 </section>
@@ -107,16 +107,20 @@
   .topology-lab__stage.is-switching .topology-lab__svg{opacity:.38;transform:scale(.998)}
   .topology-lab__hint{position:absolute;z-index:2;right:.8rem;bottom:.65rem;padding:.32rem .5rem;border-radius:999px;background:var(--control-bg);color:var(--text-3);font:400 .61rem/1 var(--font-sans);pointer-events:none;backdrop-filter:blur(5px)}
 
-  :global(.network-shadow){fill:none;stroke:rgba(0,0,0,.18);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;filter:blur(.8px)}
-  :global(:root[data-theme=dark]) :global(.network-shadow){stroke:rgba(0,0,0,.48)}
-  :global(.network-tube){fill:none;stroke:var(--cool);stroke-width:6.6;stroke-linecap:round;stroke-linejoin:round}
+  :global(.network-shadow){fill:none;stroke:rgba(0,0,0,.16);stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round;filter:blur(1.2px)}
+  :global(:root[data-theme=dark]) :global(.network-shadow){stroke:rgba(0,0,0,.34)}
+  :global(.network-tube-rim){fill:none;stroke:color-mix(in srgb,var(--cool) 64%,var(--text));stroke-width:7.3;stroke-linecap:round;stroke-linejoin:round}
+  :global(.network-tube){fill:none;stroke:var(--cool);stroke-width:5.9;stroke-linecap:round;stroke-linejoin:round}
   :global(.network-tube-highlight){fill:none;stroke:rgba(255,255,255,.46);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
   :global(:root[data-theme=dark]) :global(.network-tube-highlight){stroke:rgba(255,255,255,.28)}
+  :global(.network-tube-rim.network-tube--signal){stroke:color-mix(in srgb,var(--signal) 68%,var(--text))}
+  :global(.network-tube-rim.network-tube--cool){stroke:color-mix(in srgb,var(--cool) 66%,var(--text))}
   :global(.network-tube--signal){stroke:var(--signal)}
   :global(.network-tube--cool){stroke:var(--cool)}
   :global(.network-tube--muted){opacity:.18}
+  :global(.network-tube-rim.network-tube--muted){opacity:.14}
   :global(.network-tube-highlight.network-tube--muted){opacity:.05}
-  :global(.network-shadow.network-tube--muted){opacity:.025}
+  :global(.network-shadow.network-tube--muted){opacity:.02}
 
   :global(.network-node-shadow){fill:rgba(0,0,0,.20);filter:blur(.8px)}
   :global(:root[data-theme=dark]) :global(.network-node-shadow){fill:rgba(0,0,0,.50)}
@@ -165,11 +169,9 @@
     private nx=18;
     private ny=11;
     private baseZ=.18;
-    private floorZ=-.52;
     private tilt=.43;
     private nodeBase:Vec3[]=[];
     private nodePos:Vec3[]=[];
-    private neighbours:number[][]=[];
     private edges:Edge[]=[];
     private selected:Cell={i:7,j:4};
     private hover:Cell|null=null;
@@ -182,7 +184,6 @@
     private width=1200;
     private height=520;
     private scale=100;
-    private residual=0;
 
     connectedCallback(){
       this.svg=this.querySelector('svg')!;
@@ -222,7 +223,6 @@
     private buildGraph(){
       this.nodeBase=[];
       this.nodePos=[];
-      this.neighbours=Array.from({length:this.nx*this.ny},()=>[]);
       this.edges=[];
 
       const cx=(this.nx-1)/2;
@@ -247,8 +247,7 @@
     private addGraphEdge(a:number,b:number){
       const key=this.edgeKey(a,b);
       if(!this.edges.some(e=>e.key===key))this.edges.push({a,b,key});
-      if(!this.neighbours[a].includes(b))this.neighbours[a].push(b);
-      if(!this.neighbours[b].includes(a))this.neighbours[b].push(a);
+
     }
 
     private ringNodes(c:Cell){
@@ -431,7 +430,6 @@
         maxStrain=Math.max(maxStrain,Math.abs(length-1));
       }
 
-      this.residual=0;
       this.dataset.relaxed='true';
       this.dataset.energyResidual='0';
       this.dataset.maxBondStrain=maxStrain.toExponential(2);
@@ -706,8 +704,8 @@
       this.svg.setAttribute('viewBox',`0 0 ${this.width} ${this.height}`);
 
       type Primitive=
-        |{type:'tube';d:string;shadow:string;depth:number;kind:'base'|'signal'|'cool';muted:boolean}
-        |{type:'node';x:number;y:number;sx:number;sy:number;depth:number;kind:'base'|'signal'|'cool';muted:boolean};
+        |{type:'tube';d:string;depth:number;kind:'base'|'signal'|'cool';muted:boolean}
+        |{type:'node';x:number;y:number;depth:number;kind:'base'|'signal'|'cool';muted:boolean};
 
       const primitives:Primitive[]=[];
       const linkedNodes=new Map<number,'signal'|'cool'>();
@@ -737,13 +735,11 @@
 
         for(const piece of pieces){
           const pieceProjected=piece.map(project);
-          const floor=piece.map(p=>({x:p.x,y:p.y,z:this.floorZ}));
           const depth=pieceProjected.reduce((sum,p)=>sum+p.depth,0)/pieceProjected.length;
 
           primitives.push({
             type:'tube',
             d:this.path(piece,project),
-            shadow:this.path(floor,project),
             depth,
             kind,
             muted,
@@ -755,7 +751,6 @@
         const q=project(this.nodePos[id]);
         if(q.x<-40||q.x>this.width+40||q.y<-40||q.y>this.height+40)continue;
 
-        const shadow=project({x:this.nodePos[id].x,y:this.nodePos[id].y,z:this.floorZ});
         const kind=linkedNodes.get(id)??'base';
         const muted=this.mode==='links'&&!linkedNodes.has(id);
 
@@ -763,8 +758,6 @@
           type:'node',
           x:q.x,
           y:q.y,
-          sx:shadow.x,
-          sy:shadow.y,
           depth:q.depth+.015,
           kind,
           muted,
@@ -778,9 +771,10 @@
           const kindClass=item.kind==='signal'?' network-tube--signal':item.kind==='cool'?' network-tube--cool':'';
           const muted=item.muted?' network-tube--muted':'';
           return`
-            <path class="network-shadow${muted}" d="${item.shadow}"/>
+            <path class="network-shadow${muted}" d="${item.d}" transform="translate(2.2 3.2)"/>
+            <path class="network-tube-rim${kindClass}${muted}" d="${item.d}"/>
             <path class="network-tube${kindClass}${muted}" d="${item.d}"/>
-            <path class="network-tube-highlight${muted}" d="${item.d}"/>
+            <path class="network-tube-highlight${muted}" d="${item.d}" transform="translate(-.7 -.9)"/>
           `;
         }
 
@@ -789,7 +783,7 @@
         const r=item.kind==='base'?5.1:6.6;
 
         return`
-          <ellipse class="network-node-shadow${muted}" cx="${item.sx.toFixed(2)}" cy="${(item.sy+2).toFixed(2)}" rx="${(r*1.10).toFixed(1)}" ry="${(r*.52).toFixed(1)}"/>
+          <ellipse class="network-node-shadow${muted}" cx="${(item.x+2.2).toFixed(2)}" cy="${(item.y+3.2).toFixed(2)}" rx="${(r*1.08).toFixed(1)}" ry="${(r*.55).toFixed(1)}"/>
           <circle class="network-node-body ${kindClass}${muted}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${r}"/>
           <circle class="network-node-highlight${muted}" cx="${(item.x-r*.28).toFixed(2)}" cy="${(item.y-r*.32).toFixed(2)}" r="${(r*.25).toFixed(2)}"/>
         `;
@@ -803,7 +797,7 @@
 
       const cells=this.visibleCells(project);
 
-      const faces=(this.mode==='rings'||this.mode==='entangle'||this.mode==='links')
+      const faces=(this.mode==='rings'||this.mode==='entangle')
         ?cells.map(c=>{
           const key=this.cellKey(c);
           const selected=key===this.cellKey(this.selected);
