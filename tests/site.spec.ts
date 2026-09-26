@@ -380,7 +380,7 @@ test('homepage research is organised as four themes with selected publication ev
 
  const programming=page.locator('#research .research-theme-card').filter({hasText:'Programming Self-Assembly'});
  const baselineBackground=await programming.evaluate(node=>getComputedStyle(node).backgroundColor);
- await programming.getByRole('link',{name:'Programming Self-Assembly'}).click();
+ await programming.getByRole('link',{name:'Programming Self-Assembly',exact:true}).click();
  await expect(page).toHaveURL(/\/research\/programming-self-assembly\/$/);
  await page.goBack();
  await page.mouse.move(1,1);
@@ -457,9 +457,9 @@ test('topology research page renders a relaxed fixed-camera 3D linked network',a
  expect(scene.nodeFill).not.toBe('rgb(0, 0, 0)');
  expect(scene.coords.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)&&x>-50&&y>-50&&x<scene.box.width+50&&y<scene.box.height+50)).toBe(true);
 
- await lab.getByRole('button',{name:'Rings'}).click();
+ await lab.getByRole('button',{name:'Rings',exact:true}).click();
  await expect(lab).toHaveAttribute('data-mode','rings');
- await expect(lab.getByRole('button',{name:'Rings'})).toHaveAttribute('aria-pressed','true');
+ await expect(lab.getByRole('button',{name:'Rings',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(svg.locator('.ring-hit')).toHaveCount(96);
 
  await lab.getByRole('button',{name:'Entangle selected ring'}).click();
