@@ -1,17 +1,19 @@
 ---
+import reference from '../../data/topology-one-swap-template.json';
+const referenceJSON=JSON.stringify(reference);
 ---
 <section class="topology-lab" aria-labelledby="topology-lab-title">
   <div class="topology-lab__heading">
     <div>
       <p class="eyebrow">Interactive model</p>
       <h2 id="topology-lab-title">Same graph. Different embedding.</h2>
-      <p>The coarse network stays connected in exactly the same way. Each edge is a short bead–spring chain: swap the bead paths of two opposite edges, perturb them slightly out of plane, and relax the local network without allowing non-bonded strands to pass through one another.</p>
+      <p>The coarse graph stays unchanged. Choose a four-member ring as the path-swap site, then inspect the relaxed three-ring motif measured from the one-swap reference simulation.</p>
     </div>
     <dl class="topology-lab__stats" aria-label="Network statistics">
       <div><dt>nodes</dt><dd>216</dd></div>
       <div><dt>edges</dt><dd>432</dd></div>
       <div><dt>visible rings</dt><dd>96</dd></div>
-      <div><dt>entanglements</dt><dd data-stat-entanglements>0</dd></div>
+      <div><dt>linked pairs</dt><dd data-stat-entanglements>0</dd></div>
     </dl>
   </div>
 
@@ -19,18 +21,19 @@
     class="topology-lab__instrument"
     data-mode="network"
     data-periodic="xy"
-    data-engine="local-bead-spring-pbd"
+    data-engine="reference-relaxed-one-swap"
     data-renderer="fixed-camera-layered-svg"
     data-draggable="false"
     data-nodes="216"
     data-edges="432"
-    data-rings="96"
-    data-rest-length="0.12"
-    data-relaxed="true"
+    data-rings="96"    data-relaxed="true"
     data-entanglements="0"
-    data-max-segment-strain="0"
-    data-min-clearance="0"
+    data-selected-ring="7,5"
+    data-linked-rings=""
+    data-gauss-linking="0"
+    data-reference-source="finalconf_1_swaps.data"
   >
+    <script type="application/json" data-topology-reference set:html={referenceJSON}></script>
     <div class="topology-lab__toolbar">
       <div class="topology-lab__modes" role="group" aria-label="Network view">
         <button type="button" data-mode-button="network" aria-pressed="true">Network</button>
@@ -48,15 +51,15 @@
       <svg
         class="topology-lab__svg"
         role="img"
-        aria-label="Fixed oblique view of a periodic bead–spring network. Click a visible ring to select it."
+        aria-label="Fixed oblique view of a periodic bead–spring network. Click a visible ring to select the square where the bead-path swap is introduced."
         preserveAspectRatio="xMidYMid slice"
       ></svg>
-      <div class="topology-lab__hint" aria-hidden="true">click a ring to select it</div>
+      <div class="topology-lab__hint" aria-hidden="true">click a ring to select the swap site</div>
     </div>
 
     <div class="topology-lab__readout" aria-live="polite">
       <span data-readout-title>Relaxed periodic network</span>
-      <span data-readout-copy>The camera sees only an interior window. The network continues beyond the frame, while the visible state has no free boundary.</span>
+      <span data-readout-copy>The visible window is an interior patch of a periodic square network. Select any ring to choose where the path swap is introduced.</span>
     </div>
   </topology-network-lab>
 </section>
@@ -107,13 +110,20 @@
   :global(:root[data-theme=dark]) :global(.network-node-shadow){fill:rgba(0,0,0,.70);opacity:.42}
   :global(.network-node-body){fill:var(--cool);stroke:color-mix(in srgb,var(--surface) 68%,transparent);stroke-width:.7}
   :global(.network-node-body.network-signal){fill:var(--signal)}
+  :global(.network-node-body.network-cool){fill:var(--cool)}
   :global(.network-node-highlight){fill:rgba(255,255,255,.72);pointer-events:none}
   :global(:root[data-theme=dark]) :global(.network-node-highlight){fill:rgba(255,255,255,.48)}
   :global(.network-node-muted){opacity:.24}
+  :global(.network-bead){stroke:var(--surface);stroke-width:.45}
+  :global(.network-bead.network-signal){fill:var(--signal)}
+  :global(.network-bead.network-cool){fill:var(--cool)}
+  :global(.network-bead.network-base){fill:color-mix(in srgb,var(--cool) 72%,var(--surface))}
 
   :global(.ring-face){fill:var(--cool-soft);stroke:var(--cool-border);stroke-width:1;opacity:.11;pointer-events:none}
   :global(.ring-face--selected){fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.8;opacity:.80}
-  :global(.ring-face--affected){fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.45;opacity:.60}
+  :global(.ring-face--left){fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.7;opacity:.66}
+  :global(.ring-face--right){fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.7;opacity:.66}
+  :global(.ring-face--swap){fill:transparent;stroke:var(--text-3);stroke-width:1.2;stroke-dasharray:4 4;opacity:.72}
   :global(.ring-hit){fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
   :global(.ring-hit:focus){outline:none}
   :global(.ring-hit:focus-visible){stroke:var(--signal);stroke-width:2;fill:var(--signal-soft)}
@@ -139,24 +149,23 @@
 <script>
   type Vec3={x:number;y:number;z:number};
   type Cell={i:number;j:number};
-  type Edge={a:number;b:number;key:string};
-  type Particle={p:Vec3;base:Vec3;fixed:boolean;special:boolean};
-  type Chain={edgeKey:string;ids:number[];special:0|1|2};
+  type Edge={a:number;b:number};
+  type ReferenceData={source:string;swapCell:number[];linkedCells:number[][];gaussLinking:number;minClearance:number;paths:Record<string,number[][]>};
 
   class TopologyNetworkLab extends HTMLElement{
     private svg!:SVGSVGElement;
     private stage!:HTMLElement;
+    private reference!:ReferenceData;
     private nx=18;
     private ny=12;
-    private baseZ=.12;
-    private tilt=.40;
+    private baseZ=.10;
+    private tilt=.43;
     private nodes:Vec3[]=[];
     private edges:Edge[]=[];
-    private edgeByKey=new Map<string,Edge>();
     private selected:Cell={i:7,j:5};
+    private active=false;
     private hover:Cell|null=null;
     private mode='network';
-    private patch:{particles:Particle[];chains:Chain[];chainByEdge:Map<string,Chain>;affected:Set<string>}|null=null;
     private ro?:ResizeObserver;
     private io?:IntersectionObserver;
     private mo?:MutationObserver;
@@ -168,8 +177,11 @@
     connectedCallback(){
       this.svg=this.querySelector('svg')!;
       this.stage=this.querySelector('[data-stage]')!;
+      const source=this.querySelector<HTMLScriptElement>('[data-topology-reference]');
+      this.reference=JSON.parse(source?.textContent||'{}');
       this.buildGraph();
       this.bind();
+      this.syncData();
 
       this.ro=new ResizeObserver(entries=>{
         const box=entries[0]?.contentRect;
@@ -192,394 +204,100 @@
 
     disconnectedCallback(){this.ro?.disconnect();this.io?.disconnect();this.mo?.disconnect();}
 
-    private nodeId(i:number,j:number){
-      return ((j%this.ny+this.ny)%this.ny)*this.nx+((i%this.nx+this.nx)%this.nx);
-    }
-
-    private edgeKey(a:number,b:number){return a<b?`${a}-${b}`:`${b}-${a}`;}
-    private cellKey(c:Cell){return `${c.i}-${c.j}`;}
+    private nodeId(i:number,j:number){return ((j%this.ny+this.ny)%this.ny)*this.nx+((i%this.nx+this.nx)%this.nx);}
+    private nodeGrid(id:number){return{i:id%this.nx,j:Math.floor(id/this.nx)};}
+    private cellKey(cell:Cell){return `${cell.i},${cell.j}`;}
 
     private buildGraph(){
-      const cx=(this.nx-1)/2;
-      const cy=(this.ny-1)/2;
-      this.nodes=[];
-      this.edges=[];
-      this.edgeByKey.clear();
-
-      for(let j=0;j<this.ny;j++){
-        for(let i=0;i<this.nx;i++){
-          this.nodes.push({x:i-cx,y:j-cy,z:this.baseZ});
-        }
-      }
-
-      for(let j=0;j<this.ny;j++){
-        for(let i=0;i<this.nx;i++){
-          const a=this.nodeId(i,j);
-          for(const [di,dj] of [[1,0],[0,1]] as const){
-            const b=this.nodeId(i+di,j+dj);
-            const key=this.edgeKey(a,b);
-            const edge={a,b,key};
-            this.edges.push(edge);
-            this.edgeByKey.set(key,edge);
-          }
-        }
+      const cx=(this.nx-1)/2,cy=(this.ny-1)/2;
+      this.nodes=[];this.edges=[];
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++)this.nodes.push({x:i-cx,y:j-cy,z:this.baseZ});
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++){
+        const a=this.nodeId(i,j);
+        this.edges.push({a,b:this.nodeId(i+1,j)});
+        this.edges.push({a,b:this.nodeId(i,j+1)});
       }
     }
 
-    private ringNodes(c:Cell){
-      return[
-        this.nodeId(c.i,c.j),
-        this.nodeId(c.i+1,c.j),
-        this.nodeId(c.i+1,c.j+1),
-        this.nodeId(c.i,c.j+1),
-      ];
-    }
-
-    private ringEdges(c:Cell){
-      const n=this.ringNodes(c);
-      return[
-        this.edgeKey(n[0],n[1]),
-        this.edgeKey(n[1],n[2]),
-        this.edgeKey(n[2],n[3]),
-        this.edgeKey(n[3],n[0]),
-      ];
+    private ringNodes(cell:Cell){
+      return[this.nodeId(cell.i,cell.j),this.nodeId(cell.i+1,cell.j),this.nodeId(cell.i+1,cell.j+1),this.nodeId(cell.i,cell.j+1)];
     }
 
     private bind(){
-      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>{
-        button.addEventListener('click',()=>{
-          this.mode=button.dataset.modeButton||'network';
-          this.syncModeButtons();
-          this.updateReadout();
-          this.render();
-        });
-      });
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>button.addEventListener('click',()=>{
+        this.mode=button.dataset.modeButton||'network';
+        this.syncModeButtons();this.updateReadout();this.render();
+      }));
 
-      this.querySelector<HTMLButtonElement>('[data-entangle-action]')?.addEventListener('click',()=>{
-        this.transition(()=>{
-          this.patch=this.buildRelaxedPatch(this.selected);
-          this.mode='entanglement';
-          this.syncModeButtons();
-          this.dataset.entanglements='1';
-          const stat=this.closest('.topology-lab')?.querySelector('[data-stat-entanglements]');
-          if(stat)stat.textContent='1';
-          this.updateReadout(
-            'Relaxed entangled region',
-            'Two opposite bead paths were exchanged exactly as in the prototype construction, then a local bead–spring network was relaxed with equal bond-length constraints and non-bonded excluded volume.'
-          );
-        });
-      });
+      this.querySelector<HTMLButtonElement>('[data-entangle-action]')?.addEventListener('click',()=>this.transition(()=>{
+        this.active=true;
+        this.mode='entanglement';
+        this.syncModeButtons();this.syncData();this.updateReadout();
+      }));
 
-      this.querySelector<HTMLButtonElement>('[data-reset-action]')?.addEventListener('click',()=>{
-        this.transition(()=>{
-          this.patch=null;
-          this.mode='network';
-          this.syncModeButtons();
-          this.dataset.entanglements='0';
-          this.dataset.relaxed='true';
-          this.dataset.maxSegmentStrain='0';
-          this.dataset.minClearance='0';
-          const stat=this.closest('.topology-lab')?.querySelector('[data-stat-entanglements]');
-          if(stat)stat.textContent='0';
-          this.updateReadout('Relaxed periodic network','The unmodified periodic network has been restored.');
-        });
-      });
+      this.querySelector<HTMLButtonElement>('[data-reset-action]')?.addEventListener('click',()=>this.transition(()=>{
+        this.active=false;
+        this.mode='network';
+        this.syncModeButtons();this.syncData();
+        this.updateReadout('Relaxed periodic network','The entanglement has been removed. Select any visible ring to choose a new swap site.');
+      }));
 
       this.svg.addEventListener('pointerover',e=>{
-        const target=(e.target as Element).closest<SVGElement>('[data-ring]');
-        if(!target)return;
-        this.hover={i:Number(target.dataset.i),j:Number(target.dataset.j)};
+        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
+        if(!hit)return;
+        this.hover={i:Number(hit.dataset.i),j:Number(hit.dataset.j)};
         this.render();
       });
-
       this.svg.addEventListener('pointerout',e=>{
-        const target=(e.target as Element).closest<SVGElement>('[data-ring]');
-        if(!target)return;
-        this.hover=null;
-        this.render();
+        if(!(e.target as Element).closest('[data-ring]'))return;
+        this.hover=null;this.render();
       });
-
       this.svg.addEventListener('click',e=>{
-        const target=(e.target as Element).closest<SVGElement>('[data-ring]');
-        if(!target)return;
-        this.selected={i:Number(target.dataset.i),j:Number(target.dataset.j)};
-        if(this.mode==='network')this.mode='rings';
-        this.syncModeButtons();
-        this.updateReadout();
-        this.render();
+        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
+        if(!hit)return;
+        this.selectRing({i:Number(hit.dataset.i),j:Number(hit.dataset.j)});
       });
-
       this.svg.addEventListener('keydown',e=>{
-        if(!(e instanceof KeyboardEvent))return;
-        const target=(e.target as Element).closest<SVGElement>('[data-ring]');
-        if(!target)return;
-        if(e.key==='Enter'||e.key===' '){
-          e.preventDefault();
-          this.selected={i:Number(target.dataset.i),j:Number(target.dataset.j)};
-          this.mode='rings';
-          this.syncModeButtons();
-          this.updateReadout();
-          this.render();
-        }
+        if(!(e instanceof KeyboardEvent)||(e.key!=='Enter'&&e.key!==' '))return;
+        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
+        if(!hit)return;
+        e.preventDefault();
+        this.selectRing({i:Number(hit.dataset.i),j:Number(hit.dataset.j)});
       });
+    }
+
+    private selectRing(next:Cell){
+      const changed=next.i!==this.selected.i||next.j!==this.selected.j;
+      this.selected=next;
+      if(changed)this.active=false;
+      this.mode='rings';
+      this.syncModeButtons();this.syncData();this.updateReadout();this.render();
     }
 
     private transition(change:()=>void){
       this.stage.classList.add('is-switching');
       window.setTimeout(()=>{
-        change();
-        this.render();
+        change();this.render();
         requestAnimationFrame(()=>this.stage.classList.remove('is-switching'));
-      },100);
+      },95);
     }
 
     private syncModeButtons(){
       this.dataset.mode=this.mode;
-      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>{
-        button.setAttribute('aria-pressed',String(button.dataset.modeButton===this.mode));
-      });
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.modeButton===this.mode)));
     }
 
-    private buildRelaxedPatch(cell:Cell){
-      const segments=9;
-      const restLength=1.08/segments;
-      const minSep=.145;
-      const particles:Particle[]=[];
-      const nodeParticle=new Map<number,number>();
-      const chains:Chain[]=[];
-      const chainByEdge=new Map<string,Chain>();
-      const affected=new Set<string>();
+    private linkedCells(){
+      return[{i:this.selected.i-1,j:this.selected.j},{i:this.selected.i+1,j:this.selected.j}];
+    }
 
-      const minI=Math.max(1,cell.i-2);
-      const maxI=Math.min(this.nx-2,cell.i+3);
-      const minJ=Math.max(1,cell.j-2);
-      const maxJ=Math.min(this.ny-2,cell.j+2);
-
-      const addNode=(nodeId:number)=>{
-        const existing=nodeParticle.get(nodeId);
-        if(existing!==undefined)return existing;
-        const base={...this.nodes[nodeId]};
-        const id=particles.length;
-        particles.push({p:{...base},base,fixed:true,special:false});
-        nodeParticle.set(nodeId,id);
-        return id;
-      };
-
-      const addChain=(aNode:number,bNode:number,key:string)=>{
-        const aId=addNode(aNode);
-        const bId=addNode(bNode);
-        const a=this.nodes[aNode];
-        let b={...this.nodes[bNode]};
-        const ba=this.nodes[aNode];
-        const bb=this.nodes[bNode];
-        if(Math.abs(bb.x-ba.x)>1.5)b.x+=bb.x>ba.x?-this.nx:this.nx;
-        if(Math.abs(bb.y-ba.y)>1.5)b.y+=bb.y>ba.y?-this.ny:this.ny;
-
-        const ids=[aId];
-        for(let k=1;k<segments;k++){
-          const t=k/segments;
-          const base={
-            x:a.x+(b.x-a.x)*t,
-            y:a.y+(b.y-a.y)*t,
-            z:this.baseZ,
-          };
-          const id=particles.length;
-          particles.push({p:{...base},base:{...base},fixed:false,special:false});
-          ids.push(id);
-        }
-        ids.push(bId);
-        const chain:Chain={edgeKey:key,ids,special:0};
-        chains.push(chain);
-        chainByEdge.set(key,chain);
-      };
-
-      for(let j=minJ;j<=maxJ;j++){
-        for(let i=minI;i<=maxI;i++){
-          const a=this.nodeId(i,j);
-          if(i<maxI){
-            const b=this.nodeId(i+1,j);
-            addChain(a,b,this.edgeKey(a,b));
-          }
-          if(j<maxJ){
-            const b=this.nodeId(i,j+1);
-            addChain(a,b,this.edgeKey(a,b));
-          }
-        }
-      }
-
-      const ring=this.ringEdges(cell);
-      const chainA=chainByEdge.get(ring[0]);
-      const chainB=chainByEdge.get(ring[2]);
-      if(!chainA||!chainB)return{particles,chains,chainByEdge,affected};
-
-      chainA.special=1;
-      chainB.special=2;
-      affected.add(chainA.edgeKey);
-      affected.add(chainB.edgeKey);
-
-      const internalA=chainA.ids.slice(1,-1);
-      const internalB=chainB.ids.slice(1,-1);
-      chainA.ids=[chainA.ids[0],...internalB,chainA.ids[chainA.ids.length-1]];
-      chainB.ids=[chainB.ids[0],...internalA,chainB.ids[chainB.ids.length-1]];
-
-      chainA.ids.slice(1,-1).forEach((id,k)=>{
-        particles[id].special=true;
-        particles[id].p.z+=.11*(k%2===0?1:-1);
-      });
-      chainB.ids.slice(1,-1).forEach((id,k)=>{
-        particles[id].special=true;
-        particles[id].p.z-=.11*(k%2===0?1:-1);
-      });
-
-      const bonds:{a:number;b:number;rest:number}[]=[];
-      const adjacency=Array.from({length:particles.length},()=>new Set<number>());
-      for(const chain of chains){
-        for(let k=0;k<chain.ids.length-1;k++){
-          const a=chain.ids[k],b=chain.ids[k+1];
-          bonds.push({a,b,rest:restLength});
-          adjacency[a].add(b);
-          adjacency[b].add(a);
-        }
-      }
-
-      const excluded=new Set<string>();
-      for(let start=0;start<particles.length;start++){
-        const seen=new Set<number>([start]);
-        let frontier=new Set<number>([start]);
-        for(let depth=0;depth<3;depth++){
-          const next=new Set<number>();
-          frontier.forEach(id=>adjacency[id].forEach(n=>{if(!seen.has(n))next.add(n);}));
-          next.forEach(n=>seen.add(n));
-          frontier=next;
-        }
-        seen.forEach(other=>{
-          if(other>start)excluded.add(`${start}-${other}`);
-        });
-      }
-
-      const collisionPairs:{a:number;b:number}[]=[];
-      for(let a=0;a<particles.length;a++){
-        for(let b=a+1;b<particles.length;b++){
-          if(excluded.has(`${a}-${b}`))continue;
-          const pa=particles[a].p,pb=particles[b].p;
-          const baseDist=Math.hypot(pa.x-pb.x,pa.y-pb.y,pa.z-pb.z);
-          if(baseDist<1.8)collisionPairs.push({a,b});
-        }
-      }
-
-      const movePair=(a:number,b:number,target:number,strength:number,maxMove:number)=>{
-        const pa=particles[a],pb=particles[b];
-        let dx=pb.p.x-pa.p.x;
-        let dy=pb.p.y-pa.p.y;
-        let dz=pb.p.z-pa.p.z;
-        let dist=Math.hypot(dx,dy,dz);
-        if(dist<1e-8){
-          dx=.001;dy=.0003;dz=.0007;dist=Math.hypot(dx,dy,dz);
-        }
-        let delta=(dist-target)*strength;
-        delta=Math.max(-maxMove,Math.min(maxMove,delta));
-        const ux=dx/dist,uy=dy/dist,uz=dz/dist;
-        const wa=pa.fixed?0:1;
-        const wb=pb.fixed?0:1;
-        const sum=wa+wb;
-        if(sum===0)return;
-        if(wa){
-          pa.p.x+=ux*delta*(wa/sum);
-          pa.p.y+=uy*delta*(wa/sum);
-          pa.p.z+=uz*delta*(wa/sum);
-        }
-        if(wb){
-          pb.p.x-=ux*delta*(wb/sum);
-          pb.p.y-=uy*delta*(wb/sum);
-          pb.p.z-=uz*delta*(wb/sum);
-        }
-      };
-
-      for(let iteration=0;iteration<260;iteration++){
-        for(const chain of chains){
-          for(let k=1;k<chain.ids.length-1;k++){
-            const id=chain.ids[k];
-            const p=particles[id];
-            if(p.fixed)continue;
-            const prev=particles[chain.ids[k-1]].p;
-            const next=particles[chain.ids[k+1]].p;
-            const alpha=chain.special?0.055:0.085;
-            p.p.x+=(0.5*(prev.x+next.x)-p.p.x)*alpha;
-            p.p.y+=(0.5*(prev.y+next.y)-p.p.y)*alpha;
-            p.p.z+=(0.5*(prev.z+next.z)-p.p.z)*alpha;
-            p.p.z*=chain.special?0.998:0.90;
-          }
-        }
-
-        for(let sweep=0;sweep<3;sweep++){
-          for(const bond of bonds)movePair(bond.a,bond.b,bond.rest,.38,.022);
-        }
-
-        for(const pair of collisionPairs){
-          const pa=particles[pair.a],pb=particles[pair.b];
-          let dx=pb.p.x-pa.p.x;
-          let dy=pb.p.y-pa.p.y;
-          let dz=pb.p.z-pa.p.z;
-          let dist=Math.hypot(dx,dy,dz);
-          if(dist>=minSep)continue;
-          if(dist<1e-8){
-            const seed=(pair.a*73856093)^(pair.b*19349663);
-            dx=((seed&255)/255-.5)*.01;
-            dy=(((seed>>8)&255)/255-.5)*.01;
-            dz=(((seed>>16)&255)/255-.5)*.01;
-            dist=Math.max(1e-5,Math.hypot(dx,dy,dz));
-          }
-          const correction=Math.min(.018,(minSep-dist)*.46);
-          const ux=dx/dist,uy=dy/dist,uz=dz/dist;
-          const wa=pa.fixed?0:1,wb=pb.fixed?0:1,sum=wa+wb;
-          if(sum===0)continue;
-          if(wa){
-            pa.p.x-=ux*correction*(wa/sum);
-            pa.p.y-=uy*correction*(wa/sum);
-            pa.p.z-=uz*correction*(wa/sum);
-          }
-          if(wb){
-            pb.p.x+=ux*correction*(wb/sum);
-            pb.p.y+=uy*correction*(wb/sum);
-            pb.p.z+=uz*correction*(wb/sum);
-          }
-        }
-      }
-
-      for(let sweep=0;sweep<90;sweep++){
-        for(const bond of bonds)movePair(bond.a,bond.b,bond.rest,.52,.014);
-        for(const pair of collisionPairs){
-          const pa=particles[pair.a],pb=particles[pair.b];
-          const dx=pb.p.x-pa.p.x,dy=pb.p.y-pa.p.y,dz=pb.p.z-pa.p.z;
-          const dist=Math.hypot(dx,dy,dz);
-          if(dist>=minSep||dist<1e-8)continue;
-          const correction=Math.min(.012,(minSep-dist)*.50);
-          const wa=pa.fixed?0:1,wb=pb.fixed?0:1,sum=wa+wb;
-          if(sum===0)continue;
-          const ux=dx/dist,uy=dy/dist,uz=dz/dist;
-          if(wa){pa.p.x-=ux*correction*(wa/sum);pa.p.y-=uy*correction*(wa/sum);pa.p.z-=uz*correction*(wa/sum);}
-          if(wb){pb.p.x+=ux*correction*(wb/sum);pb.p.y+=uy*correction*(wb/sum);pb.p.z+=uz*correction*(wb/sum);}
-        }
-      }
-
-      let maxStrain=0;
-      for(const bond of bonds){
-        const a=particles[bond.a].p,b=particles[bond.b].p;
-        const length=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);
-        maxStrain=Math.max(maxStrain,Math.abs(length-bond.rest)/bond.rest);
-      }
-
-      let minClearance=Infinity;
-      for(const pair of collisionPairs){
-        const a=particles[pair.a].p,b=particles[pair.b].p;
-        minClearance=Math.min(minClearance,Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z));
-      }
-
-      this.dataset.maxSegmentStrain=maxStrain.toFixed(4);
-      this.dataset.minClearance=minClearance.toFixed(4);
-      this.dataset.relaxed=String(maxStrain<.08&&minClearance>.11);
-
-      return{particles,chains,chainByEdge,affected};
+    private syncData(){
+      this.dataset.selectedRing=this.cellKey(this.selected);
+      this.dataset.entanglements=this.active?'1':'0';
+      this.dataset.linkedRings=this.active?this.linkedCells().map(cell=>this.cellKey(cell)).join(';'):'';
+      this.dataset.gaussLinking=this.active?String(this.reference.gaussLinking):'0';
+      const stat=this.closest('.topology-lab')?.querySelector('[data-stat-entanglements]');
+      if(stat)stat.textContent=this.active?'1':'0';
     }
 
     private projectFactory(){
@@ -595,18 +313,42 @@
     }
 
     private unwrapEdge(edge:Edge){
-      const a={...this.nodes[edge.a]};
-      const b={...this.nodes[edge.b]};
-      const rawX=b.x-a.x,rawY=b.y-a.y;
-      if(Math.abs(rawX)>1.5)b.x+=rawX>0?-this.nx:this.nx;
-      if(Math.abs(rawY)>1.5)b.y+=rawY>0?-this.ny:this.ny;
+      const a={...this.nodes[edge.a]},b={...this.nodes[edge.b]};
+      const ga=this.nodeGrid(edge.a),gb=this.nodeGrid(edge.b);
+      if(Math.abs(gb.i-ga.i)>1)b.x+=gb.i>ga.i?-this.nx:this.nx;
+      if(Math.abs(gb.j-ga.j)>1)b.y+=gb.j>ga.j?-this.ny:this.ny;
       return{a,b};
     }
 
+    private templateKey(edge:Edge){
+      if(!this.active)return null;
+      const ga=this.nodeGrid(edge.a),gb=this.nodeGrid(edge.b);
+      if(Math.abs(ga.i-gb.i)>1||Math.abs(ga.j-gb.j)>1)return null;
+      if(ga.j===gb.j){
+        const i=Math.min(ga.i,gb.i),j=ga.j;
+        return `h:${i-this.selected.i}:${j-this.selected.j}`;
+      }
+      if(ga.i===gb.i){
+        const i=ga.i,j=Math.min(ga.j,gb.j);
+        return `v:${i-this.selected.i}:${j-this.selected.j}`;
+      }
+      return null;
+    }
+
+    private templateRole(key:string|null):0|1|2{
+      if(!key)return 0;
+      if(['h:-1:0','h:-1:1','v:-1:0','v:0:0'].includes(key))return 1;
+      if(['h:1:0','h:1:1','v:1:0','v:2:0'].includes(key))return 2;
+      return 0;
+    }
+
     private edgePoints(edge:Edge){
-      const chain=this.patch?.chainByEdge.get(edge.key);
-      if(chain&&this.patch){
-        return chain.ids.map(id=>this.patch!.particles[id].p);
+      const key=this.templateKey(edge);
+      const raw=key?this.reference.paths[key]:undefined;
+      if(raw){
+        const cx=(this.nx-1)/2,cy=(this.ny-1)/2;
+        const ox=this.selected.i-cx,oy=this.selected.j-cy;
+        return raw.map(p=>({x:ox+p[0],y:oy+p[1],z:this.baseZ+p[2]}));
       }
       const {a,b}=this.unwrapEdge(edge);
       return[a,b];
@@ -615,19 +357,18 @@
     private smoothPath(points:Vec3[],project:(p:Vec3)=>{x:number;y:number;depth:number}){
       const pts=points.map(project);
       if(pts.length<2)return'';
-      if(pts.length===2)return`M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)} L${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
+      if(pts.length===2)return `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)} L${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
       let d=`M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
       for(let i=1;i<pts.length-1;i++){
         const mid={x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2};
         d+=` Q${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)} ${mid.x.toFixed(2)},${mid.y.toFixed(2)}`;
       }
       const pen=pts[pts.length-2],last=pts[pts.length-1];
-      d+=` Q${pen.x.toFixed(2)},${pen.y.toFixed(2)} ${last.x.toFixed(2)},${last.y.toFixed(2)}`;
-      return d;
+      return d+` Q${pen.x.toFixed(2)},${pen.y.toFixed(2)} ${last.x.toFixed(2)},${last.y.toFixed(2)}`;
     }
 
-    private chunks(points:Vec3[]){
-      if(points.length<=3)return[points];
+    private chunks(points:Vec3[],split:boolean){
+      if(!split||points.length<=4)return[points];
       const out:Vec3[][]=[];
       for(let i=0;i<points.length-1;i+=2){
         const chunk=points.slice(i,Math.min(points.length,i+3));
@@ -636,27 +377,24 @@
       return out;
     }
 
-    private cellCenter(c:Cell){
-      const ids=this.ringNodes(c);
-      const p=ids.map(id=>this.nodes[id]);
-      return{x:p.reduce((s,q)=>s+q.x,0)/4,y:p.reduce((s,q)=>s+q.y,0)/4,z:this.baseZ};
+    private cellCenter(cell:Cell){
+      const p=this.ringNodes(cell).map(id=>this.nodes[id]);
+      return{x:p.reduce((sum,q)=>sum+q.x,0)/4,y:p.reduce((sum,q)=>sum+q.y,0)/4,z:this.baseZ};
     }
 
     private visibleCells(project:(p:Vec3)=>{x:number;y:number;depth:number}){
       const cells:Cell[]=[];
-      for(let j=2;j<=9;j++){
-        for(let i=3;i<=14;i++){
-          const q=project(this.cellCenter({i,j}));
-          if(q.x>-60&&q.x<this.width+60&&q.y>-60&&q.y<this.height+60)cells.push({i,j});
-        }
+      for(let j=2;j<=9;j++)for(let i=3;i<=14;i++){
+        const q=project(this.cellCenter({i,j}));
+        if(q.x>-60&&q.x<this.width+60&&q.y>-60&&q.y<this.height+60)cells.push({i,j});
       }
       return cells;
     }
 
-    private ringPolygon(c:Cell,project:(p:Vec3)=>{x:number;y:number;depth:number}){
-      return this.ringNodes(c).map(id=>{
+    private ringPolygon(cell:Cell,project:(p:Vec3)=>{x:number;y:number;depth:number}){
+      return this.ringNodes(cell).map(id=>{
         const q=project(this.nodes[id]);
-        return`${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+        return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
       }).join(' ');
     }
 
@@ -665,130 +403,87 @@
       const project=this.projectFactory();
       this.svg.setAttribute('viewBox',`0 0 ${this.width} ${this.height}`);
 
-      type Primitive={d:string;depth:number;kind:0|1|2;muted:boolean};
-      const primitives:Primitive[]=[];
+      type Primitive=
+        |{type:'tube';d:string;depth:number;role:0|1|2;muted:boolean}
+        |{type:'node';x:number;y:number;depth:number;role:0|1|2;muted:boolean}
+        |{type:'bead';x:number;y:number;depth:number;role:0|1|2};
 
+      const primitives:Primitive[]=[];
       for(const edge of this.edges){
+        const key=this.templateKey(edge);
+        const role=this.templateRole(key);
         const points=this.edgePoints(edge);
         const projected=points.map(project);
-        if(
-          Math.max(...projected.map(p=>p.x))<-90||
-          Math.min(...projected.map(p=>p.x))>this.width+90||
-          Math.max(...projected.map(p=>p.y))<-90||
-          Math.min(...projected.map(p=>p.y))>this.height+90
-        )continue;
+        if(Math.max(...projected.map(p=>p.x))<-90||Math.min(...projected.map(p=>p.x))>this.width+90||Math.max(...projected.map(p=>p.y))<-90||Math.min(...projected.map(p=>p.y))>this.height+90)continue;
 
-        const chain=this.patch?.chainByEdge.get(edge.key);
-        const kind=chain?.special??0;
-        const muted=this.mode==='entanglement'&&Boolean(this.patch)&&!this.patch!.affected.has(edge.key);
-        const pieces=chain?this.chunks(points):[points];
-
-        for(const piece of pieces){
+        const isTemplate=Boolean(key&&this.reference.paths[key]);
+        const muted=this.active&&this.mode==='entanglement'&&!isTemplate;
+        for(const piece of this.chunks(points,isTemplate)){
           const q=piece.map(project);
-          const depth=q.reduce((s,p)=>s+p.depth,0)/q.length;
-          primitives.push({d:this.smoothPath(piece,project),depth,kind,muted});
+          primitives.push({type:'tube',d:this.smoothPath(piece,project),depth:q.reduce((sum,p)=>sum+p.depth,0)/q.length,role,muted});
         }
+        if(isTemplate)points.slice(1,-1).forEach(p=>{
+          const q=project(p);
+          primitives.push({type:'bead',x:q.x,y:q.y,depth:q.depth+.004,role});
+        });
+      }
+
+      const linked=this.active?this.linkedCells():[];
+      const leftNodes=new Set(this.active?this.ringNodes(linked[0]):[]);
+      const rightNodes=new Set(this.active?this.ringNodes(linked[1]):[]);
+      for(let id=0;id<this.nodes.length;id++){
+        const q=project(this.nodes[id]);
+        if(q.x<-40||q.x>this.width+40||q.y<-40||q.y>this.height+40)continue;
+        const role=leftNodes.has(id)?1:rightNodes.has(id)?2:0;
+        const muted=this.active&&this.mode==='entanglement'&&role===0;
+        primitives.push({type:'node',x:q.x,y:q.y,depth:q.depth+.01,role,muted});
       }
 
       primitives.sort((a,b)=>a.depth-b.depth);
-
-      const tubes=primitives.map(item=>{
-        const color=item.kind===1?' network-signal':item.kind===2?' network-cool':'';
-        const muted=item.muted?' network-muted':'';
-        return`
-          <path class="network-shadow${muted}" d="${item.d}"/>
-          <path class="network-rim${color}${muted}" d="${item.d}"/>
-          <path class="network-tube${color}${muted}" d="${item.d}"/>
-          <path class="network-highlight${muted}" d="${item.d}"/>
-        `;
-      }).join('');
-
-      const visibleNodeIds=new Set<number>();
-      for(const edge of this.edges){
-        const {a,b}=this.unwrapEdge(edge);
-        const qa=project(a),qb=project(b);
-        if(qa.x>-40&&qa.x<this.width+40&&qa.y>-40&&qa.y<this.height+40)visibleNodeIds.add(edge.a);
-        if(qb.x>-40&&qb.x<this.width+40&&qb.y>-40&&qb.y<this.height+40)visibleNodeIds.add(edge.b);
-      }
-
-      const specialNodes=new Set(this.patch?this.ringNodes(this.selected):[]);
-      const nodes=[...visibleNodeIds].map(id=>({id,p:this.nodes[id],q:project(this.nodes[id])})).sort((a,b)=>a.q.depth-b.q.depth);
-      const nodeMarkup=nodes.map(({id,q})=>{
-        const muted=this.mode==='entanglement'&&this.patch&&!specialNodes.has(id);
-        const signal=specialNodes.has(id)&&this.patch;
-        const cls=`${signal?' network-signal':''}${muted?' network-node-muted':''}`;
-        const r=signal?6.4:5.0;
-        return`
-          <circle class="network-node-shadow${muted?' network-node-muted':''}" cx="${q.x.toFixed(2)}" cy="${q.y.toFixed(2)}" r="${(r*1.02).toFixed(1)}"/>
-          <circle class="network-node-body${cls}" cx="${q.x.toFixed(2)}" cy="${q.y.toFixed(2)}" r="${r}"/>
-          <circle class="network-node-highlight${muted?' network-node-muted':''}" cx="${(q.x-r*.28).toFixed(2)}" cy="${(q.y-r*.30).toFixed(2)}" r="${(r*.24).toFixed(2)}"/>
-        `;
+      const scene=primitives.map(item=>{
+        const roleClass=item.role===1?' network-signal':item.role===2?' network-cool':'';
+        if(item.type==='tube'){
+          const muted=item.muted?' network-muted':'';
+          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
+        }
+        if(item.type==='bead')return `<circle class="network-bead${roleClass||' network-base'}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="2.3"/>`;
+        const muted=item.muted?' network-node-muted':'';
+        const r=item.role?6.1:4.8;
+        return `<circle class="network-node-shadow${muted}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${(r*1.02).toFixed(1)}"/><circle class="network-node-body${roleClass}${muted}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${r}"/><circle class="network-node-highlight${muted}" cx="${(item.x-r*.28).toFixed(2)}" cy="${(item.y-r*.30).toFixed(2)}" r="${(r*.24).toFixed(2)}"/>`;
       }).join('');
 
       const cells=this.visibleCells(project);
       const selectedKey=this.cellKey(this.selected);
-      const faces=(this.mode==='rings'||this.mode==='entangle'||this.mode==='entanglement')
-        ?cells.map(c=>{
-          const key=this.cellKey(c);
-          const selected=key===selectedKey;
-          const hovered=this.hover&&key===this.cellKey(this.hover);
-          const affected=this.patch&&(
-            Math.abs(c.i-this.selected.i)<=1&&
-            Math.abs(c.j-this.selected.j)<=1
-          );
-          if(this.mode==='entanglement'&&!selected&&!affected&&!hovered)return'';
-          const cls=selected||hovered?'ring-face ring-face--selected':affected?'ring-face ring-face--affected':'ring-face';
-          return`<polygon class="${cls}" points="${this.ringPolygon(c,project)}"/>`;
-        }).join('')
-        :'';
+      const linkedKeys=new Set(linked.map(cell=>this.cellKey(cell)));
+      const faces=(this.mode==='rings'||this.mode==='entangle'||this.mode==='entanglement')?cells.map(cell=>{
+        const key=this.cellKey(cell);
+        const hovered=this.hover&&key===this.cellKey(this.hover);
+        let cls='ring-face';
+        if(this.active&&linked.length&&key===this.cellKey(linked[0]))cls='ring-face ring-face--left';
+        else if(this.active&&linked.length&&key===this.cellKey(linked[1]))cls='ring-face ring-face--right';
+        else if(this.active&&key===selectedKey)cls='ring-face ring-face--swap';
+        else if(key===selectedKey||hovered)cls='ring-face ring-face--selected';
+        else if(this.mode==='entanglement'&&!linkedKeys.has(key))return'';
+        return `<polygon class="${cls}" points="${this.ringPolygon(cell,project)}"/>`;
+      }).join(''):'';
 
-      const hits=cells.map(c=>`
-        <polygon class="ring-hit" tabindex="0" role="button" aria-label="Select ring ${c.i}, ${c.j}" data-ring data-i="${c.i}" data-j="${c.j}" points="${this.ringPolygon(c,project)}"/>
-      `).join('');
-
-      this.svg.innerHTML=`
-        <g aria-hidden="true">${tubes}${nodeMarkup}${faces}</g>
-        <g>${hits}</g>
-      `;
+      const hits=cells.map(cell=>`<polygon class="ring-hit" tabindex="0" role="button" aria-label="Select ring ${cell.i}, ${cell.j}" data-ring data-i="${cell.i}" data-j="${cell.j}" points="${this.ringPolygon(cell,project)}"/>`).join('');
+      this.svg.innerHTML=`<g aria-hidden="true">${scene}${faces}</g><g>${hits}</g>`;
     }
 
     private updateReadout(title?:string,copy?:string){
-      const t=this.querySelector('[data-readout-title]');
-      const c=this.querySelector('[data-readout-copy]');
-      if(title&&copy){
-        if(t)t.textContent=title;
-        if(c)c.textContent=copy;
-        return;
-      }
-
+      const titleNode=this.querySelector('[data-readout-title]'),body=this.querySelector('[data-readout-copy]');
+      if(title&&copy){if(titleNode)titleNode.textContent=title;if(body)body.textContent=copy;return;}
       const messages:Record<string,[string,string]>={
-        network:[
-          'Relaxed periodic network',
-          'The coarse nodes lie on a square lattice and the strands are shown in their unmodified relaxed embedding. No free boundary is visible in the camera window.'
-        ],
-        rings:[
-          'Elementary four-member rings',
-          `Ring (${this.selected.i}, ${this.selected.j}) is selected. Choose Entangle to exchange the bead paths of two opposite edges.`
-        ],
-        entangle:[
-          'Path swap',
-          'The operation preserves the coarse node-to-node graph. Only the internal bead sequences carried by two opposite edges are exchanged before local relaxation.'
-        ],
-        entanglement:[
-          'Relaxed entangled region',
-          this.patch
-            ?'The local bead–spring patch has been relaxed with equal bond-length constraints and excluded volume. Unaffected structure is faded so the three-dimensional strand ordering remains legible.'
-            :'No entanglement has been introduced yet.'
-        ],
+        network:['Relaxed periodic network','The visible window is an interior patch of a periodic square network. Select any ring to choose where the path swap is introduced.'],
+        rings:['Choose the swap site',`Ring (${this.selected.i}, ${this.selected.j}) is selected. The two opposite vertical edge chains of this square define the one-swap reference motif.`],
+        entangle:['What the swap creates','The selected square is the path-swap site. After relaxation, the two rings immediately to its left and right are the linked pair.'],
+        entanglement:['Reference relaxed entanglement',this.active?`Coral and blue mark the linked neighboring rings. In the measured one-swap state their Gauss linking number is ${this.reference.gaussLinking.toFixed(2)}; the dashed central square is the swap site, not a member of the linked pair.`:'No entanglement is active. Select a ring, then introduce the path swap.'],
       };
-
       const [a,b]=messages[this.mode]||messages.network;
-      if(t)t.textContent=a;
-      if(c)c.textContent=b;
+      if(titleNode)titleNode.textContent=a;if(body)body.textContent=b;
     }
   }
 
-  if(!customElements.get('topology-network-lab')){
-    customElements.define('topology-network-lab',TopologyNetworkLab);
-  }
+  if(!customElements.get('topology-network-lab'))customElements.define('topology-network-lab',TopologyNetworkLab);
 </script>
