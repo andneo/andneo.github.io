@@ -5,7 +5,7 @@
     <div>
       <p class="eyebrow">Interactive model</p>
       <h2 id="topology-lab-title">Same graph. Different embedding.</h2>
-      <p>The network keeps the same connectivity while its physical embedding changes. Inspect the elementary rings, then introduce a linked pair and let the surrounding elastic network relax to its minimum-energy displacement field.</p>
+      <p>The network keeps the same connectivity while its physical embedding changes. Inspect the elementary rings, then re-embed two disjoint cycles as a linked pair while the surrounding unit-spacing network remains in its relaxed state.</p>
     </div>
     <dl class="topology-lab__stats" aria-label="Network statistics">
       <div><dt>nodes</dt><dd data-stat-nodes>198</dd></div>
@@ -19,7 +19,7 @@
     class="topology-lab__instrument"
     data-mode="network"
     data-periodic="xy"
-    data-engine="harmonic-elastic-relaxation"
+    data-engine="rest-length-chain-embedding"
     data-renderer="fixed-camera-layered-svg"
     data-relaxed="true"
     data-draggable="false"
@@ -28,7 +28,7 @@
     data-rings="96"
     data-entanglements="0"
     data-linking-number="0"
-    data-link-model="hopf"
+    data-link-model="anchored-hopf"\n    data-max-bond-strain="0"\n    data-energy-residual="0"
   >
     <div class="topology-lab__toolbar">
       <div class="topology-lab__modes" role="group" aria-label="Network view">
@@ -369,7 +369,7 @@
         this.syncData();
         this.updateReadout(
           'A linked pair',
-          'The coral and blue cycles are disjoint closed curves with linking number one. Their graph connectivity is unchanged; only the three-dimensional embedding has changed.'
+          'The coral and blue cycles are smooth closed curves anchored to the original lattice junctions. Their graph connectivity and all coarse bond lengths are unchanged; only the three-dimensional strand embedding has changed.'
         );
       });
     }
@@ -383,90 +383,66 @@
       return{x:sum.x/4,y:sum.y/4,z:sum.z/4};
     }
 
-    private hopfGeometry(link:LinkPair){
+    private linkedPoint(link:LinkPair,loop:'a'|'b',t:number):Vec3{
+      const cell=loop==='a'?link.a:link.b;
+      const anchors=this.ringNodes(cell).map(id=>this.nodeBase[id]);
+      const u=((t%1)+1)%1*4;
+      const k=Math.floor(u)%4;
+      const f=u-Math.floor(u);
+      const a0=anchors[k];
+      const a1=anchors[(k+1)%4];
+
+      // The square path is the fully relaxed coarse-network embedding.
+      const square={
+        x:a0.x+(a1.x-a0.x)*f,
+        y:a0.y+(a1.y-a0.y)*f,
+        z:this.baseZ,
+      };
+
+      // Between junctions, smoothly pull the strand toward one member of a
+      // standard Hopf pair. The blend is exactly zero at every junction, so
+      // all coarse nodes remain on the unit square lattice.
       const ca=this.cellCenter(link.a);
       const cb=this.cellCenter(link.b);
-      const mid={x:(ca.x+cb.x)/2,y:(ca.y+cb.y)/2,z:.62};
-      const r=.79;
-      const centerA={x:mid.x-.28,y:mid.y,z:mid.z};
-      const centerB={x:mid.x+.33,y:mid.y,z:mid.z};
-      const pointA=(t:number):Vec3=>({
-        x:centerA.x+r*Math.cos(t),
-        y:centerA.y+r*Math.sin(t),
-        z:centerA.z,
-      });
-      const pointB=(t:number):Vec3=>({
-        x:centerB.x+r*Math.cos(t),
-        y:centerB.y,
-        z:centerB.z+r*Math.sin(t),
-      });
-      return{pointA,pointB};
-    }
+      const mid={x:(ca.x+cb.x)/2,y:(ca.y+cb.y)/2};
+      const radius=.85;
+      const offset=.02;
+      const height=this.baseZ+1.32;
+      const theta=2*Math.PI*t-3*Math.PI/4;
+      const hopf=loop==='a'
+        ?{x:mid.x-offset+radius*Math.cos(theta),y:mid.y+radius*Math.sin(theta),z:height}
+        :{x:mid.x+offset+radius*Math.cos(theta),y:mid.y,z:height+radius*Math.sin(theta)};
 
-    private pinnedPositions(){
-      const pins=new Map<number,Vec3>();
-      const angles=[-3*Math.PI/4,-Math.PI/4,Math.PI/4,3*Math.PI/4];
-
-      for(const link of this.links){
-        const g=this.hopfGeometry(link);
-        this.ringNodes(link.a).forEach((id,k)=>pins.set(id,g.pointA(angles[k])));
-        this.ringNodes(link.b).forEach((id,k)=>pins.set(id,g.pointB(angles[k])));
-      }
-      return pins;
+      const blend=.90*Math.pow(Math.sin(4*Math.PI*t),2);
+      return{
+        x:square.x+(hopf.x-square.x)*blend,
+        y:square.y+(hopf.y-square.y)*blend,
+        z:square.z+(hopf.z-square.z)*blend,
+      };
     }
 
     private relax(){
-      const pins=this.pinnedPositions();
-      const displacement=this.nodeBase.map((base,id)=>{
-        const pin=pins.get(id);
-        return pin
-          ?{x:pin.x-base.x,y:pin.y-base.y,z:pin.z-base.z}
-          :{x:0,y:0,z:0};
-      });
+      // The unlinked square lattice is already the rest-length minimum.
+      // Entanglement is represented in the internal strand paths rather than
+      // by displacing the junction lattice, so unrelated bonds cannot stretch.
+      this.nodePos=this.nodeBase.map(p=>({...p}));
 
-      const tether=.55;
-      this.residual=Infinity;
-
-      for(let iter=0;iter<360;iter++){
-        const next=displacement.map(v=>({...v}));
-        let residual=0;
-
-        for(let id=0;id<displacement.length;id++){
-          if(pins.has(id))continue;
-
-          let x=0,y=0,z=0;
-          for(const n of this.neighbours[id]){
-            x+=displacement[n].x;
-            y+=displacement[n].y;
-            z+=displacement[n].z;
-          }
-
-          const denom=this.neighbours[id].length+tether;
-          const candidate={x:x/denom,y:y/denom,z:z/denom};
-          residual=Math.max(
-            residual,
-            Math.abs(candidate.x-displacement[id].x),
-            Math.abs(candidate.y-displacement[id].y),
-            Math.abs(candidate.z-displacement[id].z)
-          );
-          next[id]=candidate;
-        }
-
-        for(let id=0;id<displacement.length;id++)displacement[id]=next[id];
-        this.residual=residual;
-        if(residual<1e-5)break;
+      let maxStrain=0;
+      for(const edge of this.edges){
+        const a=this.nodePos[edge.a];
+        const b=this.nodePos[edge.b];
+        let dx=b.x-a.x;
+        let dy=b.y-a.y;
+        if(Math.abs(dx)>this.nx/2)dx-=Math.sign(dx)*this.nx;
+        if(Math.abs(dy)>this.ny/2)dy-=Math.sign(dy)*this.ny;
+        const length=Math.hypot(dx,dy,b.z-a.z);
+        maxStrain=Math.max(maxStrain,Math.abs(length-1));
       }
 
-      this.nodePos=this.nodeBase.map((base,id)=>({
-        x:base.x+displacement[id].x,
-        y:base.y+displacement[id].y,
-        z:base.z+displacement[id].z,
-      }));
-
-      for(const [id,p] of pins)this.nodePos[id]={...p};
-
-      this.dataset.relaxed=String(this.residual<2e-4);
-      this.dataset.energyResidual=this.residual.toExponential(2);
+      this.residual=0;
+      this.dataset.relaxed='true';
+      this.dataset.energyResidual='0';
+      this.dataset.maxBondStrain=maxStrain.toExponential(2);
     }
 
     private syncData(){
@@ -511,21 +487,12 @@
 
     private ordinaryCurve(edge:Edge){
       const {a,b}=this.unwrapEdge(edge);
-      const dx=b.x-a.x;
-      const dy=b.y-a.y;
-      const len=Math.max(.001,Math.hypot(dx,dy));
-      const nx=-dy/len;
-      const ny=dx/len;
-      const bow=(this.hash(edge.a,edge.b)-.5)*.055;
-      const lift=.020+(this.hash(edge.b,edge.a)*.014);
-
       return Array.from({length:9},(_,k)=>{
         const t=k/8;
-        const s=Math.sin(Math.PI*t);
         return{
-          x:a.x+dx*t+nx*bow*s,
-          y:a.y+dy*t+ny*bow*s,
-          z:a.z+(b.z-a.z)*t+lift*s,
+          x:a.x+(b.x-a.x)*t,
+          y:a.y+(b.y-a.y)*t,
+          z:a.z+(b.z-a.z)*t,
         };
       });
     }
@@ -539,11 +506,11 @@
     }
 
     private specialCurve(info:{loop:'a'|'b';quarter:number},link:LinkPair){
-      const g=this.hopfGeometry(link);
-      const start=-3*Math.PI/4+info.quarter*Math.PI/2;
-      const point=info.loop==='a'?g.pointA:g.pointB;
-
-      return Array.from({length:17},(_,k)=>point(start+(Math.PI/2)*(k/16)));
+      const t0=info.quarter/4;
+      return Array.from({length:25},(_,k)=>{
+        const t=t0+(k/24)/4;
+        return this.linkedPoint(link,info.loop,t);
+      });
     }
 
     private hash(a:number,b:number){
@@ -745,7 +712,7 @@
       const messages:Record<string,[string,string]>={
         network:[
           'Periodic elastic network',
-          'The graph is periodic, but the camera renders only an interior window. The geometry shown is the converged minimum of the harmonic displacement energy.'
+          'The graph is periodic and every coarse bond remains at its unit rest length. Entanglement changes only the smooth three-dimensional strand embedding between junctions.'
         ],
         rings:[
           'Elementary rings',
