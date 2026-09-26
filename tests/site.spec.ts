@@ -471,7 +471,7 @@ test('topology research page renders a relaxed fixed-camera 3D linked network',a
  await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
  expect(await svg.locator('.network-tube--signal').count()).toBeGreaterThanOrEqual(4);
  expect(await svg.locator('.network-tube--cool').count()).toBeGreaterThanOrEqual(4);
- await expect(page.locator('[data-readout-copy]')).toContainText('linking number one');
+ await expect(page.locator('[data-readout-copy]')).toContainText('coarse bond lengths are unchanged');
 
  const diagnostics=await lab.evaluate((node:HTMLElement)=>({
    residual:Number(node.dataset.energyResidual),
