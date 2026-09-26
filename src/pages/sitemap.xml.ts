@@ -1,0 +1,3 @@
+import {publicEntries,topicSlug,topicsOf} from '../lib/content';
+import {SITE_URL} from '../config';
+export async function GET(){const entries=await publicEntries();const paths=new Set(['/', '/about/', '/cv/', '/posts/', '/courses/', '/research/', '/publications/', ...entries.map(e=>e.href)]);for(const {entry} of entries){topicsOf(entry).forEach(t=>paths.add(`/topics/${topicSlug(t)}/`));if('series' in entry.data&&entry.data.series)paths.add(`/series/${entry.data.series}/`);}return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...paths].sort().map(p=>`<url><loc>${SITE_URL}${p}</loc></url>`).join('')}</urlset>`,{headers:{'Content-Type':'application/xml'}});}

@@ -1,0 +1,36 @@
+---
+interface Props { kind: 'topology'|'design'|'glasses'|'biology'; }
+const {kind}=Astro.props;
+---
+<svg class="research-glyph" viewBox="0 0 240 112" aria-hidden="true">
+  {kind==='topology' && <>
+    <path class="g-line soft" d="M24 66C49 21 91 18 112 53s55 38 91-4"/>
+    <path class="g-line coral" d="M31 83C58 47 90 47 112 73s57 24 96-15"/>
+    <circle class="g-node" cx="49" cy="45" r="4"/><circle class="g-node coral-fill" cx="112" cy="53" r="5"/><circle class="g-node" cx="174" cy="68" r="4"/>
+    <path class="g-dash" d="M83 26c15 10 27 27 28 47m22-48c-14 12-21 28-20 47"/>
+  </>}
+  {kind==='design' && <>
+    <path class="g-line soft" d="M31 78 73 36l45 30 47-39 45 35M73 36l18 56m27-26 36 26m11-65 17 59M31 78l60 14 63 0 56-30"/>
+    <circle class="g-node" cx="31" cy="78" r="4"/><circle class="g-node coral-fill" cx="73" cy="36" r="5"/><circle class="g-node" cx="118" cy="66" r="4"/><circle class="g-node" cx="165" cy="27" r="4"/><circle class="g-node coral-fill" cx="210" cy="62" r="5"/>
+    <circle class="g-target" cx="165" cy="27" r="16"/>
+  </>}
+  {kind==='glasses' && <>
+    <path class="g-dash" d="M18 27H222"/>
+    <path class="g-line" d="M18 38C38 39 40 91 60 90s20-39 35-39 16 51 35 50 17-63 38-61 17 39 32 36 12-23 22-23"/>
+    <path class="g-line coral" d="M26 31C51 18 77 22 96 35s37 11 55-2 42-15 65-5"/>
+    <circle class="g-node" cx="60" cy="90" r="4"/><circle class="g-node coral-fill" cx="130" cy="101" r="5"/><circle class="g-node" cx="200" cy="76" r="4"/>
+    <path class="g-line soft" d="M60 90 60 27M130 101 130 27M200 76 200 27"/>
+  </>}
+  {kind==='biology' && <>
+    <path class="g-line soft" d="m120 20 42 24 0 48-42 24-42-24V44Z"/>
+    <path class="g-line" d="m120 20 0 48 42 24m-84 0 42-24 42-24M78 44l42 24 42-24"/>
+    <circle class="g-node coral-fill" cx="120" cy="20" r="5"/><circle class="g-node" cx="78" cy="44" r="4"/><circle class="g-node" cx="162" cy="44" r="4"/><circle class="g-node" cx="78" cy="92" r="4"/><circle class="g-node coral-fill" cx="162" cy="92" r="5"/>
+    <path class="g-dash" d="M28 61c16-18 31 18 47 0s31 18 46 0 32 18 48 0 29 17 43 2"/>
+  </>}
+</svg>
+<style>
+  .research-glyph{display:block;width:100%;height:auto;overflow:visible}
+  .g-line,.g-dash,.g-target{fill:none;vector-effect:non-scaling-stroke;stroke:var(--theme-structure,var(--cool));stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+  .g-line.soft{opacity:.34}.g-line.coral{stroke:var(--signal);opacity:.78}.g-dash{stroke:var(--text-3);stroke-width:1;stroke-dasharray:4 6;opacity:.36}.g-target{stroke:var(--theme-accent,var(--signal));stroke-dasharray:3 5;opacity:.55}
+  .g-node{fill:var(--theme-structure,var(--cool));stroke:var(--surface);stroke-width:1.4;vector-effect:non-scaling-stroke}.g-node.coral-fill{fill:var(--theme-accent,var(--signal))}
+</style>

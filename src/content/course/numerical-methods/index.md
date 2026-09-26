@@ -3,8 +3,8 @@ title: "Numerical Methods in Astrophysics"
 subtitle: "Graduate Lecture Notes"
 description: "Practical numerical methods for astrophysical simulations: ODE integration, spectral methods, finite-volume schemes, N-body algorithms, and Monte Carlo techniques. Notes for the Part III course at the University of Cambridge."
 course: "numerical-methods"
-chapter: 0
 tags: ["graduate", "computing", "numerical methods"]
+draft: false
 ---
 
 These notes cover the core numerical algorithms used in modern astrophysical simulation codes.

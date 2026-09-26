@@ -1,0 +1,6 @@
+---
+interface Props { id: string; label?: string; }
+const { id, label } = Astro.props;
+---
+<div class="equation" id={id}><div><slot /></div>{label && <a href={`#${id}`} aria-label={`Equation ${label}`}>({label})</a>}</div>
+<style>.equation{display:flex;align-items:center;gap:1rem}.equation>div{min-width:0;flex:1}.equation>a{font: .85rem var(--font-sans)}</style>

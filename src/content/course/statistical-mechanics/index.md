@@ -3,8 +3,8 @@ title: "Statistical Mechanics"
 subtitle: "Graduate Lecture Notes"
 description: "A graduate-level introduction to the dynamics of stellar systems: orbits, distribution functions, relaxation, stability, and N-body methods. Notes for the Part III course at the University of Cambridge."
 course: "statistical-mechanics"
-chapter: 0
 tags: ["graduate", "dynamics", "galactic astronomy"]
+draft: false
 ---
 
 Welcome to my notes for **Stellar Dynamics**.

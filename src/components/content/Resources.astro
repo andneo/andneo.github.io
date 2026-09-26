@@ -1,0 +1,6 @@
+---
+import {assetExists} from '../../lib/media';
+interface Props { resources: {label:string;href:string}[]; }
+const { resources } = Astro.props;
+---
+{resources.length>0 && <ul class="resource-list" aria-label="Resources">{resources.map(r=><li>{(!/\.[a-z0-9]+(?:[?#].*)?$/i.test(r.href)||assetExists(r.href))?<a href={r.href}>{r.label}</a>:<span>{r.label} (file unavailable)</span>}</li>)}</ul>}

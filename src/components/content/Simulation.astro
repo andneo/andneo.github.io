@@ -1,0 +1,27 @@
+---
+interface Props { title: string; description: string; src: string; poster: string; renderer?: 'trajectory'; }
+const { title, description, src, poster, renderer = 'trajectory' } = Astro.props;
+---
+<scientific-simulation data-src={src} data-renderer={renderer}>
+  <figure><img src={poster} alt={description} width="960" height="540" loading="lazy" /><canvas hidden width="960" height="540" role="img" aria-label={description}></canvas><figcaption><strong>{title}.</strong> {description}</figcaption></figure>
+  <button type="button" hidden>Load playback</button> <a href={src}>Download trajectory</a><p class="status" role="status"></p>
+</scientific-simulation>
+<script>
+ import { mountTrajectory } from '../../interactive/trajectory';
+ class ScientificSimulation extends HTMLElement {
+   cleanup?: () => void;
+   connectedCallback() {
+     const button=this.querySelector('button')!; button.hidden=false;
+     button.addEventListener('click',async()=>{
+       if(this.cleanup)return;
+       button.disabled=true; this.querySelector('.status')!.textContent='Loading trajectory…';
+       try { this.cleanup=await mountTrajectory(this); this.querySelector('.status')!.textContent=''; }
+       catch { this.querySelector('.status')!.textContent='Playback unavailable. The preview and downloadable data remain available.'; }
+       finally { button.disabled=false; }
+     });
+   }
+   disconnectedCallback(){this.cleanup?.();}
+ }
+ if(!customElements.get('scientific-simulation'))customElements.define('scientific-simulation',ScientificSimulation);
+</script>
+<style>scientific-simulation{display:block}canvas{width:100%;height:auto}button{padding:.5rem 1rem}</style>

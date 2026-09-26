@@ -1,0 +1,6 @@
+---
+interface Props { title: string; kind?: 'note' | 'warning' | 'definition'; }
+const { title, kind = 'note' } = Astro.props;
+---
+<aside class="callout" aria-label={`${kind}: ${title}`}><strong>{title}</strong><div><slot /></div></aside>
+<style>.callout{border-left:3px solid var(--accent);padding:1rem 1.25rem;background:var(--bg-off);margin-block:1.5rem}.callout strong{font-family:var(--font-sans)}</style>
