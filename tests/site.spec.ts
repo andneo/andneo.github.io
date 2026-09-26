@@ -410,47 +410,23 @@ test('homepage research is organised as four themes with selected publication ev
  expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
-test('topology research page relaxes a local bead-spring entanglement without stretched bonds',async({page})=>{
+test('topology research page uses the measured one-swap motif and relocates it with selection',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/research/topology-networked-matter/');
 
  const lab=page.locator('topology-network-lab');
+ const svg=lab.locator('svg');
  await expect(lab).toBeVisible();
  await expect(lab).toHaveAttribute('data-periodic','xy');
- await expect(lab).toHaveAttribute('data-engine','local-bead-spring-pbd');
+ await expect(lab).toHaveAttribute('data-engine','reference-relaxed-one-swap');
  await expect(lab).toHaveAttribute('data-renderer','fixed-camera-layered-svg');
  await expect(lab).toHaveAttribute('data-draggable','false');
- await expect(lab).toHaveAttribute('data-nodes','216');
- await expect(lab).toHaveAttribute('data-edges','432');
- await expect(lab).toHaveAttribute('data-rings','96');
- await expect(lab).toHaveAttribute('data-rest-length','0.12');
+ await expect(lab).toHaveAttribute('data-reference-source','finalconf_1_swaps.data');
+ await expect(lab).toHaveAttribute('data-selected-ring','7,5');
  await expect(lab).toHaveAttribute('data-entanglements','0');
- await expect(lab.getByRole('button',{name:'Reveal depth'})).toHaveCount(0);
 
- const svg=lab.locator('svg');
- await expect(svg).toBeVisible();
  expect(await svg.locator('.network-node-body').count()).toBeGreaterThan(50);
  expect(await svg.locator('.network-tube').count()).toBeGreaterThan(50);
- expect(await svg.locator('.network-rim').count()).toBeGreaterThan(50);
- expect(await svg.locator('.network-highlight').count()).toBeGreaterThan(50);
-
- const scene=await page.evaluate(()=>{
-   const stage=document.querySelector<HTMLElement>('.topology-lab__stage')!;
-   const svg=document.querySelector<SVGSVGElement>('.topology-lab__svg')!;
-   const nodes=[...svg.querySelectorAll<SVGCircleElement>('.network-node-body')];
-   const tube=svg.querySelector<SVGPathElement>('.network-tube')!;
-   return{
-     background:getComputedStyle(stage).backgroundImage,
-     tubeStroke:getComputedStyle(tube).stroke,
-     nodeFill:getComputedStyle(nodes[0]).fill,
-     coords:nodes.map(node=>[Number(node.getAttribute('cx')),Number(node.getAttribute('cy'))]),
-     box:svg.getBoundingClientRect().toJSON(),
-   };
- });
- expect(scene.background).not.toBe('none');
- expect(scene.tubeStroke).not.toBe('rgb(0, 0, 0)');
- expect(scene.nodeFill).not.toBe('rgb(0, 0, 0)');
- expect(scene.coords.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)&&x>-50&&y>-50&&x<scene.box.width+50&&y<scene.box.height+50)).toBe(true);
 
  await lab.getByRole('button',{name:'Rings',exact:true}).click();
  await expect(lab).toHaveAttribute('data-mode','rings');
@@ -459,28 +435,34 @@ test('topology research page relaxes a local bead-spring entanglement without st
  await lab.getByRole('button',{name:'Entangle selected ring'}).click();
  await expect(lab).toHaveAttribute('data-mode','entanglement');
  await expect(lab).toHaveAttribute('data-entanglements','1');
+ await expect(lab).toHaveAttribute('data-linked-rings','6,5;8,5');
  await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
- await expect(lab).toHaveAttribute('data-relaxed','true');
 
- const diagnostics=await lab.evaluate((node:HTMLElement)=>({
-   strain:Number(node.dataset.maxSegmentStrain),
-   clearance:Number(node.dataset.minClearance),
- }));
- expect(Number.isFinite(diagnostics.strain)).toBe(true);
- expect(Number.isFinite(diagnostics.clearance)).toBe(true);
- expect(diagnostics.strain).toBeLessThan(.08);
- expect(diagnostics.clearance).toBeGreaterThan(.11);
+ const linking=Number(await lab.getAttribute('data-gauss-linking'));
+ expect(Number.isFinite(linking)).toBe(true);
+ expect(Math.abs(linking)).toBeGreaterThan(.9);
+ expect(Math.abs(linking)).toBeLessThan(1.2);
 
- expect(await svg.locator('.network-signal').count()).toBeGreaterThan(0);
- expect(await svg.locator('.network-cool').count()).toBeGreaterThan(0);
- const smoothPaths=await svg.locator('.network-tube').evaluateAll(nodes=>nodes.filter(node=>(node.getAttribute('d')??'').includes('Q')).length);
- expect(smoothPaths).toBeGreaterThan(10);
- await expect(page.locator('[data-readout-copy]')).toContainText('equal bond-length constraints');
+ expect(await svg.locator('.network-bead').count()).toBeGreaterThan(40);
+ expect(await svg.locator('.ring-face--left').count()).toBe(1);
+ expect(await svg.locator('.ring-face--right').count()).toBe(1);
+ expect(await svg.locator('.ring-face--swap').count()).toBe(1);
+ await expect(page.locator('[data-readout-copy]')).toContainText('swap site');
+
+ await svg.getByRole('button',{name:'Select ring 10, 6'}).click();
+ await expect(lab).toHaveAttribute('data-selected-ring','10,6');
+ await expect(lab).toHaveAttribute('data-entanglements','0');
+ await expect(lab).toHaveAttribute('data-linked-rings','');
+ await expect(lab).toHaveAttribute('data-mode','rings');
+
+ await lab.getByRole('button',{name:'Entangle selected ring'}).click();
+ await expect(lab).toHaveAttribute('data-entanglements','1');
+ await expect(lab).toHaveAttribute('data-linked-rings','9,6;11,6');
+ expect(await svg.locator('.network-bead').count()).toBeGreaterThan(40);
 
  await lab.getByRole('button',{name:'Reset'}).click();
  await expect(lab).toHaveAttribute('data-entanglements','0');
  await expect(lab).toHaveAttribute('data-mode','network');
- await expect(lab).toHaveAttribute('data-max-segment-strain','0');
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
