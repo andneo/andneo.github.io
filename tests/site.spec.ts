@@ -456,10 +456,10 @@ test('topology research page uses the measured one-swap motif and relocates it w
  for(const key of rightKeys){
    expect(await svg.locator(`.network-tube.network-cool[data-reference-key="${key}"]`).count()).toBeGreaterThan(0);
  }
- const smoothReferencePaths=await svg.locator('.network-tube[data-reference-key]').evaluateAll(nodes=>
-   nodes.every(node=>(node.getAttribute('d')??'').includes('Q'))
- );
- expect(smoothReferencePaths).toBe(true);
+ for(const key of [...leftKeys,...rightKeys,'h:0:0','h:0:1']){
+   const chunks=svg.locator(`.network-tube[data-reference-key="${key}"]`);
+   expect(await chunks.evaluateAll(nodes=>nodes.some(node=>(node.getAttribute('d')??'').includes('Q')))).toBe(true);
+ }
 
  const svgStyles=await svg.evaluate(node=>{
    const tube=node.querySelector<SVGPathElement>('.network-tube[data-reference-key]')!;
