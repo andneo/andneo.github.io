@@ -421,17 +421,22 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const story=page.locator('water-network-story');
  const stage=story.locator('[data-water-stage]');
+ const hero=story.locator('[data-water-hero-canvas]');
  const canvas=story.locator('[data-water-canvas]');
  await expect(story).toBeVisible();
+ await expect(hero).toHaveAttribute('data-renderer','threejs-water');
+ await expect(hero).toHaveAttribute('data-renderer-ready','true');
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
  await expect(story.locator('[data-water-kicker]')).toBeHidden();
 
- const box=await canvas.boundingBox();
- expect(box).not.toBeNull();
- expect(box!.width).toBeGreaterThan(700);
- expect(box!.height).toBeGreaterThan(450);
+ const heroBox=await hero.boundingBox();
+ expect(heroBox).not.toBeNull();
+ expect(heroBox!.width).toBeGreaterThan(700);
+ expect(heroBox!.height).toBeGreaterThan(450);
+ await expect(hero).toHaveCSS('opacity','1');
+ await expect(canvas).toHaveCSS('opacity','0');
 
  const headingSize=await story.locator('[data-water-title]').evaluate(node=>Number.parseFloat(getComputedStyle(node).fontSize));
  expect(headingSize).toBeLessThan(64);
@@ -445,6 +450,8 @@ test('water network story is contained, button-driven and replaces the old topol
 
  await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
  await expect(story).toHaveAttribute('data-scene','2');
+ await expect(hero).toHaveCSS('opacity','0');
+ await expect(canvas).toHaveCSS('opacity','1');
  await expect(story.locator('[data-water-scale]')).toBeVisible();
  await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
 
