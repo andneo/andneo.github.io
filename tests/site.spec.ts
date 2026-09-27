@@ -427,6 +427,9 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(hero).toHaveAttribute('data-renderer','threejs-water');
  await expect(hero).toHaveAttribute('data-renderer-ready','true');
  await expect(story).toHaveAttribute('data-hero-ready','true');
+ await expect(story).toHaveAttribute('data-molecule-count','14');
+ await expect(story).toHaveAttribute('data-pickable-molecules','14');
+ await expect.poll(async()=>Number(await story.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
