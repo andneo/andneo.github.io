@@ -410,19 +410,36 @@ test('homepage research is organised as four themes with selected publication ev
  expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
-test('water network story moves from familiar water to an inspectable network at the visitor pace',async({page})=>{
+test('water network story is contained, button-driven and replaces the old topology instrument',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/research/topology-networked-matter/');
 
+ await expect(page.locator('.research-detail-main > .subtitle')).toHaveCount(0);
+ await expect(page.getByText('Interactive exhibit',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Enter the network.'})).toHaveCount(0);
+ await expect(page.locator('topology-network-lab')).toHaveCount(0);
+
  const story=page.locator('water-network-story');
+ const stage=story.locator('[data-water-stage]');
  const canvas=story.locator('[data-water-canvas]');
  await expect(story).toBeVisible();
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
+
  const box=await canvas.boundingBox();
  expect(box).not.toBeNull();
  expect(box!.width).toBeGreaterThan(700);
  expect(box!.height).toBeGreaterThan(450);
+
+ const headingSize=await story.locator('[data-water-title]').evaluate(node=>Number.parseFloat(getComputedStyle(node).fontSize));
+ expect(headingSize).toBeLessThan(64);
+
+ const stagePosition=await stage.evaluate(node=>getComputedStyle(node).position);
+ expect(stagePosition).toBe('relative');
+
+ await page.mouse.wheel(0,900);
+ await page.waitForTimeout(150);
+ await expect(story).toHaveAttribute('data-scene','0');
 
  await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
  await expect(story).toHaveAttribute('data-scene','2');
@@ -444,90 +461,6 @@ test('water network story moves from familiar water to an inspectable network at
  await pause.click();
  await expect(pause).toHaveAttribute('aria-pressed','true');
  await expect(pause).toHaveText('Resume motion');
-
- await expect(page.locator('topology-network-lab')).toBeVisible();
-});
-
-test('topology research page uses the measured one-swap motif and relocates it with selection',async({page})=>{
- await page.setViewportSize({width:1440,height:1000});
- await page.goto('/research/topology-networked-matter/');
-
- const lab=page.locator('topology-network-lab');
- const svg=lab.locator('svg');
- await expect(lab).toBeVisible();
- await expect(lab).toHaveAttribute('data-periodic','xy');
- await expect(lab).toHaveAttribute('data-engine','reference-relaxed-one-swap');
- await expect(lab).toHaveAttribute('data-renderer','fixed-camera-layered-svg');
- await expect(lab).toHaveAttribute('data-draggable','false');
- await expect(lab).toHaveAttribute('data-reference-source','finalconf_1_swaps.data');
- await expect(lab).toHaveAttribute('data-selected-ring','7,5');
- await expect(lab).toHaveAttribute('data-entanglements','0');
-
- expect(await svg.locator('.network-node-body').count()).toBeGreaterThan(50);
- expect(await svg.locator('.network-tube').count()).toBeGreaterThan(50);
-
- await lab.getByRole('button',{name:'Rings',exact:true}).click();
- await expect(lab).toHaveAttribute('data-mode','rings');
- await expect(svg.locator('.ring-hit')).toHaveCount(96);
-
- await lab.getByRole('button',{name:'Entangle selected ring'}).click();
- await expect(lab).toHaveAttribute('data-mode','entanglement');
- await expect(lab).toHaveAttribute('data-entanglements','1');
- await expect(lab).toHaveAttribute('data-linked-rings','6,5;8,5');
- await expect(page.locator('[data-stat-entanglements]')).toHaveText('1');
-
- const linking=Number(await lab.getAttribute('data-gauss-linking'));
- expect(Number.isFinite(linking)).toBe(true);
- expect(Math.abs(linking)).toBeGreaterThan(.9);
- expect(Math.abs(linking)).toBeLessThan(1.2);
-
- expect(await svg.locator('.network-bead').count()).toBeGreaterThan(40);
- expect(await svg.locator('.ring-face--left').count()).toBe(1);
- expect(await svg.locator('.ring-face--right').count()).toBe(1);
- expect(await svg.locator('.ring-face--swap').count()).toBe(1);
-
- const leftKeys=['h:-1:0','h:-1:1','v:-1:0','v:0:0'];
- const rightKeys=['h:1:0','h:1:1','v:1:0','v:2:0'];
- for(const key of leftKeys){
-   expect(await svg.locator(`.network-tube.network-signal[data-reference-key="${key}"]`).count()).toBeGreaterThan(0);
- }
- for(const key of rightKeys){
-   expect(await svg.locator(`.network-tube.network-cool[data-reference-key="${key}"]`).count()).toBeGreaterThan(0);
- }
- for(const key of [...leftKeys,...rightKeys,'h:0:0','h:0:1']){
-   const chunks=svg.locator(`.network-tube[data-reference-key="${key}"]`);
-   expect(await chunks.evaluateAll(nodes=>nodes.some(node=>(node.getAttribute('d')??'').includes('Q')))).toBe(true);
- }
-
- const svgStyles=await svg.evaluate(node=>{
-   const tube=node.querySelector<SVGPathElement>('.network-tube[data-reference-key]')!;
-   const left=node.querySelector<SVGPolygonElement>('.ring-face--left')!;
-   const right=node.querySelector<SVGPolygonElement>('.ring-face--right')!;
-   return{
-     tubeStroke:getComputedStyle(tube).stroke,
-     leftFill:getComputedStyle(left).fill,
-     rightFill:getComputedStyle(right).fill,
-   };
- });
- expect(svgStyles.tubeStroke).not.toBe('rgb(0, 0, 0)');
- expect(svgStyles.leftFill).not.toBe('rgb(0, 0, 0)');
- expect(svgStyles.rightFill).not.toBe('rgb(0, 0, 0)');
- await expect(page.locator('[data-readout-copy]')).toContainText('swap site');
-
- await svg.getByRole('button',{name:'Select ring 10, 6'}).click();
- await expect(lab).toHaveAttribute('data-selected-ring','10,6');
- await expect(lab).toHaveAttribute('data-entanglements','0');
- await expect(lab).toHaveAttribute('data-linked-rings','');
- await expect(lab).toHaveAttribute('data-mode','rings');
-
- await lab.getByRole('button',{name:'Entangle selected ring'}).click();
- await expect(lab).toHaveAttribute('data-entanglements','1');
- await expect(lab).toHaveAttribute('data-linked-rings','9,6;11,6');
- expect(await svg.locator('.network-bead').count()).toBeGreaterThan(40);
-
- await lab.getByRole('button',{name:'Reset'}).click();
- await expect(lab).toHaveAttribute('data-entanglements','0');
- await expect(lab).toHaveAttribute('data-mode','network');
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
