@@ -447,6 +447,33 @@ test('topology research page uses the measured one-swap motif and relocates it w
  expect(await svg.locator('.ring-face--left').count()).toBe(1);
  expect(await svg.locator('.ring-face--right').count()).toBe(1);
  expect(await svg.locator('.ring-face--swap').count()).toBe(1);
+
+ const leftKeys=['h:-1:0','h:-1:1','v:-1:0','v:0:0'];
+ const rightKeys=['h:1:0','h:1:1','v:1:0','v:2:0'];
+ for(const key of leftKeys){
+   expect(await svg.locator(`.network-tube.network-signal[data-reference-key="${key}"]`).count()).toBeGreaterThan(0);
+ }
+ for(const key of rightKeys){
+   expect(await svg.locator(`.network-tube.network-cool[data-reference-key="${key}"]`).count()).toBeGreaterThan(0);
+ }
+ const smoothReferencePaths=await svg.locator('.network-tube[data-reference-key]').evaluateAll(nodes=>
+   nodes.every(node=>(node.getAttribute('d')??'').includes('Q'))
+ );
+ expect(smoothReferencePaths).toBe(true);
+
+ const svgStyles=await svg.evaluate(node=>{
+   const tube=node.querySelector<SVGPathElement>('.network-tube[data-reference-key]')!;
+   const left=node.querySelector<SVGPolygonElement>('.ring-face--left')!;
+   const right=node.querySelector<SVGPolygonElement>('.ring-face--right')!;
+   return{
+     tubeStroke:getComputedStyle(tube).stroke,
+     leftFill:getComputedStyle(left).fill,
+     rightFill:getComputedStyle(right).fill,
+   };
+ });
+ expect(svgStyles.tubeStroke).not.toBe('rgb(0, 0, 0)');
+ expect(svgStyles.leftFill).not.toBe('rgb(0, 0, 0)');
+ expect(svgStyles.rightFill).not.toBe('rgb(0, 0, 0)');
  await expect(page.locator('[data-readout-copy]')).toContainText('swap site');
 
  await svg.getByRole('button',{name:'Select ring 10, 6'}).click();
