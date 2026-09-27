@@ -308,7 +308,8 @@ const scenes = [
       const dt=Math.min(.033,(t-this.last||16)/1000);this.last=t;
       if(this.visible){
         this.step(dt);
-        if(this.scene!==0)this.draw(t);
+        const heroReady=this.dataset.heroReady==='true';
+        if(this.scene!==0||!heroReady)this.draw(t);
       }
       if(this.isConnected)this.raf=requestAnimationFrame(time=>this.frame(time));
     }
