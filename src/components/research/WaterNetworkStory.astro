@@ -1,0 +1,478 @@
+---
+const scenes = [
+  {
+    kicker:'01 · familiar',
+    title:'Water looks simple.',
+    copy:'At human scale, liquid water appears continuous. Move closer and that familiar surface gives way to molecular structure.',
+  },
+  {
+    kicker:'02 · scale',
+    title:'Look closer.',
+    copy:'We are entering a region only a few nanometres across — a microscopic window inside an ordinary body of water.',
+  },
+  {
+    kicker:'03 · molecules',
+    title:'A tiny piece of ordinary water.',
+    copy:'Hundreds of H₂O molecules occupy this view. The surrounding liquid continues beyond it in every direction.',
+  },
+  {
+    kicker:'04 · network',
+    title:'Water is a network.',
+    copy:'The molecules are not independent. Their local neighbours continually reorganise, creating a fluctuating three-dimensional network.',
+  },
+  {
+    kicker:'05 · representation',
+    title:'Same liquid. New representation.',
+    copy:'Remove chemical detail and keep only molecular centres and their connections. The liquid becomes a physical network we can analyse.',
+  },
+];
+---
+
+<section class="water-story-shell" aria-labelledby="water-story-heading">
+  <div class="water-story-shell__intro">
+    <p class="eyebrow">Interactive exhibit</p>
+    <h2 id="water-story-heading">Enter the network.</h2>
+    <p>Start with the material itself. Scroll at your own pace; pause anywhere, inspect a molecule, or move back through the story.</p>
+  </div>
+
+  <water-network-story class="water-story" data-scene="0">
+    <div class="water-story__stage" data-water-stage>
+      <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
+
+      <div class="water-story__wash" aria-hidden="true"></div>
+
+      <div class="water-story__copy" aria-live="polite">
+        <p class="water-story__kicker" data-water-kicker>{scenes[0].kicker}</p>
+        <h3 data-water-title>{scenes[0].title}</h3>
+        <p data-water-copy>{scenes[0].copy}</p>
+        <div class="water-story__scale" data-water-scale hidden>
+          <span></span><strong>~2 nm</strong><span></span>
+        </div>
+        <p class="water-story__selection" data-water-selection hidden>Selected molecule · local neighbourhood</p>
+      </div>
+
+      <div class="water-story__controls">
+        <nav class="water-story__rail" aria-label="Water story chapters">
+          {scenes.map((scene,index)=>
+            <button
+              type="button"
+              data-water-jump={index}
+              aria-label={`Go to scene ${index+1}: ${scene.title}`}
+              aria-current={index===0?'step':undefined}
+            >
+              <span>{String(index+1).padStart(2,'0')}</span>
+            </button>
+          )}
+        </nav>
+        <button class="water-story__pause" type="button" data-water-pause aria-pressed="false">Pause motion</button>
+      </div>
+
+      <div class="water-story__representation" data-water-representation hidden>
+        <label for="water-representation">representation</label>
+        <input id="water-representation" data-water-mix type="range" min="0" max="100" value="88" />
+        <div><span>H₂O</span><span>network</span></div>
+      </div>
+
+      <p class="water-story__hint" data-water-hint>scroll to look closer ↓</p>
+    </div>
+
+    <div class="water-story__scroll-track" aria-hidden="true">
+      {scenes.map((_,index)=><div data-water-marker={index}></div>)}
+    </div>
+
+    <script type="application/json" data-water-scenes set:html={JSON.stringify(scenes)}></script>
+  </water-network-story>
+</section>
+
+<style>
+  .water-story-shell{margin:clamp(2.5rem,6vw,6rem) 0 clamp(4rem,9vw,8rem)}
+  .water-story-shell__intro{display:grid;grid-template-columns:minmax(0,.72fr) minmax(18rem,1.28fr);gap:clamp(1.5rem,5vw,5rem);align-items:end;margin-bottom:1.4rem}
+  .water-story-shell__intro .eyebrow{grid-column:1/-1;margin:0}
+  .water-story-shell__intro h2{margin:0;font:600 clamp(2.4rem,5vw,5.6rem)/.92 var(--font-display);letter-spacing:-.065em}
+  .water-story-shell__intro>p:last-child{max-width:62ch;margin:0;color:var(--text-2);font:400 clamp(.88rem,1.25vw,1.02rem)/1.7 var(--font-sans)}
+
+  .water-story{position:relative;display:block;min-height:340vh}
+  .water-story__stage{position:sticky;top:5.4rem;height:min(78svh,760px);min-height:510px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
+  .water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
+  .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
+  .water-story__kicker{margin:0 0 .7rem;color:var(--cool);font:500 .64rem/1.2 var(--font-sans);letter-spacing:.14em;text-transform:uppercase}
+  .water-story__copy h3{max-width:12ch;margin:0 0 .8rem;font:600 clamp(2.1rem,4.8vw,5.2rem)/.92 var(--font-display);letter-spacing:-.06em;text-wrap:balance}
+  .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:46ch;margin:0;color:var(--text-2);font:400 clamp(.82rem,1.2vw,.98rem)/1.68 var(--font-sans)}
+  .water-story__scale{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.7rem;width:min(18rem,80%);margin-top:1.3rem;color:var(--text-3);font:500 .66rem/1 var(--font-sans);letter-spacing:.08em}
+  .water-story__scale span{height:1px;background:currentColor}
+  .water-story__selection{margin:.9rem 0 0;color:var(--signal);font:500 .66rem/1.3 var(--font-sans)}
+  .water-story__controls{position:absolute;z-index:5;left:clamp(1rem,2vw,1.6rem);right:clamp(1rem,2vw,1.6rem);bottom:clamp(.8rem,2vw,1.3rem);display:flex;align-items:end;justify-content:space-between;gap:1rem}
+  .water-story__rail{display:flex;gap:.35rem;padding:.32rem;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:blur(10px)}
+  .water-story__rail button{display:grid;place-items:center;width:2.15rem;height:2.15rem;padding:0;border:0;border-radius:50%;background:transparent;color:var(--text-3);font:500 .58rem/1 var(--font-sans);cursor:pointer}
+  .water-story__rail button[aria-current=step]{background:var(--cool-soft);color:var(--cool)}
+  .water-story__rail button:focus-visible,.water-story__pause:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .water-story__pause{min-height:2.3rem;padding:.4rem .7rem;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface) 80%,transparent);color:var(--text-2);font:500 .62rem/1 var(--font-sans);cursor:pointer;backdrop-filter:blur(10px)}
+  .water-story__representation{position:absolute;z-index:5;right:clamp(1rem,3vw,2.2rem);top:clamp(1rem,3vw,2rem);width:min(16rem,34vw);padding:.7rem .8rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--surface) 84%,transparent);backdrop-filter:blur(12px)}
+  .water-story__representation label{display:block;margin-bottom:.55rem;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
+  .water-story__representation input{width:100%;accent-color:var(--cool)}
+  .water-story__representation div{display:flex;justify-content:space-between;color:var(--text-3);font:500 .58rem/1 var(--font-sans)}
+  .water-story__hint{position:absolute;z-index:4;right:clamp(1rem,3vw,2rem);top:50%;margin:0;writing-mode:vertical-rl;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.1em;text-transform:uppercase;opacity:.8;transform:translateY(-50%)}
+  .water-story__scroll-track{position:absolute;inset:0;pointer-events:none}
+  .water-story__scroll-track>div{height:68vh}
+
+  :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
+  :global(:root[data-theme=light]) .water-story__stage{background:#dfe9ec}
+
+  @media(max-width:760px){
+    .water-story-shell__intro{grid-template-columns:1fr}
+    .water-story-shell__intro .eyebrow{grid-column:auto}
+    .water-story{min-height:300vh}
+    .water-story__stage{top:4.6rem;height:72svh;min-height:520px;border-radius:18px}
+    .water-story__wash{background:linear-gradient(0deg,color-mix(in srgb,var(--bg) 86%,transparent) 0%,color-mix(in srgb,var(--bg) 30%,transparent) 43%,transparent 70%)}
+    .water-story__copy{left:1.1rem;right:1.1rem;top:auto;bottom:5.2rem;width:auto;transform:none}
+    .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
+    .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
+    .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
+    .water-story__hint{display:none}
+    .water-story__pause{font-size:.58rem}
+  }
+</style>
+
+<script>
+  type P3={x:number;y:number;z:number;vx:number;vy:number;vz:number;phase:number;spin:number};
+  type Proj={x:number;y:number;z:number;s:number;visible:boolean};
+
+  class WaterNetworkStory extends HTMLElement{
+    private canvas!:HTMLCanvasElement;
+    private ctx!:CanvasRenderingContext2D;
+    private stage!:HTMLElement;
+    private scenes:{kicker:string;title:string;copy:string}[]=[];
+    private molecules:P3[]=[];
+    private links:[number,number][]=[];
+    private scene=0;
+    private targetScene=0;
+    private mix=.88;
+    private manualMix=false;
+    private paused=false;
+    private visible=true;
+    private reduced=false;
+    private raf=0;
+    private last=0;
+    private linkTimer=0;
+    private selected=-1;
+    private pointer={x:0,y:0,active:false};
+    private ro?:ResizeObserver;
+    private io?:IntersectionObserver;
+    private width=1000;
+    private height=600;
+    private dpr=1;
+
+    connectedCallback(){
+      this.canvas=this.querySelector('[data-water-canvas]')!;
+      this.stage=this.querySelector('[data-water-stage]')!;
+      this.ctx=this.canvas.getContext('2d',{alpha:false})!;
+      this.scenes=JSON.parse(this.querySelector<HTMLScriptElement>('[data-water-scenes]')?.textContent||'[]');
+      this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.seed();
+      this.bind();
+      this.resize();
+      this.setScene(0,true);
+      this.ro=new ResizeObserver(()=>this.resize());
+      this.ro.observe(this.stage);
+      this.io=new IntersectionObserver(entries=>{
+        this.visible=entries[0]?.isIntersecting??true;
+        if(this.visible&&!this.raf)this.raf=requestAnimationFrame(t=>this.frame(t));
+      },{threshold:.01});
+      this.io.observe(this);
+      this.raf=requestAnimationFrame(t=>this.frame(t));
+    }
+
+    disconnectedCallback(){cancelAnimationFrame(this.raf);this.ro?.disconnect();this.io?.disconnect();window.removeEventListener('scroll',this.onScroll);}
+
+    private rand(seed:number){const x=Math.sin(seed*12.9898+78.233)*43758.5453;return x-Math.floor(x);}
+
+    private seed(){
+      const n=210;
+      this.molecules=[];
+      for(let i=0;i<n;i++){
+        const r1=this.rand(i*7+1),r2=this.rand(i*7+2),r3=this.rand(i*7+3);
+        this.molecules.push({
+          x:(r1-.5)*13.4,
+          y:(r2-.5)*8.6,
+          z:(r3-.5)*10.5,
+          vx:(this.rand(i*7+4)-.5)*.10,
+          vy:(this.rand(i*7+5)-.5)*.10,
+          vz:(this.rand(i*7+6)-.5)*.10,
+          phase:this.rand(i*7+7)*Math.PI*2,
+          spin:.3+this.rand(i*7+8)*.7,
+        });
+      }
+      this.rebuildLinks();
+    }
+
+    private bind(){
+      this.querySelectorAll<HTMLButtonElement>('[data-water-jump]').forEach(button=>button.addEventListener('click',()=>{
+        const index=Number(button.dataset.waterJump);
+        this.scrollToScene(index);
+      }));
+      this.querySelector<HTMLButtonElement>('[data-water-pause]')?.addEventListener('click',e=>{
+        this.paused=!this.paused;
+        const button=e.currentTarget as HTMLButtonElement;
+        button.setAttribute('aria-pressed',String(this.paused));
+        button.textContent=this.paused?'Resume motion':'Pause motion';
+      });
+      const slider=this.querySelector<HTMLInputElement>('[data-water-mix]');
+      slider?.addEventListener('input',()=>{
+        this.manualMix=true;
+        this.mix=Number(slider.value)/100;
+      });
+      this.stage.addEventListener('pointermove',e=>{
+        const r=this.stage.getBoundingClientRect();
+        this.pointer={x:(e.clientX-r.left)/r.width-.5,y:(e.clientY-r.top)/r.height-.5,active:true};
+      });
+      this.stage.addEventListener('pointerleave',()=>this.pointer.active=false);
+      this.canvas.addEventListener('click',e=>this.selectAt(e));
+      window.addEventListener('scroll',this.onScroll,{passive:true});
+      this.onScroll();
+    }
+
+    private onScroll=()=>{
+      const rect=this.getBoundingClientRect();
+      const viewport=window.innerHeight;
+      const travel=Math.max(1,rect.height-viewport);
+      const progress=Math.max(0,Math.min(1,-rect.top/travel));
+      const next=Math.max(0,Math.min(this.scenes.length-1,Math.round(progress*(this.scenes.length-1))));
+      if(next!==this.targetScene)this.setScene(next);
+    };
+
+    private scrollToScene(index:number){
+      const rect=this.getBoundingClientRect();
+      const top=window.scrollY+rect.top;
+      const travel=Math.max(1,rect.height-window.innerHeight);
+      const ratio=index/Math.max(1,this.scenes.length-1);
+      window.scrollTo({top:top+travel*ratio,behavior:this.reduced?'auto':'smooth'});
+    }
+
+    private setScene(index:number,immediate=false){
+      this.targetScene=index;
+      this.scene=index;
+      if(index!==4)this.manualMix=false;
+      const scene=this.scenes[index];
+      const kicker=this.querySelector('[data-water-kicker]');
+      const title=this.querySelector('[data-water-title]');
+      const copy=this.querySelector('[data-water-copy]');
+      if(kicker)kicker.textContent=scene.kicker;
+      if(title)title.textContent=scene.title;
+      if(copy)copy.textContent=scene.copy;
+      this.dataset.scene=String(index);
+      this.querySelectorAll<HTMLButtonElement>('[data-water-jump]').forEach((button,i)=>{
+        if(i===index)button.setAttribute('aria-current','step'); else button.removeAttribute('aria-current');
+      });
+      const scale=this.querySelector<HTMLElement>('[data-water-scale]');
+      if(scale)scale.hidden=index<2;
+      const repr=this.querySelector<HTMLElement>('[data-water-representation]');
+      if(repr)repr.hidden=index!==4;
+      const hint=this.querySelector<HTMLElement>('[data-water-hint]');
+      if(hint)hint.textContent=index===this.scenes.length-1?'select a molecule to inspect':'scroll to continue ↓';
+      if(index<2)this.selected=-1;
+      if(immediate){
+        this.mix=index===4?.88:0;
+      }
+    }
+
+    private resize(){
+      const r=this.stage.getBoundingClientRect();
+      this.width=Math.max(1,r.width);this.height=Math.max(1,r.height);
+      this.dpr=Math.min(2,devicePixelRatio||1);
+      this.canvas.width=Math.round(this.width*this.dpr);
+      this.canvas.height=Math.round(this.height*this.dpr);
+      this.ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
+    }
+
+    private project(p:P3,t:number):Proj{
+      const sceneZoom=[.38,.72,1,1.02,1.06][this.scene]??1;
+      const yaw=(this.pointer.active?this.pointer.x*.12:0)+Math.sin(t*.00009)*.025;
+      const pitch=(this.pointer.active?-this.pointer.y*.07:0)-.04;
+      const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+      const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy;
+      const y1=p.y*cp-z1*sp,z2=p.y*sp+z1*cp;
+      const camera=15.5/sceneZoom;
+      const depth=camera-z2;
+      const f=Math.min(this.width,this.height)*.94/depth;
+      const x=this.width*.62+x1*f;
+      const y=this.height*.48-y1*f;
+      return{x,y,z:z2,s:f/54,visible:depth>2&&x>-90&&x<this.width+90&&y>-90&&y<this.height+90};
+    }
+
+    private step(dt:number){
+      if(this.paused||this.reduced)return;
+      for(const p of this.molecules){
+        p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.phase+=p.spin*dt*.35;
+        if(p.x>6.9)p.x=-6.9;if(p.x<-6.9)p.x=6.9;
+        if(p.y>4.5)p.y=-4.5;if(p.y<-4.5)p.y=4.5;
+        if(p.z>5.5)p.z=-5.5;if(p.z<-5.5)p.z=5.5;
+      }
+      this.linkTimer+=dt;
+      if(this.linkTimer>.8){this.rebuildLinks();this.linkTimer=0;}
+    }
+
+    private rebuildLinks(){
+      const candidates:{d:number;a:number;b:number}[]=[];
+      for(let i=0;i<this.molecules.length;i++){
+        const a=this.molecules[i];
+        for(let j=i+1;j<this.molecules.length;j++){
+          const b=this.molecules[j];
+          const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;
+          const d=dx*dx+dy*dy+dz*dz;
+          if(d<2.35)candidates.push({d,a:i,b:j});
+        }
+      }
+      candidates.sort((a,b)=>a.d-b.d);
+      const degree=new Uint8Array(this.molecules.length);
+      this.links=[];
+      for(const c of candidates){
+        if(degree[c.a]>=4||degree[c.b]>=4)continue;
+        this.links.push([c.a,c.b]);degree[c.a]++;degree[c.b]++;
+        if(this.links.length>330)break;
+      }
+    }
+
+    private frame(t:number){
+      this.raf=0;
+      const dt=Math.min(.033,(t-this.last||16)/1000);this.last=t;
+      if(this.visible){
+        this.step(dt);
+        this.draw(t);
+      }
+      if(this.isConnected)this.raf=requestAnimationFrame(time=>this.frame(time));
+    }
+
+    private colors(){
+      const dark=document.documentElement.dataset.theme==='dark';
+      return dark?{
+        bg:'#10191e',bg2:'#182a31',oxygen:'#79a9bc',oxygenHi:'#c9e2ea',hydrogen:'#f0e9dc',bond:'#c8d2d3',
+        network:'rgba(118,164,180,.26)',networkStrong:'rgba(118,164,180,.58)',signal:'#e88770',text:'#f4f1eb'
+      }:{
+        bg:'#dce8eb',bg2:'#c7dce1',oxygen:'#456f80',oxygenHi:'#a7c7d2',hydrogen:'#fffaf0',bond:'#6f858b',
+        network:'rgba(55,101,118,.20)',networkStrong:'rgba(55,101,118,.48)',signal:'#b95240',text:'#211f1c'
+      };
+    }
+
+    private draw(t:number){
+      const ctx=this.ctx,c=this.colors();
+      const g=ctx.createRadialGradient(this.width*.67,this.height*.42,10,this.width*.6,this.height*.46,Math.max(this.width,this.height)*.8);
+      g.addColorStop(0,c.bg2);g.addColorStop(1,c.bg);
+      ctx.fillStyle=g;ctx.fillRect(0,0,this.width,this.height);
+
+      if(this.scene===0){
+        this.drawWaterSurface(t,c);
+        return;
+      }
+
+      const projections=this.molecules.map(p=>this.project(p,t));
+      const targetMix=this.scene<3?0:this.scene===3?.22:.88;
+      if(!this.manualMix)this.mix+= (targetMix-this.mix)*.055;
+      const networkAlpha=this.scene<3?0:this.scene===3?.8:1;
+
+      if(networkAlpha>0){
+        ctx.lineCap='round';
+        for(const [a,b] of this.links){
+          const pa=projections[a],pb=projections[b];
+          if(!pa.visible||!pb.visible)continue;
+          const selected=this.selected===a||this.selected===b;
+          ctx.strokeStyle=selected?c.networkStrong:c.network;
+          ctx.globalAlpha=networkAlpha*(selected?1:.76);
+          ctx.lineWidth=(selected?1.8:1.05)*Math.max(.7,(pa.s+pb.s)*.65);
+          ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+      }
+
+      const order=this.molecules.map((_,i)=>i).sort((a,b)=>projections[a].z-projections[b].z);
+      for(const i of order){
+        const p=this.molecules[i],q=projections[i];
+        if(!q.visible)continue;
+        const focus=this.selected<0||this.selected===i||this.isNeighbour(i);
+        const alpha=this.selected<0?1:(focus?1:.16);
+        this.drawMolecule(p,q,t,c,alpha,this.mix);
+      }
+
+      if(this.selected>=0){
+        const q=projections[this.selected];
+        if(q.visible){
+          ctx.strokeStyle=c.signal;ctx.globalAlpha=.9;ctx.lineWidth=1.4;
+          ctx.beginPath();ctx.arc(q.x,q.y,16*Math.max(.75,q.s),0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+        }
+      }
+    }
+
+    private drawWaterSurface(t:number,c:ReturnType<WaterNetworkStory['colors']>){
+      const ctx=this.ctx;
+      const grd=ctx.createLinearGradient(0,0,this.width,this.height);
+      grd.addColorStop(0,c.bg2);grd.addColorStop(.55,c.bg);grd.addColorStop(1,c.bg2);
+      ctx.fillStyle=grd;ctx.fillRect(0,0,this.width,this.height);
+      ctx.save();
+      ctx.globalCompositeOperation='screen';
+      for(let k=0;k<9;k++){
+        const y=this.height*(.15+k*.095);
+        ctx.beginPath();
+        for(let x=-20;x<=this.width+20;x+=12){
+          const yy=y+Math.sin(x*.012+t*.0007+k)*10+Math.sin(x*.028-t*.00045+k*.7)*4;
+          if(x<0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
+        }
+        ctx.strokeStyle=k%2? 'rgba(255,255,255,.055)':'rgba(130,190,210,.08)';
+        ctx.lineWidth=7+k*.25;ctx.stroke();
+      }
+      ctx.restore();
+      const glow=ctx.createRadialGradient(this.width*.72,this.height*.28,0,this.width*.72,this.height*.28,this.width*.48);
+      glow.addColorStop(0,'rgba(255,255,255,.13)');glow.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=glow;ctx.fillRect(0,0,this.width,this.height);
+    }
+
+    private drawMolecule(p:P3,q:Proj,t:number,c:ReturnType<WaterNetworkStory['colors']>,alpha:number,mix:number){
+      const ctx=this.ctx;
+      const moleculeAlpha=1-mix*.88;
+      const nodeAlpha=.22+mix*.78;
+      const rO=Math.max(2.2,6.8*q.s);
+      const arm=Math.max(4.5,13*q.s);
+      const angle=p.phase+t*.00016*p.spin;
+      const spread=.92;
+      const h1={x:q.x+Math.cos(angle-spread)*arm,y:q.y+Math.sin(angle-spread)*arm};
+      const h2={x:q.x+Math.cos(angle+spread)*arm,y:q.y+Math.sin(angle+spread)*arm};
+
+      if(moleculeAlpha>.04){
+        ctx.globalAlpha=alpha*moleculeAlpha*.78;
+        ctx.strokeStyle=c.bond;ctx.lineWidth=Math.max(1.2,2.5*q.s);ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(q.x,q.y);ctx.lineTo(h1.x,h1.y);ctx.moveTo(q.x,q.y);ctx.lineTo(h2.x,h2.y);ctx.stroke();
+        ctx.fillStyle=c.hydrogen;
+        const rh=Math.max(1.4,3.35*q.s);
+        ctx.beginPath();ctx.arc(h1.x,h1.y,rh,0,Math.PI*2);ctx.arc(h2.x,h2.y,rh,0,Math.PI*2);ctx.fill();
+      }
+
+      ctx.globalAlpha=alpha*nodeAlpha;
+      const og=ctx.createRadialGradient(q.x-rO*.28,q.y-rO*.32,rO*.12,q.x,q.y,rO);
+      og.addColorStop(0,c.oxygenHi);og.addColorStop(.32,c.oxygen);og.addColorStop(1,c.bg);
+      ctx.fillStyle=og;ctx.beginPath();ctx.arc(q.x,q.y,rO*(.82+mix*.15),0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+
+    private isNeighbour(index:number){
+      if(this.selected<0)return false;
+      return this.links.some(([a,b])=>(a===this.selected&&b===index)||(b===this.selected&&a===index));
+    }
+
+    private selectAt(e:MouseEvent){
+      if(this.scene<2)return;
+      const r=this.canvas.getBoundingClientRect();
+      const x=e.clientX-r.left,y=e.clientY-r.top;
+      const t=performance.now();
+      let best=-1,bestD=26;
+      this.molecules.forEach((p,i)=>{
+        const q=this.project(p,t);if(!q.visible)return;
+        const d=Math.hypot(q.x-x,q.y-y);
+        if(d<bestD){bestD=d;best=i;}
+      });
+      this.selected=best;
+      const label=this.querySelector<HTMLElement>('[data-water-selection]');
+      if(label)label.hidden=best<0;
+    }
+  }
+
+  if(!customElements.get('water-network-story'))customElements.define('water-network-story',WaterNetworkStory);
+</script>
