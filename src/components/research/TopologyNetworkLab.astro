@@ -125,6 +125,7 @@ const referenceJSON=JSON.stringify(reference);
   :global(.ring-face--right){fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.7;opacity:.66}
   :global(.ring-face--swap){fill:transparent;stroke:var(--text-3);stroke-width:1.2;stroke-dasharray:4 4;opacity:.72}
   :global(.ring-hit){fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
+  :global(.ring-hit:hover){stroke:var(--signal);stroke-width:1.35;fill:var(--signal-soft)}
   :global(.ring-hit:focus){outline:none}
   :global(.ring-hit:focus-visible){stroke:var(--signal);stroke-width:2;fill:var(--signal-soft)}
 
@@ -164,7 +165,6 @@ const referenceJSON=JSON.stringify(reference);
     private edges:Edge[]=[];
     private selected:Cell={i:7,j:5};
     private active=false;
-    private hover:Cell|null=null;
     private mode='network';
     private ro?:ResizeObserver;
     private io?:IntersectionObserver;
@@ -242,16 +242,6 @@ const referenceJSON=JSON.stringify(reference);
         this.updateReadout('Relaxed periodic network','The entanglement has been removed. Select any visible ring to choose a new swap site.');
       }));
 
-      this.svg.addEventListener('pointerover',e=>{
-        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
-        if(!hit)return;
-        this.hover={i:Number(hit.dataset.i),j:Number(hit.dataset.j)};
-        this.render();
-      });
-      this.svg.addEventListener('pointerout',e=>{
-        if(!(e.target as Element).closest('[data-ring]'))return;
-        this.hover=null;this.render();
-      });
       this.svg.addEventListener('click',e=>{
         const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
         if(!hit)return;
@@ -457,12 +447,11 @@ const referenceJSON=JSON.stringify(reference);
       const linkedKeys=new Set(linked.map(cell=>this.cellKey(cell)));
       const faces=(this.mode==='rings'||this.mode==='entangle'||this.mode==='entanglement')?cells.map(cell=>{
         const key=this.cellKey(cell);
-        const hovered=this.hover&&key===this.cellKey(this.hover);
         let cls='ring-face';
         if(this.active&&linked.length&&key===this.cellKey(linked[0]))cls='ring-face ring-face--left';
         else if(this.active&&linked.length&&key===this.cellKey(linked[1]))cls='ring-face ring-face--right';
         else if(this.active&&key===selectedKey)cls='ring-face ring-face--swap';
-        else if(key===selectedKey||hovered)cls='ring-face ring-face--selected';
+        else if(key===selectedKey)cls='ring-face ring-face--selected';
         else if(this.mode==='entanglement'&&!linkedKeys.has(key))return'';
         return `<polygon class="${cls}" points="${this.ringPolygon(cell,project)}"/>`;
       }).join(''):'';
