@@ -394,7 +394,7 @@ const referenceJSON=JSON.stringify(reference);
       this.svg.setAttribute('viewBox',`0 0 ${this.width} ${this.height}`);
 
       type Primitive=
-        |{type:'tube';d:string;depth:number;role:0|1|2;muted:boolean}
+        |{type:'tube';d:string;depth:number;role:0|1|2;muted:boolean;key:string|null}
         |{type:'node';x:number;y:number;depth:number;role:0|1|2;muted:boolean}
         |{type:'bead';x:number;y:number;depth:number;role:0|1|2};
 
@@ -410,7 +410,7 @@ const referenceJSON=JSON.stringify(reference);
         const muted=this.active&&this.mode==='entanglement'&&!isTemplate;
         for(const piece of this.chunks(points,isTemplate)){
           const q=piece.map(project);
-          primitives.push({type:'tube',d:this.smoothPath(piece,project),depth:q.reduce((sum,p)=>sum+p.depth,0)/q.length,role,muted});
+          primitives.push({type:'tube',d:this.smoothPath(piece,project),depth:q.reduce((sum,p)=>sum+p.depth,0)/q.length,role,muted,key:isTemplate?key:null});
         }
         if(isTemplate)points.slice(1,-1).forEach(p=>{
           const q=project(p);
@@ -434,7 +434,8 @@ const referenceJSON=JSON.stringify(reference);
         const roleClass=item.role===1?' network-signal':item.role===2?' network-cool':'';
         if(item.type==='tube'){
           const muted=item.muted?' network-muted':'';
-          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" data-ring-role="${item.role}" d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
+          const refKey=item.key?` data-reference-key="${item.key}"`:'';
+          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" data-ring-role="${item.role}"${refKey} d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
         }
         if(item.type==='bead')return `<circle class="network-bead${roleClass||' network-base'}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="2.3"/>`;
         const muted=item.muted?' network-node-muted':'';
