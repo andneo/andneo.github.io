@@ -71,8 +71,12 @@ const scenes = [
     </div>
 
     <script type="application/json" data-water-scenes set:html={JSON.stringify(scenes)}></script>
-<script is:inline type="module" src="/scripts/water-hero.js"></script>
   </water-network-story>
+  <script is:inline type="module">
+    import('/scripts/water-hero.js').catch(error=>{
+      console.error('Water hero failed to load',error);
+    });
+  </script>
 </section>
 
 <style>
@@ -82,8 +86,8 @@ const scenes = [
   .water-story__hero-canvas,.water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity 520ms cubic-bezier(.22,.61,.36,1)}
   .water-story__hero-canvas{z-index:1;opacity:0}
   .water-story__canvas{z-index:1;opacity:1}
-  .water-story[data-scene="0"] .water-story__hero-canvas{opacity:1}
-  .water-story[data-scene="0"] .water-story__canvas{opacity:0}
+  .water-story[data-scene="0"][data-hero-ready="true"] .water-story__hero-canvas{opacity:1}
+  .water-story[data-scene="0"][data-hero-ready="true"] .water-story__canvas{opacity:0}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
