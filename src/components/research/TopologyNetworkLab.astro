@@ -434,7 +434,7 @@ const referenceJSON=JSON.stringify(reference);
         const roleClass=item.role===1?' network-signal':item.role===2?' network-cool':'';
         if(item.type==='tube'){
           const muted=item.muted?' network-muted':'';
-          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
+          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" data-ring-role="${item.role}" d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
         }
         if(item.type==='bead')return `<circle class="network-bead${roleClass||' network-base'}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="2.3"/>`;
         const muted=item.muted?' network-node-muted':'';
