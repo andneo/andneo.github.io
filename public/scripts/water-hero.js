@@ -82,6 +82,8 @@ function makeStudioTexture(){
 class WaterHero{
   constructor(canvas){
     this.canvas=canvas;
+    this.canvas.dataset.renderer='threejs-water';
+    this.canvas.dataset.rendererReady='false';
     this.host=canvas.closest('water-network-story');
     this.stage=canvas.parentElement;
     this.active=true;
@@ -134,6 +136,7 @@ class WaterHero{
     this.sceneObserver.observe(this.host,{attributes:true,attributeFilter:['data-scene']});
     this.syncScene();
     this.resize();
+    this.canvas.dataset.rendererReady='true';
     this.frame=this.frame.bind(this);
     requestAnimationFrame(this.frame);
   }
