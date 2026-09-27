@@ -137,6 +137,7 @@ class WaterHero{
     this.syncScene();
     this.resize();
     this.canvas.dataset.rendererReady='true';
+    if(this.host)this.host.dataset.heroReady='true';
     this.frame=this.frame.bind(this);
     requestAnimationFrame(this.frame);
   }
