@@ -453,6 +453,15 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story).toHaveAttribute('data-scene','2');
  await expect(hero).toHaveCSS('opacity','0');
  await expect(canvas).toHaveCSS('opacity','1');
+
+ await story.getByRole('button',{name:/scene 1: Water looks simple/i}).click();
+ await expect(story).toHaveAttribute('data-scene','0');
+ await expect(story).toHaveAttribute('data-hero-ready','true');
+ await expect(hero).toHaveCSS('opacity','1');
+ await expect(canvas).toHaveCSS('opacity','0');
+
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
+ await expect(story).toHaveAttribute('data-scene','2');
  await expect(story.locator('[data-water-scale]')).toBeVisible();
  await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
 
