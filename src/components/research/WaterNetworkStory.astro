@@ -1,9 +1,9 @@
 ---
 const scenes = [
   {
-    kicker:'01 · familiar',
+    kicker:'',
     title:'Water looks simple.',
-    copy:'At human scale, liquid water appears continuous. Move closer and that familiar surface gives way to molecular structure.',
+    copy:'Look closer.',
   },
   {
     kicker:'02 · scale',
@@ -79,8 +79,11 @@ const scenes = [
   .water-story__stage{position:relative;height:min(74svh,720px);min-height:520px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
   .water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
+  .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
   .water-story__kicker{margin:0 0 .7rem;color:var(--cool);font:500 .64rem/1.2 var(--font-sans);letter-spacing:.14em;text-transform:uppercase}
+  .water-story[data-scene="0"] .water-story__kicker{display:none}
+  .water-story[data-scene="0"] .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){font-size:clamp(.9rem,1.25vw,1.05rem);color:var(--text-2)}
   .water-story__copy h3{max-width:12ch;margin:0 0 .8rem;font:600 clamp(1.8rem,3.8vw,4rem)/.96 var(--font-display);letter-spacing:-.06em;text-wrap:balance}
   .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:46ch;margin:0;color:var(--text-2);font:400 clamp(.82rem,1.2vw,.98rem)/1.68 var(--font-sans)}
   .water-story__scale{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.7rem;width:min(18rem,80%);margin-top:1.3rem;color:var(--text-3);font:500 .66rem/1 var(--font-sans);letter-spacing:.08em}
@@ -92,6 +95,7 @@ const scenes = [
   .water-story__rail button[aria-current=step]{background:var(--cool-soft);color:var(--cool)}
   .water-story__rail button:focus-visible,.water-story__pause:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
   .water-story__pause{min-height:2.3rem;padding:.4rem .7rem;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface) 80%,transparent);color:var(--text-2);font:500 .62rem/1 var(--font-sans);cursor:pointer;backdrop-filter:blur(10px)}
+  .water-story[data-scene="0"] .water-story__pause{visibility:hidden}
   .water-story__representation{position:absolute;z-index:5;right:clamp(1rem,3vw,2.2rem);top:clamp(1rem,3vw,2rem);width:min(16rem,34vw);padding:.7rem .8rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--surface) 84%,transparent);backdrop-filter:blur(12px)}
   .water-story__representation label{display:block;margin-bottom:.55rem;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
   .water-story__representation input{width:100%;accent-color:var(--cool)}
@@ -358,86 +362,219 @@ const scenes = [
       }
     }
 
+    private waterTopY(x:number,t:number,left:number,right:number,top:number){
+      const u=(x-left)/Math.max(1,right-left);
+      return top
+        +Math.sin(u*Math.PI*2.1+t*.00042)*5.2
+        +Math.sin(u*Math.PI*5.4-t*.00029+1.1)*2.4
+        +Math.sin(u*Math.PI*1.15+t*.00017+.4)*3.4;
+    }
+
     private drawWaterSurface(t:number,c:ReturnType<WaterNetworkStory['colors']>){
       const ctx=this.ctx;
       const w=this.width,h=this.height;
+      const dark=document.documentElement.dataset.theme==='dark';
 
-      // Deep body of water.
-      const sky=ctx.createLinearGradient(0,0,0,h);
-      sky.addColorStop(0,'#6e9fb0');
-      sky.addColorStop(.24,'#396a7c');
-      sky.addColorStop(.58,'#173b49');
-      sky.addColorStop(1,'#0b2029');
-      ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+      // Quiet exhibition-space background: the water is the object, not the backdrop.
+      const bg=ctx.createRadialGradient(w*.67,h*.38,20,w*.62,h*.44,Math.max(w,h)*.88);
+      bg.addColorStop(0,dark?'#182328':'#d8e0df');
+      bg.addColorStop(.48,dark?'#10171b':'#c9d2d1');
+      bg.addColorStop(1,dark?'#080d10':'#b9c3c3');
+      ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
 
-      // A gently moving perspective surface. The horizontal displacement and
-      // highlight modulation provide a continuous reflection/refraction cue.
-      const horizon=h*.24;
-      const bands=70;
-      for(let j=0;j<bands;j++){
-        const v=j/(bands-1);
-        const y=horizon+v*(h-horizon);
-        const perspective=.2+.8*v;
-        const amp=(2+12*v)*perspective;
-        const wave=Math.sin(t*.00055+j*.43)*amp*.45+Math.sin(t*.00031-j*.21)*amp*.28;
-        const line=ctx.createLinearGradient(0,y,w,y);
-        const shimmer=.05+.12*(.5+.5*Math.sin(t*.0008+j*.78));
-        line.addColorStop(0,`rgba(190,226,236,${shimmer*.35})`);
-        line.addColorStop(.38,`rgba(232,247,250,${shimmer})`);
-        line.addColorStop(.58,`rgba(105,171,191,${shimmer*.32})`);
-        line.addColorStop(1,`rgba(230,246,250,${shimmer*.55})`);
-        ctx.strokeStyle=line;
-        ctx.lineWidth=1+2.6*v;
-        ctx.beginPath();
-        for(let x=-20;x<=w+20;x+=8){
-          const local=wave
-            +Math.sin(x*.014+t*.00062+j*.17)*amp
-            +Math.sin(x*.034-t*.00046+j*.37)*amp*.33;
-          const yy=y+local;
-          if(x===-20)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
-        }
-        ctx.stroke();
+      // Large soft studio source behind the object, used as a readable refraction target.
+      const panelX=w*.70,panelY=h*.28;
+      const panel=ctx.createRadialGradient(panelX,panelY,0,panelX,panelY,w*.32);
+      panel.addColorStop(0,dark?'rgba(230,243,244,.17)':'rgba(255,255,255,.66)');
+      panel.addColorStop(.45,dark?'rgba(146,181,188,.06)':'rgba(244,248,246,.24)');
+      panel.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=panel;ctx.fillRect(0,0,w,h);
+
+      const left=w*.405;
+      const right=w*.915;
+      const top=h*.235;
+      const nearTop=top+h*.105;
+      const bottom=h*.785;
+      const depthX=w*.024;
+      const radius=Math.min(w,h)*.035;
+
+      // Grounding shadow: this is a suspended material object with volume.
+      ctx.save();
+      ctx.filter='blur(18px)';
+      const shadow=ctx.createRadialGradient((left+right)*.5,bottom+h*.055,10,(left+right)*.5,bottom+h*.055,(right-left)*.54);
+      shadow.addColorStop(0,'rgba(0,0,0,.28)');
+      shadow.addColorStop(.55,'rgba(0,0,0,.12)');
+      shadow.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=shadow;
+      ctx.beginPath();ctx.ellipse((left+right)*.5,bottom+h*.055,(right-left)*.52,h*.055,0,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+
+      // Front/body silhouette with a living upper interface.
+      const body=new Path2D();
+      body.moveTo(left,nearTop);
+      for(let x=left;x<=right;x+=7){
+        const y=this.waterTopY(x,t,left,right,nearTop);
+        body.lineTo(x,y);
       }
+      body.quadraticCurveTo(right+depthX*.30,nearTop+h*.03,right-depthX*.10,bottom-radius);
+      body.quadraticCurveTo(right-depthX*.12,bottom,left+radius,bottom);
+      body.quadraticCurveTo(left-depthX*.22,bottom,left,nearTop);
+      body.closePath();
 
-      // Broad reflection patches that drift without user input.
+      ctx.save();
+      ctx.clip(body);
+
+      // Transmitted body colour. Thin upper water remains almost colourless;
+      // depth gradually acquires a blue-green cast.
+      const water=ctx.createLinearGradient(left,nearTop,right,bottom);
+      water.addColorStop(0,dark?'rgba(160,206,216,.30)':'rgba(226,244,245,.56)');
+      water.addColorStop(.28,dark?'rgba(68,139,158,.55)':'rgba(129,190,204,.60)');
+      water.addColorStop(.70,dark?'rgba(21,78,96,.82)':'rgba(56,126,148,.74)');
+      water.addColorStop(1,dark?'rgba(7,42,56,.94)':'rgba(24,84,106,.88)');
+      ctx.fillStyle=water;ctx.fillRect(left-depthX,top,right-left+depthX*2,bottom-top);
+
+      // Refracted "window" shapes. Their lateral wobble differs with depth,
+      // suggesting the background is being seen through a lensing medium.
       ctx.save();
       ctx.globalCompositeOperation='screen';
-      for(let k=0;k<7;k++){
-        const cx=w*(.18+.12*k)+Math.sin(t*.00019+k)*w*.035;
-        const cy=h*(.32+.075*k)+Math.cos(t*.00023+k*.8)*h*.02;
-        const rx=w*(.10+.018*k),ry=h*(.018+.008*k);
-        const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,rx);
-        rg.addColorStop(0,'rgba(255,255,255,.16)');
-        rg.addColorStop(.45,'rgba(194,229,238,.07)');
+      for(let k=0;k<5;k++){
+        const v=(k+.65)/5.6;
+        const yy=nearTop+(bottom-nearTop)*v;
+        const wobble=Math.sin(t*.00033+k*1.7)*18*(.35+v);
+        const cx=left+(right-left)*(.30+.11*k)+wobble;
+        const rx=(right-left)*(.10+.018*k);
+        const ry=h*(.027+.009*k);
+        const rg=ctx.createRadialGradient(cx,yy,0,cx,yy,rx);
+        rg.addColorStop(0,dark?'rgba(222,246,248,.19)':'rgba(255,255,255,.33)');
+        rg.addColorStop(.55,dark?'rgba(126,191,205,.07)':'rgba(213,240,244,.12)');
         rg.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.save();
-        ctx.translate(cx,cy);ctx.scale(1,ry/rx);
-        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,rx,0,Math.PI*2);ctx.fill();
-        ctx.restore();
+        ctx.save();ctx.translate(cx,yy);ctx.scale(1,ry/rx);
+        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,rx,0,Math.PI*2);ctx.fill();ctx.restore();
       }
       ctx.restore();
 
-      // Darker foreground adds depth and makes the surface read as a body of water.
-      const depth=ctx.createLinearGradient(0,h*.54,0,h);
-      depth.addColorStop(0,'rgba(4,22,29,0)');
-      depth.addColorStop(1,'rgba(4,17,23,.58)');
-      ctx.fillStyle=depth;ctx.fillRect(0,h*.5,w,h*.5);
+      // Sparse internal depth references. They are intentionally not "particles"
+      // of the model — just optical motes that make thickness legible.
+      for(let k=0;k<24;k++){
+        const rx=this.rand(900+k*5);
+        const ry=this.rand(901+k*5);
+        const phase=this.rand(902+k*5)*Math.PI*2;
+        const x=left+(right-left)*(.05+.90*rx)+Math.sin(t*.00018+phase)*3.5;
+        const y=nearTop+(bottom-nearTop)*(.08+.84*ry)+Math.cos(t*.00013+phase)*2.6;
+        const r=.7+1.7*this.rand(903+k*5);
+        ctx.globalAlpha=.07+.12*this.rand(904+k*5);
+        ctx.fillStyle=dark?'#d9f0f3':'#f8ffff';
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
 
-      // Soft moving caustic-like light.
+      // Broad internal caustics: low-frequency, not a swimming-pool texture.
       ctx.save();
       ctx.globalCompositeOperation='screen';
-      ctx.globalAlpha=.24;
-      for(let k=0;k<11;k++){
-        const x=w*(k/10)+Math.sin(t*.00027+k*1.7)*28;
-        const y=h*(.42+.035*Math.sin(k*.9+t*.00021));
-        ctx.strokeStyle='rgba(198,237,244,.16)';
-        ctx.lineWidth=2.2;
+      ctx.globalAlpha=dark?.20:.26;
+      for(let k=0;k<5;k++){
+        const y=nearTop+h*(.15+.082*k)+Math.sin(t*.00017+k)*5;
+        const x0=left+(right-left)*(.05+.04*k);
+        const x1=right-(right-left)*(.08+.025*k);
+        ctx.strokeStyle=dark?'rgba(184,229,236,.22)':'rgba(245,255,255,.34)';
+        ctx.lineWidth=1.3+1.1*k;
         ctx.beginPath();
-        ctx.moveTo(x-80,y+18);
-        ctx.quadraticCurveTo(x,y-22,x+85,y+15);
+        ctx.moveTo(x0,y+9*Math.sin(t*.0002+k));
+        ctx.bezierCurveTo(
+          left+(right-left)*.34,y-18+8*Math.cos(t*.00019+k*.8),
+          left+(right-left)*.68,y+15+6*Math.sin(t*.00016+k*1.2),
+          x1,y-3
+        );
         ctx.stroke();
       }
       ctx.restore();
+
+      // Depth falloff near the front/bottom of the slab.
+      const depth=ctx.createLinearGradient(0,nearTop,0,bottom);
+      depth.addColorStop(0,'rgba(0,18,24,0)');
+      depth.addColorStop(.65,'rgba(0,18,24,.10)');
+      depth.addColorStop(1,dark?'rgba(0,14,20,.42)':'rgba(0,39,54,.22)');
+      ctx.fillStyle=depth;ctx.fillRect(left,nearTop,right-left,bottom-nearTop);
+      ctx.restore();
+
+      // Right side face: slightly darker/refraction-heavy to make thickness explicit.
+      const side=new Path2D();
+      const sideTop=this.waterTopY(right,t,left,right,nearTop);
+      side.moveTo(right,sideTop);
+      side.lineTo(right+depthX,top+h*.055);
+      side.lineTo(right+depthX*.80,bottom-h*.045);
+      side.quadraticCurveTo(right+depthX*.55,bottom,right,bottom);
+      side.closePath();
+      const sg=ctx.createLinearGradient(right,top,right+depthX,bottom);
+      sg.addColorStop(0,dark?'rgba(139,201,214,.26)':'rgba(229,249,250,.42)');
+      sg.addColorStop(1,dark?'rgba(4,38,52,.72)':'rgba(32,101,122,.58)');
+      ctx.fillStyle=sg;ctx.fill(side);
+
+      // Top surface is rendered separately: broad coherent modes + specular reflection.
+      const topSurface=new Path2D();
+      topSurface.moveTo(left+depthX,top);
+      for(let x=left+depthX;x<=right+depthX;x+=7){
+        const u=(x-(left+depthX))/(right-left);
+        const y=top
+          +Math.sin(u*Math.PI*2.05+t*.00042)*3.8
+          +Math.sin(u*Math.PI*5.0-t*.00027+.8)*1.8;
+        topSurface.lineTo(x,y);
+      }
+      for(let x=right;x>=left;x-=7){
+        topSurface.lineTo(x,this.waterTopY(x,t,left,right,nearTop));
+      }
+      topSurface.closePath();
+
+      const tg=ctx.createLinearGradient(left,top,right,nearTop+h*.03);
+      tg.addColorStop(0,dark?'rgba(183,220,225,.28)':'rgba(247,255,255,.64)');
+      tg.addColorStop(.43,dark?'rgba(72,136,151,.42)':'rgba(157,207,217,.52)');
+      tg.addColorStop(1,dark?'rgba(29,87,103,.54)':'rgba(92,158,177,.58)');
+      ctx.fillStyle=tg;ctx.fill(topSurface);
+
+      ctx.save();ctx.clip(topSurface);ctx.globalCompositeOperation='screen';
+      // One dominant soft studio reflection, deformed by the water rather than many stripes.
+      const reflX=left+(right-left)*(.57)+Math.sin(t*.00016)*16;
+      const reflY=top+h*.052+Math.sin(t*.00021)*3;
+      const refl=ctx.createRadialGradient(reflX,reflY,0,reflX,reflY,(right-left)*.31);
+      refl.addColorStop(0,dark?'rgba(255,255,255,.50)':'rgba(255,255,255,.82)');
+      refl.addColorStop(.24,dark?'rgba(225,246,248,.22)':'rgba(255,255,255,.40)');
+      refl.addColorStop(.70,'rgba(255,255,255,.035)');
+      refl.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.save();ctx.translate(reflX,reflY);ctx.scale(1,.105);
+      ctx.fillStyle=refl;ctx.beginPath();ctx.arc(0,0,(right-left)*.31,0,Math.PI*2);ctx.fill();ctx.restore();
+
+      // Smaller glints travel across the crests.
+      for(let k=0;k<4;k++){
+        const u=(.16+k*.205+((t*.000018*(k+1))%1))%1;
+        const x=left+(right-left)*u;
+        const y=this.waterTopY(x,t,left,right,nearTop)-h*.020;
+        const gl=ctx.createRadialGradient(x,y,0,x,y,w*.045);
+        gl.addColorStop(0,dark?'rgba(255,255,255,.42)':'rgba(255,255,255,.70)');
+        gl.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.fillStyle=gl;ctx.fillRect(x-w*.05,y-h*.025,w*.10,h*.05);
+      }
+      ctx.restore();
+
+      // Refractive/rim contour — no cartoon outline, just grazing-angle light.
+      ctx.save();
+      ctx.strokeStyle=dark?'rgba(204,238,242,.42)':'rgba(255,255,255,.66)';
+      ctx.lineWidth=1.25;
+      ctx.shadowColor=dark?'rgba(119,205,220,.20)':'rgba(255,255,255,.28)';
+      ctx.shadowBlur=8;
+      ctx.stroke(topSurface);
+      ctx.stroke(body);
+      ctx.restore();
+
+      // Near-bottom refractive band gives the slab a thick-lens edge.
+      const edge=ctx.createLinearGradient(left,bottom-h*.04,right,bottom);
+      edge.addColorStop(0,'rgba(255,255,255,0)');
+      edge.addColorStop(.55,dark?'rgba(174,226,234,.13)':'rgba(233,252,255,.27)');
+      edge.addColorStop(1,dark?'rgba(215,246,248,.24)':'rgba(255,255,255,.46)');
+      ctx.strokeStyle=edge;ctx.lineWidth=2.2;
+      ctx.beginPath();
+      ctx.moveTo(left+radius,bottom-1);
+      ctx.quadraticCurveTo((left+right)*.56,bottom+2,right-2,bottom-radius*.65);
+      ctx.stroke();
     }
 
     private drawMolecule(p:P3,q:Proj,t:number,c:ReturnType<WaterNetworkStory['colors']>,alpha:number,mix:number){
