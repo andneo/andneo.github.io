@@ -425,6 +425,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story).toBeVisible();
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
+ await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
+ await expect(story.locator('[data-water-kicker]')).toBeHidden();
 
  const box=await canvas.boundingBox();
  expect(box).not.toBeNull();
@@ -457,7 +459,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await slider.fill('15');
  expect(Number(await slider.inputValue())).toBe(15);
 
- const pause=story.getByRole('button',{name:'Pause motion'});
+ const pause=story.locator('[data-water-pause]');
+ await expect(pause).toBeVisible();
  await pause.click();
  await expect(pause).toHaveAttribute('aria-pressed','true');
  await expect(pause).toHaveText('Resume motion');
