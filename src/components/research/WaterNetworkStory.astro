@@ -28,13 +28,7 @@ const scenes = [
 ];
 ---
 
-<section class="water-story-shell" aria-labelledby="water-story-heading">
-  <div class="water-story-shell__intro">
-    <p class="eyebrow">Interactive exhibit</p>
-    <h2 id="water-story-heading">Enter the network.</h2>
-    <p>Start with the material itself. Scroll at your own pace; pause anywhere, inspect a molecule, or move back through the story.</p>
-  </div>
-
+<section class="water-story-shell" aria-label="Water network visualization">
   <water-network-story class="water-story" data-scene="0">
     <div class="water-story__stage" data-water-stage>
       <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
@@ -73,11 +67,6 @@ const scenes = [
         <div><span>H₂O</span><span>network</span></div>
       </div>
 
-      <p class="water-story__hint" data-water-hint>scroll to look closer ↓</p>
-    </div>
-
-    <div class="water-story__scroll-track" aria-hidden="true">
-      {scenes.map((_,index)=><div data-water-marker={index}></div>)}
     </div>
 
     <script type="application/json" data-water-scenes set:html={JSON.stringify(scenes)}></script>
@@ -85,19 +74,14 @@ const scenes = [
 </section>
 
 <style>
-  .water-story-shell{margin:clamp(2.5rem,6vw,6rem) 0 clamp(4rem,9vw,8rem)}
-  .water-story-shell__intro{display:grid;grid-template-columns:minmax(0,.72fr) minmax(18rem,1.28fr);gap:clamp(1.5rem,5vw,5rem);align-items:end;margin-bottom:1.4rem}
-  .water-story-shell__intro .eyebrow{grid-column:1/-1;margin:0}
-  .water-story-shell__intro h2{margin:0;font:600 clamp(2.4rem,5vw,5.6rem)/.92 var(--font-display);letter-spacing:-.065em}
-  .water-story-shell__intro>p:last-child{max-width:62ch;margin:0;color:var(--text-2);font:400 clamp(.88rem,1.25vw,1.02rem)/1.7 var(--font-sans)}
-
-  .water-story{position:relative;display:block;min-height:340vh}
-  .water-story__stage{position:sticky;top:5.4rem;height:min(78svh,760px);min-height:510px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
+  .water-story-shell{margin:clamp(1.5rem,3vw,2.5rem) 0 clamp(4rem,8vw,7rem)}
+  .water-story{position:relative;display:block}
+  .water-story__stage{position:relative;height:min(74svh,720px);min-height:520px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
   .water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
   .water-story__kicker{margin:0 0 .7rem;color:var(--cool);font:500 .64rem/1.2 var(--font-sans);letter-spacing:.14em;text-transform:uppercase}
-  .water-story__copy h3{max-width:12ch;margin:0 0 .8rem;font:600 clamp(2.1rem,4.8vw,5.2rem)/.92 var(--font-display);letter-spacing:-.06em;text-wrap:balance}
+  .water-story__copy h3{max-width:12ch;margin:0 0 .8rem;font:600 clamp(1.8rem,3.8vw,4rem)/.96 var(--font-display);letter-spacing:-.06em;text-wrap:balance}
   .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:46ch;margin:0;color:var(--text-2);font:400 clamp(.82rem,1.2vw,.98rem)/1.68 var(--font-sans)}
   .water-story__scale{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.7rem;width:min(18rem,80%);margin-top:1.3rem;color:var(--text-3);font:500 .66rem/1 var(--font-sans);letter-spacing:.08em}
   .water-story__scale span{height:1px;background:currentColor}
@@ -112,24 +96,17 @@ const scenes = [
   .water-story__representation label{display:block;margin-bottom:.55rem;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
   .water-story__representation input{width:100%;accent-color:var(--cool)}
   .water-story__representation div{display:flex;justify-content:space-between;color:var(--text-3);font:500 .58rem/1 var(--font-sans)}
-  .water-story__hint{position:absolute;z-index:4;right:clamp(1rem,3vw,2rem);top:50%;margin:0;writing-mode:vertical-rl;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.1em;text-transform:uppercase;opacity:.8;transform:translateY(-50%)}
-  .water-story__scroll-track{position:absolute;inset:0;pointer-events:none}
-  .water-story__scroll-track>div{height:68vh}
 
   :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
   :global(:root[data-theme=light]) .water-story__stage{background:#dfe9ec}
 
   @media(max-width:760px){
-    .water-story-shell__intro{grid-template-columns:1fr}
-    .water-story-shell__intro .eyebrow{grid-column:auto}
-    .water-story{min-height:300vh}
-    .water-story__stage{top:4.6rem;height:72svh;min-height:520px;border-radius:18px}
+    .water-story__stage{height:70svh;min-height:520px;border-radius:18px}
     .water-story__wash{background:linear-gradient(0deg,color-mix(in srgb,var(--bg) 86%,transparent) 0%,color-mix(in srgb,var(--bg) 30%,transparent) 43%,transparent 70%)}
     .water-story__copy{left:1.1rem;right:1.1rem;top:auto;bottom:5.2rem;width:auto;transform:none}
     .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
     .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
-    .water-story__hint{display:none}
     .water-story__pause{font-size:.58rem}
   }
 </style>
@@ -183,7 +160,7 @@ const scenes = [
       this.raf=requestAnimationFrame(t=>this.frame(t));
     }
 
-    disconnectedCallback(){cancelAnimationFrame(this.raf);this.ro?.disconnect();this.io?.disconnect();window.removeEventListener('scroll',this.onScroll);}
+    disconnectedCallback(){cancelAnimationFrame(this.raf);this.ro?.disconnect();this.io?.disconnect();}
 
     private rand(seed:number){const x=Math.sin(seed*12.9898+78.233)*43758.5453;return x-Math.floor(x);}
 
@@ -209,7 +186,7 @@ const scenes = [
     private bind(){
       this.querySelectorAll<HTMLButtonElement>('[data-water-jump]').forEach(button=>button.addEventListener('click',()=>{
         const index=Number(button.dataset.waterJump);
-        this.scrollToScene(index);
+        this.setScene(index);
       }));
       this.querySelector<HTMLButtonElement>('[data-water-pause]')?.addEventListener('click',e=>{
         this.paused=!this.paused;
@@ -228,25 +205,6 @@ const scenes = [
       });
       this.stage.addEventListener('pointerleave',()=>this.pointer.active=false);
       this.canvas.addEventListener('click',e=>this.selectAt(e));
-      window.addEventListener('scroll',this.onScroll,{passive:true});
-      this.onScroll();
-    }
-
-    private onScroll=()=>{
-      const rect=this.getBoundingClientRect();
-      const viewport=window.innerHeight;
-      const travel=Math.max(1,rect.height-viewport);
-      const progress=Math.max(0,Math.min(1,-rect.top/travel));
-      const next=Math.max(0,Math.min(this.scenes.length-1,Math.round(progress*(this.scenes.length-1))));
-      if(next!==this.targetScene)this.setScene(next);
-    };
-
-    private scrollToScene(index:number){
-      const rect=this.getBoundingClientRect();
-      const top=window.scrollY+rect.top;
-      const travel=Math.max(1,rect.height-window.innerHeight);
-      const ratio=index/Math.max(1,this.scenes.length-1);
-      window.scrollTo({top:top+travel*ratio,behavior:this.reduced?'auto':'smooth'});
     }
 
     private setScene(index:number,immediate=false){
@@ -268,8 +226,6 @@ const scenes = [
       if(scale)scale.hidden=index<2;
       const repr=this.querySelector<HTMLElement>('[data-water-representation]');
       if(repr)repr.hidden=index!==4;
-      const hint=this.querySelector<HTMLElement>('[data-water-hint]');
-      if(hint)hint.textContent=index===this.scenes.length-1?'select a molecule to inspect':'scroll to continue ↓';
       if(index<2)this.selected=-1;
       if(immediate){
         this.mix=index===4?.88:0;
@@ -404,25 +360,84 @@ const scenes = [
 
     private drawWaterSurface(t:number,c:ReturnType<WaterNetworkStory['colors']>){
       const ctx=this.ctx;
-      const grd=ctx.createLinearGradient(0,0,this.width,this.height);
-      grd.addColorStop(0,c.bg2);grd.addColorStop(.55,c.bg);grd.addColorStop(1,c.bg2);
-      ctx.fillStyle=grd;ctx.fillRect(0,0,this.width,this.height);
+      const w=this.width,h=this.height;
+
+      // Deep body of water.
+      const sky=ctx.createLinearGradient(0,0,0,h);
+      sky.addColorStop(0,'#6e9fb0');
+      sky.addColorStop(.24,'#396a7c');
+      sky.addColorStop(.58,'#173b49');
+      sky.addColorStop(1,'#0b2029');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+
+      // A gently moving perspective surface. The horizontal displacement and
+      // highlight modulation provide a continuous reflection/refraction cue.
+      const horizon=h*.24;
+      const bands=70;
+      for(let j=0;j<bands;j++){
+        const v=j/(bands-1);
+        const y=horizon+v*(h-horizon);
+        const perspective=.2+.8*v;
+        const amp=(2+12*v)*perspective;
+        const wave=Math.sin(t*.00055+j*.43)*amp*.45+Math.sin(t*.00031-j*.21)*amp*.28;
+        const line=ctx.createLinearGradient(0,y,w,y);
+        const shimmer=.05+.12*(.5+.5*Math.sin(t*.0008+j*.78));
+        line.addColorStop(0,`rgba(190,226,236,${shimmer*.35})`);
+        line.addColorStop(.38,`rgba(232,247,250,${shimmer})`);
+        line.addColorStop(.58,`rgba(105,171,191,${shimmer*.32})`);
+        line.addColorStop(1,`rgba(230,246,250,${shimmer*.55})`);
+        ctx.strokeStyle=line;
+        ctx.lineWidth=1+2.6*v;
+        ctx.beginPath();
+        for(let x=-20;x<=w+20;x+=8){
+          const local=wave
+            +Math.sin(x*.014+t*.00062+j*.17)*amp
+            +Math.sin(x*.034-t*.00046+j*.37)*amp*.33;
+          const yy=y+local;
+          if(x===-20)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
+        }
+        ctx.stroke();
+      }
+
+      // Broad reflection patches that drift without user input.
       ctx.save();
       ctx.globalCompositeOperation='screen';
-      for(let k=0;k<9;k++){
-        const y=this.height*(.15+k*.095);
-        ctx.beginPath();
-        for(let x=-20;x<=this.width+20;x+=12){
-          const yy=y+Math.sin(x*.012+t*.0007+k)*10+Math.sin(x*.028-t*.00045+k*.7)*4;
-          if(x<0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
-        }
-        ctx.strokeStyle=k%2? 'rgba(255,255,255,.055)':'rgba(130,190,210,.08)';
-        ctx.lineWidth=7+k*.25;ctx.stroke();
+      for(let k=0;k<7;k++){
+        const cx=w*(.18+.12*k)+Math.sin(t*.00019+k)*w*.035;
+        const cy=h*(.32+.075*k)+Math.cos(t*.00023+k*.8)*h*.02;
+        const rx=w*(.10+.018*k),ry=h*(.018+.008*k);
+        const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,rx);
+        rg.addColorStop(0,'rgba(255,255,255,.16)');
+        rg.addColorStop(.45,'rgba(194,229,238,.07)');
+        rg.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.save();
+        ctx.translate(cx,cy);ctx.scale(1,ry/rx);
+        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,rx,0,Math.PI*2);ctx.fill();
+        ctx.restore();
       }
       ctx.restore();
-      const glow=ctx.createRadialGradient(this.width*.72,this.height*.28,0,this.width*.72,this.height*.28,this.width*.48);
-      glow.addColorStop(0,'rgba(255,255,255,.13)');glow.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=glow;ctx.fillRect(0,0,this.width,this.height);
+
+      // Darker foreground adds depth and makes the surface read as a body of water.
+      const depth=ctx.createLinearGradient(0,h*.54,0,h);
+      depth.addColorStop(0,'rgba(4,22,29,0)');
+      depth.addColorStop(1,'rgba(4,17,23,.58)');
+      ctx.fillStyle=depth;ctx.fillRect(0,h*.5,w,h*.5);
+
+      // Soft moving caustic-like light.
+      ctx.save();
+      ctx.globalCompositeOperation='screen';
+      ctx.globalAlpha=.24;
+      for(let k=0;k<11;k++){
+        const x=w*(k/10)+Math.sin(t*.00027+k*1.7)*28;
+        const y=h*(.42+.035*Math.sin(k*.9+t*.00021));
+        ctx.strokeStyle='rgba(198,237,244,.16)';
+        ctx.lineWidth=2.2;
+        ctx.beginPath();
+        ctx.moveTo(x-80,y+18);
+        ctx.quadraticCurveTo(x,y-22,x+85,y+15);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     private drawMolecule(p:P3,q:Proj,t:number,c:ReturnType<WaterNetworkStory['colors']>,alpha:number,mix:number){
