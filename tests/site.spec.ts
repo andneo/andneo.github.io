@@ -410,6 +410,44 @@ test('homepage research is organised as four themes with selected publication ev
  expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
 });
 
+test('water network story moves from familiar water to an inspectable network at the visitor pace',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/research/topology-networked-matter/');
+
+ const story=page.locator('water-network-story');
+ const canvas=story.locator('[data-water-canvas]');
+ await expect(story).toBeVisible();
+ await expect(story).toHaveAttribute('data-scene','0');
+ await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
+ const box=await canvas.boundingBox();
+ expect(box).not.toBeNull();
+ expect(box!.width).toBeGreaterThan(700);
+ expect(box!.height).toBeGreaterThan(450);
+
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
+ await expect(story).toHaveAttribute('data-scene','2');
+ await expect(story.locator('[data-water-scale]')).toBeVisible();
+ await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
+
+ await story.getByRole('button',{name:/scene 4: Water is a network/i}).click();
+ await expect(story).toHaveAttribute('data-scene','3');
+ await expect(story.locator('[data-water-title]')).toHaveText('Water is a network.');
+
+ await story.getByRole('button',{name:/scene 5: Same liquid/i}).click();
+ await expect(story).toHaveAttribute('data-scene','4');
+ const slider=story.locator('[data-water-mix]');
+ await expect(slider).toBeVisible();
+ await slider.fill('15');
+ expect(Number(await slider.inputValue())).toBe(15);
+
+ const pause=story.getByRole('button',{name:'Pause motion'});
+ await pause.click();
+ await expect(pause).toHaveAttribute('aria-pressed','true');
+ await expect(pause).toHaveText('Resume motion');
+
+ await expect(page.locator('topology-network-lab')).toBeVisible();
+});
+
 test('topology research page uses the measured one-swap motif and relocates it with selection',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/research/topology-networked-matter/');
