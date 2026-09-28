@@ -432,6 +432,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(waterDemo.locator('html')).toHaveAttribute('data-water-bounds','cropped-edge-to-edge');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-pool-width','baseline');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-wave-driving','occasional-drops-only');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-view-scale','pulled-back');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-drop-cadence','moderately-more-frequent');
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
@@ -441,9 +443,11 @@ test('water network story is contained, button-driven and replaces the old topol
  const lensCanvas=story.locator('[data-water-lens-canvas]');
  await expect(lens).toBeVisible();
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
- await expect(lensCanvas).toHaveAttribute('data-molecule-count','14');
+ await expect(lensCanvas).toHaveAttribute('data-molecule-count','26');
+ await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-excluded-volume-directional-hbond');
  await expect(story).toHaveAttribute('data-lens-ready','true');
  await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-visible-molecules'))).toBeGreaterThan(5);
 
  const heroBox=await hero.boundingBox();
  expect(heroBox).not.toBeNull();
