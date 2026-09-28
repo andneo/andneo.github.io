@@ -45,12 +45,16 @@ const scenes = [
       <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
 
       <div class="water-story__lens" data-water-lens aria-label="Magnified molecular view of water">
-        <div class="water-story__lens-handle" aria-hidden="true"></div>
-        <div class="water-story__lens-rim">
-          <div class="water-story__lens-glass">
-            <canvas class="water-story__lens-canvas" data-water-lens-canvas aria-label="Dynamic water molecules forming transient hydrogen bonds"></canvas>
-          </div>
+        <div class="water-story__lens-window">
+          <canvas class="water-story__lens-canvas" data-water-lens-canvas aria-label="Dynamic water molecules forming transient hydrogen bonds"></canvas>
         </div>
+        <img
+          class="water-story__lens-photo"
+          src="https://i.ebayimg.com/images/g/NbYAAOSwmUpm2Hr4/s-l1600.jpg"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+        />
       </div>
 
       <div class="water-story__wash" aria-hidden="true"></div>
@@ -103,17 +107,11 @@ const scenes = [
   .water-story__canvas{z-index:1;opacity:1}
   .water-story[data-scene="0"] .water-story__hero-frame{opacity:1}
   .water-story[data-scene="0"] .water-story__canvas{opacity:0}
-  .water-story__lens{position:absolute;z-index:4;right:clamp(1.1rem,3.5vw,3.2rem);top:48%;width:clamp(340px,35vw,475px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
+  .water-story__lens{position:absolute;z-index:4;right:clamp(.65rem,1.8vw,1.5rem);top:49%;width:clamp(440px,40vw,565px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
   .water-story[data-scene="0"] .water-story__lens{opacity:1}
-  .water-story__lens-rim{position:relative;width:100%;height:100%;box-sizing:border-box;padding:13px;border-radius:50%;background:conic-gradient(from 225deg,#7b5504,#e8c14a 13%,#fff0a1 21%,#b17d07 38%,#f0cd59 57%,#8d6205 76%,#f6d96b 90%,#7b5504);box-shadow:0 22px 48px rgba(0,0,0,.30),inset 0 2px 4px rgba(255,249,194,.80),inset 0 -4px 7px rgba(75,47,0,.36)}
-  .water-story__lens-rim::after{content:"";position:absolute;inset:4px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(83,55,3,.48),inset 0 0 0 5px rgba(255,232,121,.18);pointer-events:none}
-  .water-story__lens-glass{position:relative;width:100%;height:100%;overflow:hidden;border-radius:50%;background:radial-gradient(circle at 42% 38%,rgba(242,252,249,.25),rgba(186,220,223,.11) 58%,rgba(91,143,157,.12));box-shadow:inset 0 0 0 1px rgba(255,255,255,.46),inset 0 0 34px rgba(230,248,250,.16)}
-  .water-story__lens-glass::before{content:"";position:absolute;left:11%;top:8%;width:54%;height:24%;border-radius:50%;background:linear-gradient(150deg,rgba(255,255,255,.48),rgba(255,255,255,.09) 58%,transparent 76%);transform:rotate(-8deg);pointer-events:none;z-index:2}
-  .water-story__lens-glass::after{content:"";position:absolute;right:9%;bottom:10%;width:38%;height:18%;border-radius:50%;background:linear-gradient(330deg,rgba(255,255,255,.20),rgba(255,255,255,0));transform:rotate(11deg);pointer-events:none;z-index:2}
+  .water-story__lens-window{position:absolute;z-index:0;left:8.5%;top:4.5%;width:48.5%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:rgba(111,171,190,.24);box-shadow:inset 0 0 26px rgba(232,250,255,.16)}
   .water-story__lens-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-  .water-story__lens-handle{position:absolute;z-index:-1;right:-41%;bottom:-3%;width:66%;height:13%;border-radius:999px;transform:rotate(36deg);transform-origin:left center;background:repeating-linear-gradient(7deg,rgba(62,27,10,.12) 0 2px,rgba(255,255,255,.03) 2px 5px),linear-gradient(180deg,#c49363 0%,#a86f42 22%,#bf8657 40%,#8e5532 68%,#b97c4c 100%);box-shadow:0 14px 26px rgba(0,0,0,.28),inset 0 2px 3px rgba(255,228,197,.25),inset 0 -3px 5px rgba(72,34,15,.30)}
-  .water-story__lens-handle::before{content:"";position:absolute;left:-8%;top:5%;width:14%;height:90%;border-radius:999px;background:linear-gradient(90deg,#855c08,#e0b63c 28%,#fff09d 48%,#b57f0a 74%,#6f4a03);box-shadow:0 0 0 1px rgba(82,54,0,.38),inset 0 1px 2px rgba(255,247,188,.60)}
-  .water-story__lens-handle::after{content:"";position:absolute;right:-4.5%;top:7%;width:9%;height:86%;border-radius:999px;background:linear-gradient(90deg,#765006,#e7bd44 32%,#fff3a8 52%,#9f6c06 78%,#664403);box-shadow:0 0 0 1px rgba(80,51,0,.40),inset 0 1px 2px rgba(255,247,188,.58)}
+  .water-story__lens-photo{position:absolute;z-index:1;inset:0;width:100%;height:100%;object-fit:contain;display:block;mix-blend-mode:multiply;filter:drop-shadow(0 18px 26px rgba(0,0,0,.24));user-select:none}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
@@ -147,7 +145,7 @@ const scenes = [
     .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
     .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
-    .water-story__lens{right:.3rem;top:31%;width:min(62vw,320px)}
+    .water-story__lens{right:.15rem;top:31%;width:min(76vw,360px)}
     .water-story__pause{font-size:.58rem}
   }
 </style>
