@@ -55,11 +55,9 @@ window.onload = function() {
   renderer.sphereRadius = 0.01;
 
   var seeds = [
-    [-0.55, -0.20, 0.040,  0.010],
-    [ 0.48,  0.28, 0.046, -0.008],
-    [-0.14,  0.50, 0.035,  0.008],
-    [ 0.24, -0.46, 0.042, -0.007],
-    [ 0.03,  0.05, 0.032,  0.006]
+    [-0.42, -0.18, 0.036,  0.006],
+    [ 0.38,  0.26, 0.040, -0.005],
+    [-0.10,  0.44, 0.032,  0.005]
   ];
   for (var i = 0; i < seeds.length; i++) {
     water.addDrop(seeds[i][0], seeds[i][1], seeds[i][2], seeds[i][3]);
@@ -72,17 +70,17 @@ window.onload = function() {
 
   var prevTime = new Date().getTime();
   var elapsed = 0;
-  var nextDrop = 0.15;
+  var nextDrop = 5.2;
   var dropIndex = 0;
   var pattern = [
-    [-0.66, -0.34, 0.031,  0.0062],
-    [ 0.46, -0.20, 0.027, -0.0055],
-    [-0.12,  0.38, 0.026,  0.0050],
-    [ 0.31,  0.50, 0.029, -0.0052],
-    [-0.43,  0.13, 0.026,  0.0048],
-    [ 0.62,  0.24, 0.025, -0.0046],
-    [ 0.06, -0.53, 0.028,  0.0054],
-    [-0.28, -0.05, 0.024, -0.0044]
+    [-0.66, -0.34, 0.031,  0.0036],
+    [ 0.46, -0.20, 0.027, -0.0042],
+    [-0.12,  0.38, 0.026,  0.0038],
+    [ 0.31,  0.50, 0.029, -0.0040],
+    [-0.43,  0.13, 0.026,  0.0036],
+    [ 0.62,  0.24, 0.025, -0.0035],
+    [ 0.06, -0.53, 0.028,  0.0040],
+    [-0.28, -0.05, 0.024, -0.0034]
   ];
 
   function animate() {
@@ -95,9 +93,10 @@ window.onload = function() {
       var p = pattern[dropIndex % pattern.length];
       water.addDrop(p[0], p[1], p[2], p[3]);
       dropIndex++;
-      nextDrop = elapsed + 0.28 + (dropIndex % 4) * 0.055;
+      nextDrop = elapsed + 5.5 + (dropIndex % 3) * 1.4;
     }
 
+    water.driveWaves(elapsed, 0.000035);
     water.stepSimulation();
     water.stepSimulation();
     water.updateNormals();
