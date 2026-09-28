@@ -115,6 +115,7 @@ function Renderer() {
   this.waterShaders = [];
   for (var i = 0; i < 2; i++) {
     this.waterShaders[i] = new GL.Shader('\
+      const float poolHalfWidth = 1.85;\
       uniform sampler2D water;\
       varying vec3 position;\
       void main() {\
