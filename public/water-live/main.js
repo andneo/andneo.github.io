@@ -37,7 +37,7 @@ window.onload = function() {
   document.documentElement.dataset.waterBounds = 'cropped-edge-to-edge';
   document.documentElement.dataset.poolWidth = 'baseline';
   document.documentElement.dataset.waveDriving = 'occasional-drops-only';
-  document.documentElement.dataset.viewScale = 'pulled-back';
+  document.documentElement.dataset.viewScale = 'edge-overfill';
   document.documentElement.dataset.dropCadence = 'moderately-more-frequent';
 
   water = new Water();
@@ -119,7 +119,7 @@ function draw() {
   // close enough that the square simulation domain is wider/taller than the
   // viewport. The browser frame therefore crops an effectively unbounded
   // patch of water instead of revealing the pool walls.
-  gl.translate(0, 0, -1.40);
+  gl.translate(0, 0, -1.35);
   gl.rotate(90, 1, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
