@@ -444,6 +444,7 @@ test('water network story is contained, button-driven and replaces the old topol
  const lensShell=story.locator('.water-story__lens-shell');
  await expect(lens).toBeVisible();
  await expect(lensShell).toBeVisible();
+ await expect(lensShell).toHaveAttribute('src','/images/research/magnifier-shell.webp');
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','26');
  await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-excluded-volume-directional-hbond');
