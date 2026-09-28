@@ -445,6 +445,12 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toBeVisible();
  await expect(lensShell).toBeVisible();
  await expect(lensShell).toHaveAttribute('src','/images/research/magnifier-shell.webp');
+ await expect(lensShell).toHaveAttribute('data-magnifier-render','blender');
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth)).toBeGreaterThan(400);
+ const lensShellBox=await lensShell.boundingBox();
+ expect(lensShellBox).not.toBeNull();
+ expect(lensShellBox!.width).toBeGreaterThan(400);
+ expect(lensShellBox!.height).toBeGreaterThan(400);
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','26');
  await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-excluded-volume-directional-hbond');
