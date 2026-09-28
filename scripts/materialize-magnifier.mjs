@@ -9,7 +9,8 @@ const assetsDir = path.join(scriptsDir, 'assets');
 const parts = [
   'magnifier-shell.b64.01',
   'magnifier-shell.b64.02',
-  'magnifier-shell.b64.03',
+  'magnifier-shell.b64.03a1',
+  'magnifier-shell.b64.03a2',
   'magnifier-shell.b64.03b',
   'magnifier-shell.b64.04',
   'magnifier-shell.b64.05',
