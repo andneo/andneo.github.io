@@ -483,7 +483,7 @@ test('water network story is contained, button-driven and replaces the old topol
  const stagePosition=await stage.evaluate(node=>getComputedStyle(node).position);
  expect(stagePosition).toBe('relative');
 
- await page.mouse.wheel(0,900);
+ await page.evaluate(()=>window.scrollBy(0,900));
  await page.waitForTimeout(150);
  await expect(story).toHaveAttribute('data-scene','0');
  await story.scrollIntoViewIfNeeded();
