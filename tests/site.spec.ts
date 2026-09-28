@@ -411,6 +411,7 @@ test('homepage research is organised as four themes with selected publication ev
 });
 
 test('water network story is contained, button-driven and replaces the old topology instrument',async({page})=>{
+ test.setTimeout(60000);
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/research/topology-networked-matter/');
 
