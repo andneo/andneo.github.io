@@ -37,6 +37,8 @@ window.onload = function() {
   document.documentElement.dataset.waterBounds = 'cropped-edge-to-edge';
   document.documentElement.dataset.poolWidth = 'baseline';
   document.documentElement.dataset.waveDriving = 'occasional-drops-only';
+  document.documentElement.dataset.viewScale = 'pulled-back';
+  document.documentElement.dataset.dropCadence = 'moderately-more-frequent';
 
   water = new Water();
   renderer = new Renderer();
@@ -71,7 +73,7 @@ window.onload = function() {
 
   var prevTime = new Date().getTime();
   var elapsed = 0;
-  var nextDrop = 4.8;
+  var nextDrop = 4.0;
   var dropIndex = 0;
   var pattern = [
     [-0.66, -0.34, 0.031,  0.0042],
@@ -94,7 +96,7 @@ window.onload = function() {
       var p = pattern[dropIndex % pattern.length];
       water.addDrop(p[0], p[1], p[2], p[3]);
       dropIndex++;
-      nextDrop = elapsed + 6.5 + (dropIndex % 3) * 1.35;
+      nextDrop = elapsed + 5.5 + (dropIndex % 3) * 1.15;
     }
 
     water.stepSimulation();
@@ -117,7 +119,7 @@ function draw() {
   // close enough that the square simulation domain is wider/taller than the
   // viewport. The browser frame therefore crops an effectively unbounded
   // patch of water instead of revealing the pool walls.
-  gl.translate(0, 0, -1.30);
+  gl.translate(0, 0, -1.40);
   gl.rotate(90, 1, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
