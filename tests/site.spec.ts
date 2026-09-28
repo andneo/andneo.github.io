@@ -428,6 +428,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(heroFrame).toHaveAttribute('src','/water-live/index.html');
  const waterDemo=page.frameLocator('[data-water-hero-iframe]');
  await expect(waterDemo.locator('canvas')).toBeVisible({timeout:15000});
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-view','normal');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-bounds','cropped-edge-to-edge');
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
