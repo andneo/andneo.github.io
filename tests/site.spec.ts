@@ -421,15 +421,11 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const story=page.locator('water-network-story');
  const stage=story.locator('[data-water-stage]');
- const hero=story.locator('[data-water-hero-canvas]');
+ const hero=story.locator('[data-water-hero-frame]');
+ const heroFrame=story.locator('[data-water-hero-iframe]');
  const canvas=story.locator('[data-water-canvas]');
  await expect(story).toBeVisible();
- await expect(hero).toHaveAttribute('data-renderer','evan-wallace-water');
- await expect(hero).toHaveAttribute('data-renderer-ready','true');
- await expect(story).toHaveAttribute('data-hero-ready','true');
- await expect(story).toHaveAttribute('data-water-engine','heightfield-raytrace-caustics');
- await expect(story).not.toHaveAttribute('data-molecule-count',/.+/);
- await expect(story).not.toHaveAttribute('data-hydrogen-bonds',/.+/);
+ await expect(heroFrame).toHaveAttribute('src','https://madebyevan.com/webgl-water/');
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
@@ -459,7 +455,6 @@ test('water network story is contained, button-driven and replaces the old topol
 
  await story.getByRole('button',{name:/scene 1: Water looks simple/i}).click();
  await expect(story).toHaveAttribute('data-scene','0');
- await expect(story).toHaveAttribute('data-hero-ready','true');
  await expect(hero).toHaveCSS('opacity','1');
  await expect(canvas).toHaveCSS('opacity','0');
 
