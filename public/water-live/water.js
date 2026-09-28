@@ -46,24 +46,6 @@ function Water() {
       gl_FragColor = info;\
     }\
   ');
-  this.driveShader = new GL.Shader(vertexShader, '\
-    const float PI = 3.141592653589793;\
-    uniform sampler2D texture;\
-    uniform float time;\
-    uniform float strength;\
-    varying vec2 coord;\
-    void main() {\
-      vec4 info = texture2D(texture, coord);\
-      vec2 p = coord * 2.0 - 1.0;\
-      float drive =\
-        sin((p.x * 1.15 + p.y * 0.22) * PI + time * 0.62) * 0.48 +\
-        sin((p.y * 1.45 - p.x * 0.18) * PI - time * 0.47) * 0.34 +\
-        sin((p.x + p.y) * 0.82 * PI + time * 0.31) * 0.18;\
-      /* Feed velocity, not height, to avoid visible pulse events. */\
-      info.g += drive * strength;\
-      gl_FragColor = info;\
-    }\
-  ');
   this.updateShader = new GL.Shader(vertexShader, '\
     uniform sampler2D texture;\
     uniform vec2 delta;\
@@ -148,18 +130,6 @@ Water.prototype.addDrop = function(x, y, radius, strength) {
     this_.dropShader.uniforms({
       center: [x, y],
       radius: radius,
-      strength: strength
-    }).draw(this_.plane);
-  });
-  this.textureB.swapWith(this.textureA);
-};
-
-Water.prototype.driveWaves = function(time, strength) {
-  var this_ = this;
-  this.textureB.drawTo(function() {
-    this_.textureA.bind();
-    this_.driveShader.uniforms({
-      time: time,
       strength: strength
     }).draw(this_.plane);
   });
