@@ -136,7 +136,8 @@ function Renderer() {
           /* Intersect only the horizontal floor. Side walls are intentionally absent. */\
           float tFloor = (-poolHeight - origin.y) / ray.y;\
           vec3 floorHit = origin + ray * tFloor;\
-          vec2 floorCoord = floorHit.xz * 0.5 + 0.5;\
+          /* Increase UV frequency so the floor reads at a finer spatial scale. */\
+          vec2 floorCoord = floorHit.xz * 0.62 + 0.5;\
           vec3 floorColor = texture2D(tiles, floorCoord).rgb * 0.58;\
           vec3 refractedLight = -refract(-light, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);\
           vec4 caustic = texture2D(causticTex, 0.75 * (floorHit.xz - floorHit.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5);\
