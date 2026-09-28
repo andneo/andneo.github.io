@@ -426,6 +426,8 @@ test('water network story is contained, button-driven and replaces the old topol
  const canvas=story.locator('[data-water-canvas]');
  await expect(story).toBeVisible();
  await expect(heroFrame).toHaveAttribute('src','https://madebyevan.com/webgl-water/');
+ const waterDemo=page.frameLocator('[data-water-hero-iframe]');
+ await expect(waterDemo.locator('canvas')).toBeVisible({timeout:15000});
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
