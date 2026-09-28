@@ -444,9 +444,21 @@ test('water network story is contained, button-driven and replaces the old topol
  const lensShell=story.locator('.water-story__lens-shell');
  await expect(lens).toBeVisible();
  await expect(lensShell).toBeVisible();
- await expect(lensShell).toHaveAttribute('src','/images/research/magnifier-shell.webp');
+ await expect(lensShell).toHaveAttribute('src','/images/research/magnifier-shell-v2.webp');
  await expect(lensShell).toHaveAttribute('data-magnifier-render','blender');
- await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth)).toBeGreaterThan(400);
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth)).toBeGreaterThan(800);
+ const shellCoverage=await lensShell.evaluate((img:HTMLImageElement)=>{
+  const sample=document.createElement('canvas');
+  sample.width=180;
+  sample.height=180;
+  const ctx=sample.getContext('2d',{willReadFrequently:true})!;
+  ctx.drawImage(img,0,0,sample.width,sample.height);
+  const pixels=ctx.getImageData(0,0,sample.width,sample.height).data;
+  let visible=0;
+  for(let i=3;i<pixels.length;i+=4) if(pixels[i]>32) visible++;
+  return visible/(pixels.length/4);
+ });
+ expect(shellCoverage).toBeGreaterThan(.08);
  const lensShellBox=await lensShell.boundingBox();
  expect(lensShellBox).not.toBeNull();
  expect(lensShellBox!.width).toBeGreaterThan(400);
@@ -474,6 +486,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await page.mouse.wheel(0,900);
  await page.waitForTimeout(150);
  await expect(story).toHaveAttribute('data-scene','0');
+ await story.scrollIntoViewIfNeeded();
 
  await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
  await expect(story).toHaveAttribute('data-scene','2');
