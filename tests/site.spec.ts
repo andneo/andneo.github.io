@@ -430,8 +430,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(waterDemo.locator('canvas')).toBeVisible({timeout:15000});
  await expect(waterDemo.locator('html')).toHaveAttribute('data-water-view','normal');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-water-bounds','cropped-edge-to-edge');
- await expect(waterDemo.locator('html')).toHaveAttribute('data-pool-width','wide');
- await expect(waterDemo.locator('html')).toHaveAttribute('data-wave-driving','continuous-with-occasional-drops');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-pool-width','baseline');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-wave-driving','occasional-drops-only');
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
