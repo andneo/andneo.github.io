@@ -3,8 +3,8 @@
  * Original: http://madebyevan.com/webgl-water/
  * Copyright 2011 Evan Wallace — MIT License.
  *
- * Website adaptation: fixed near-top-down camera, no sphere,
- * wide rectangular presentation, continuous autonomous ripples.
+ * Website adaptation: camera normal to the water surface, no sphere,
+ * edge-to-edge cropped water field, continuous autonomous ripples.
  */
 
 var gl = GL.create();
@@ -32,7 +32,9 @@ window.onload = function() {
 
   document.body.appendChild(gl.canvas);
   gl.canvas.setAttribute('aria-label', 'Living rippling water surface');
-  gl.clearColor(0.008, 0.022, 0.032, 1);
+  gl.clearColor(0.006, 0.018, 0.026, 1);
+  document.documentElement.dataset.waterView = 'normal';
+  document.documentElement.dataset.waterBounds = 'cropped-edge-to-edge';
 
   water = new Water();
   renderer = new Renderer();
@@ -112,21 +114,20 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.loadIdentity();
 
-  // Strongly overhead, but still oblique enough to retain reflections,
-  // refraction and a sense of depth.
-  gl.translate(0, 0, -3.05);
-  gl.rotate(69, 1, 0, 0);
-  gl.rotate(180, 0, 1, 0);
-  gl.translate(0, 0.34, 0);
-
-  // Present the square simulation domain as a wide installation window.
-  // Both pool and water are transformed together, preserving their alignment.
-  gl.scale(1.38, 1.0, 0.78);
+  // Look exactly along the surface normal. The camera is deliberately
+  // close enough that the square simulation domain is wider/taller than the
+  // viewport. The browser frame therefore crops an effectively unbounded
+  // patch of water instead of revealing the pool walls.
+  gl.translate(0, 0, -1.30);
+  gl.rotate(90, 1, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
   renderer.sphereCenter = new GL.Vector(0, -20, 0);
   renderer.sphereRadius = 0.01;
-  renderer.renderCube();
+
+  // Do not draw the pool geometry. The water shader still supplies the
+  // physically motivated reflection/refraction response, but no wall or rim
+  // can appear as a foreground container boundary.
   renderer.renderWater(water, cubemap);
   gl.disable(gl.DEPTH_TEST);
 }
