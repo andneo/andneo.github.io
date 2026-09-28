@@ -63,7 +63,7 @@ function Water() {
       info.g += drive * strength;\
       gl_FragColor = info;\
     }\
-  ');\
+  ');
   this.updateShader = new GL.Shader(vertexShader, '\
     uniform sampler2D texture;\
     uniform vec2 delta;\
