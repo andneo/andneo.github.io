@@ -31,7 +31,17 @@ const scenes = [
 <section class="water-story-shell" aria-label="Water network visualization">
   <water-network-story class="water-story" data-scene="0">
     <div class="water-story__stage" data-water-stage>
-      <canvas class="water-story__hero-canvas" data-water-hero-canvas aria-label="A living body of water with real-time reflections, refractions and caustics"></canvas>
+      <div class="water-story__hero-frame" data-water-hero-frame aria-label="Living WebGL water surface">
+        <iframe
+          class="water-story__hero-iframe"
+          data-water-hero-iframe
+          src="https://madebyevan.com/webgl-water/"
+          title="Living WebGL water surface"
+          loading="eager"
+          tabindex="-1"
+          aria-hidden="true"
+        ></iframe>
+      </div>
       <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
 
       <div class="water-story__wash" aria-hidden="true"></div>
@@ -72,22 +82,18 @@ const scenes = [
 
     <script type="application/json" data-water-scenes set:html={JSON.stringify(scenes)}></script>
   </water-network-story>
-  <script is:inline type="module">
-    import('/scripts/water-hero.js').catch(error=>{
-      console.error('Water hero failed to load',error);
-    });
-  </script>
 </section>
 
 <style>
   .water-story-shell{margin:clamp(1.5rem,3vw,2.5rem) 0 clamp(4rem,8vw,7rem)}
   .water-story{position:relative;display:block}
   .water-story__stage{position:relative;height:min(74svh,720px);min-height:520px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
-  .water-story__hero-canvas,.water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity 520ms cubic-bezier(.22,.61,.36,1)}
-  .water-story__hero-canvas{z-index:1;opacity:0}
+  .water-story__hero-frame,.water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity 520ms cubic-bezier(.22,.61,.36,1)}
+  .water-story__hero-frame{z-index:1;overflow:hidden;opacity:0;background:#000;pointer-events:none}
+  .water-story__hero-iframe{position:absolute;left:0;top:0;width:calc(100% + 320px);height:100%;border:0;pointer-events:none}
   .water-story__canvas{z-index:1;opacity:1}
-  .water-story[data-scene="0"][data-hero-ready="true"] .water-story__hero-canvas{opacity:1}
-  .water-story[data-scene="0"][data-hero-ready="true"] .water-story__canvas{opacity:0}
+  .water-story[data-scene="0"] .water-story__hero-frame{opacity:1}
+  .water-story[data-scene="0"] .water-story__canvas{opacity:0}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
