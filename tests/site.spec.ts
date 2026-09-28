@@ -424,12 +424,12 @@ test('water network story is contained, button-driven and replaces the old topol
  const hero=story.locator('[data-water-hero-canvas]');
  const canvas=story.locator('[data-water-canvas]');
  await expect(story).toBeVisible();
- await expect(hero).toHaveAttribute('data-renderer','threejs-water');
+ await expect(hero).toHaveAttribute('data-renderer','evan-wallace-water');
  await expect(hero).toHaveAttribute('data-renderer-ready','true');
  await expect(story).toHaveAttribute('data-hero-ready','true');
- await expect(story).toHaveAttribute('data-molecule-count','14');
- await expect(story).toHaveAttribute('data-pickable-molecules','14');
- await expect.poll(async()=>Number(await story.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
+ await expect(story).toHaveAttribute('data-water-engine','heightfield-raytrace-caustics');
+ await expect(story).not.toHaveAttribute('data-molecule-count',/.+/);
+ await expect(story).not.toHaveAttribute('data-hydrogen-bonds',/.+/);
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
