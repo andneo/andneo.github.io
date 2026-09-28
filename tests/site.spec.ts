@@ -190,13 +190,12 @@ test('hero lattice stays registered after responsive resize',async({page})=>{
 
  await page.setViewportSize({width:820,height:780});
  await assertRegistered();
+ await expect.poll(async()=>Number(await dynamic.getAttribute('data-sim-steps'))).toBeGreaterThan(before);
  const mid=Number(await dynamic.getAttribute('data-sim-steps'));
- expect(mid).toBeGreaterThan(before);
 
  await page.setViewportSize({width:1600,height:960});
  await assertRegistered();
- const after=Number(await dynamic.getAttribute('data-sim-steps'));
- expect(after).toBeGreaterThan(mid);
+ await expect.poll(async()=>Number(await dynamic.getAttribute('data-sim-steps'))).toBeGreaterThan(mid);
 
  await expect(field).toBeVisible();
  await expect(base).toBeVisible();
