@@ -44,6 +44,15 @@ const scenes = [
       </div>
       <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
 
+      <div class="water-story__lens" data-water-lens aria-label="Magnified molecular view of water">
+        <div class="water-story__lens-handle" aria-hidden="true"></div>
+        <div class="water-story__lens-rim">
+          <div class="water-story__lens-glass">
+            <canvas class="water-story__lens-canvas" data-water-lens-canvas aria-label="Dynamic water molecules forming transient hydrogen bonds"></canvas>
+          </div>
+        </div>
+      </div>
+
       <div class="water-story__wash" aria-hidden="true"></div>
 
       <div class="water-story__copy" aria-live="polite">
@@ -94,6 +103,13 @@ const scenes = [
   .water-story__canvas{z-index:1;opacity:1}
   .water-story[data-scene="0"] .water-story__hero-frame{opacity:1}
   .water-story[data-scene="0"] .water-story__canvas{opacity:0}
+  .water-story__lens{position:absolute;z-index:4;right:clamp(2rem,5vw,4.4rem);top:50%;width:clamp(230px,25vw,318px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
+  .water-story[data-scene="0"] .water-story__lens{opacity:1}
+  .water-story__lens-rim{position:relative;width:100%;height:100%;box-sizing:border-box;padding:10px;border-radius:50%;background:linear-gradient(145deg,rgba(248,252,253,.94),rgba(137,153,161,.94) 40%,rgba(229,238,241,.96) 72%,rgba(91,106,116,.96));box-shadow:0 18px 42px rgba(0,0,0,.26),inset 0 2px 3px rgba(255,255,255,.72),inset 0 -3px 6px rgba(13,34,44,.22)}
+  .water-story__lens-glass{position:relative;width:100%;height:100%;overflow:hidden;border-radius:50%;background:rgba(142,199,216,.26);box-shadow:inset 0 0 0 1px rgba(255,255,255,.48),inset 0 0 26px rgba(231,249,255,.20)}
+  .water-story__lens-glass::after{content:"";position:absolute;inset:7% 15% auto 22%;height:18%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.46),rgba(255,255,255,0));transform:rotate(-13deg);pointer-events:none}
+  .water-story__lens-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .water-story__lens-handle{position:absolute;z-index:-1;right:-18%;bottom:12%;width:40%;height:9%;border-radius:999px;transform:rotate(38deg);transform-origin:left center;background:linear-gradient(180deg,#dfe6e9,#8e9ba2 55%,#5d6a71);box-shadow:0 10px 20px rgba(0,0,0,.22),inset 0 1px 1px rgba(255,255,255,.52)}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
@@ -127,9 +143,16 @@ const scenes = [
     .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
     .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
+    .water-story__lens{right:.9rem;top:34%;width:min(46vw,248px)}
     .water-story__pause{font-size:.58rem}
   }
 </style>
+
+<script is:inline type="module">
+  import('/scripts/water-lens.js').catch(error=>{
+    console.error('Water lens failed to load',error);
+  });
+</script>
 
 <script>
   type P3={x:number;y:number;z:number;vx:number;vy:number;vz:number;phase:number;spin:number};
