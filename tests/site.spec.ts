@@ -464,8 +464,10 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(lensShellBox!.width).toBeGreaterThan(400);
  expect(lensShellBox!.height).toBeGreaterThan(400);
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
- await expect(lensCanvas).toHaveAttribute('data-molecule-count','26');
- await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-excluded-volume-directional-hbond');
+ await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
+ await expect(lensCanvas).toHaveAttribute('data-model','overdamped-langevin-rigid-water');
+ await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-rigidbody-directional-hbond-v2');
+ await expect(lensCanvas).toHaveAttribute('data-hbond-force','directional-donor-acceptor');
  await expect(story).toHaveAttribute('data-lens-ready','true');
  await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
  await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-visible-molecules'))).toBeGreaterThan(5);
