@@ -437,6 +437,14 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
  await expect(story.locator('[data-water-kicker]')).toBeHidden();
 
+ const lens=story.locator('[data-water-lens]');
+ const lensCanvas=story.locator('[data-water-lens-canvas]');
+ await expect(lens).toBeVisible();
+ await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
+ await expect(lensCanvas).toHaveAttribute('data-molecule-count','14');
+ await expect(story).toHaveAttribute('data-lens-ready','true');
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
+
  const heroBox=await hero.boundingBox();
  expect(heroBox).not.toBeNull();
  expect(heroBox!.width).toBeGreaterThan(700);
@@ -458,11 +466,13 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story).toHaveAttribute('data-scene','2');
  await expect(hero).toHaveCSS('opacity','0');
  await expect(canvas).toHaveCSS('opacity','1');
+ await expect(lens).toHaveCSS('opacity','0');
 
  await story.getByRole('button',{name:/scene 1: Water looks simple/i}).click();
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(hero).toHaveCSS('opacity','1');
  await expect(canvas).toHaveCSS('opacity','0');
+ await expect(lens).toHaveCSS('opacity','1');
 
  await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
  await expect(story).toHaveAttribute('data-scene','2');
