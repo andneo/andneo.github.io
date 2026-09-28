@@ -35,6 +35,8 @@ window.onload = function() {
   gl.clearColor(0.006, 0.018, 0.026, 1);
   document.documentElement.dataset.waterView = 'normal';
   document.documentElement.dataset.waterBounds = 'cropped-edge-to-edge';
+  document.documentElement.dataset.poolWidth = 'wide';
+  document.documentElement.dataset.waveDriving = 'continuous-with-occasional-drops';
 
   water = new Water();
   renderer = new Renderer();
