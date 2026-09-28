@@ -5,15 +5,16 @@ import { fileURLToPath } from 'node:url';
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptsDir, '..');
 const assetsDir = path.join(scriptsDir, 'assets');
-const partPattern = /^magnifier-shell\.b64\.\d+$/;
 
-const parts = fs.readdirSync(assetsDir)
-  .filter((name) => partPattern.test(name))
-  .sort();
-
-if (parts.length !== 6) {
-  throw new Error(`Expected 6 magnifier payload parts, found ${parts.length}.`);
-}
+const parts = [
+  'magnifier-shell.b64.01',
+  'magnifier-shell.b64.02',
+  'magnifier-shell.b64.03',
+  'magnifier-shell.b64.03b',
+  'magnifier-shell.b64.04',
+  'magnifier-shell.b64.05',
+  'magnifier-shell.b64.06',
+];
 
 const encoded = parts
   .map((name) => fs.readFileSync(path.join(assetsDir, name), 'utf8').trim())
