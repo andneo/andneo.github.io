@@ -12,6 +12,7 @@ var helperFunctions = '\
   const vec3 abovewaterColor = vec3(0.25, 1.0, 1.25);\
   const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);\
   const float poolHeight = 1.0;\
+  const float poolHalfWidth = 1.85;\
   uniform vec3 light;\
   uniform vec3 sphereCenter;\
   uniform float sphereRadius;\
@@ -54,7 +55,7 @@ var helperFunctions = '\
     vec3 sphereNormal = (point - sphereCenter) / sphereRadius;\
     vec3 refractedLight = refract(-light, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);\
     float diffuse = max(0.0, dot(-refractedLight, sphereNormal)) * 0.5;\
-    vec4 info = texture2D(water, point.xz * 0.5 + 0.5);\
+    vec4 info = texture2D(water, vec2(point.x / poolHalfWidth, point.z) * 0.5 + 0.5);\
     if (point.y < info.r) {\
       vec4 caustic = texture2D(causticTex, 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5);\
       diffuse *= caustic.r * 4.0;\
@@ -69,14 +70,14 @@ var helperFunctions = '\
     \
     vec3 wallColor;\
     vec3 normal;\
-    if (abs(point.x) > 0.999) {\
+    if (abs(point.x) > poolHalfWidth - 0.001) {\
       wallColor = texture2D(tiles, point.yz * 0.5 + vec2(1.0, 0.5)).rgb;\
       normal = vec3(-point.x, 0.0, 0.0);\
     } else if (abs(point.z) > 0.999) {\
       wallColor = texture2D(tiles, point.yx * 0.5 + vec2(1.0, 0.5)).rgb;\
       normal = vec3(0.0, 0.0, -point.z);\
     } else {\
-      wallColor = texture2D(tiles, point.xz * 0.5 + 0.5).rgb;\
+      wallColor = texture2D(tiles, vec2(point.x / poolHalfWidth, point.z) * 0.5 + 0.5).rgb;\
       normal = vec3(0.0, 1.0, 0.0);\
     }\
     \
@@ -86,13 +87,13 @@ var helperFunctions = '\
     /* caustics */\
     vec3 refractedLight = -refract(-light, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);\
     float diffuse = max(0.0, dot(refractedLight, normal));\
-    vec4 info = texture2D(water, point.xz * 0.5 + 0.5);\
+    vec4 info = texture2D(water, vec2(point.x / poolHalfWidth, point.z) * 0.5 + 0.5);\
     if (point.y < info.r) {\
       vec4 caustic = texture2D(causticTex, 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) * 0.5 + 0.5);\
       scale += diffuse * caustic.r * 2.0 * caustic.g;\
     } else {\
       /* shadow for the rim of the pool */\
-      vec2 t = intersectCube(point, refractedLight, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
+      vec2 t = intersectCube(point, refractedLight, vec3(-poolHalfWidth, -poolHeight, -1.0), vec3(poolHalfWidth, 2.0, 1.0));\
       diffuse *= 1.0 / (1.0 + exp(-200.0 / (1.0 + 10.0 * (t.y - t.x)) * (point.y + refractedLight.y * t.y - 2.0 / 12.0)));\
       \
       scale += diffuse * 0.5;\
@@ -119,6 +120,7 @@ function Renderer() {
       void main() {\
         vec4 info = texture2D(water, gl_Vertex.xy * 0.5 + 0.5);\
         position = gl_Vertex.xzy;\
+        position.x *= poolHalfWidth;\
         position.y += info.r;\
         gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 1.0);\
       }\
@@ -133,10 +135,10 @@ function Renderer() {
         if (q < 1.0e6) {\
           color = getSphereColor(origin + ray * q);\
         } else if (ray.y < 0.0) {\
-          vec2 t = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
+          vec2 t = intersectCube(origin, ray, vec3(-poolHalfWidth, -poolHeight, -1.0), vec3(poolHalfWidth, 2.0, 1.0));\
           color = getWallColor(origin + ray * t.y);\
         } else {\
-          vec2 t = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
+          vec2 t = intersectCube(origin, ray, vec3(-poolHalfWidth, -poolHeight, -1.0), vec3(poolHalfWidth, 2.0, 1.0));\
           vec3 hit = origin + ray * t.y;\
           if (hit.y < 2.0 / 12.0) {\
             color = getWallColor(hit);\
@@ -150,7 +152,7 @@ function Renderer() {
       }\
       \
       void main() {\
-        vec2 coord = position.xz * 0.5 + 0.5;\
+        vec2 coord = vec2(position.x / poolHalfWidth, position.z) * 0.5 + 0.5;\
         vec4 info = texture2D(water, coord);\
         \
         /* make water look more "peaked" */\
@@ -232,7 +234,7 @@ function Renderer() {
     \
     /* project the ray onto the plane */\
     vec3 project(vec3 origin, vec3 ray, vec3 refractedLight) {\
-      vec2 tcube = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
+      vec2 tcube = intersectCube(origin, ray, vec3(-poolHalfWidth, -poolHeight, -1.0), vec3(poolHalfWidth, 2.0, 1.0));\
       origin += ray * tcube.y;\
       float tplane = (-origin.y - 1.0) / refractedLight.y;\
       return origin + refractedLight * tplane;\
@@ -246,10 +248,14 @@ function Renderer() {
       /* project the vertices along the refracted vertex ray */\
       vec3 refractedLight = refract(-light, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);\
       ray = refract(-light, normal, IOR_AIR / IOR_WATER);\
-      oldPos = project(gl_Vertex.xzy, refractedLight, refractedLight);\
-      newPos = project(gl_Vertex.xzy + vec3(0.0, info.r, 0.0), ray, refractedLight);\
+      vec3 waterVertex = gl_Vertex.xzy;\
+      waterVertex.x *= poolHalfWidth;\
+      oldPos = project(waterVertex, refractedLight, refractedLight);\
+      newPos = project(waterVertex + vec3(0.0, info.r, 0.0), ray, refractedLight);\
       \
-      gl_Position = vec4(0.75 * (newPos.xz + refractedLight.xz / refractedLight.y), 0.0, 1.0);\
+      vec2 projected = newPos.xz + refractedLight.xz / refractedLight.y;\
+      projected.x /= poolHalfWidth;\
+      gl_Position = vec4(0.75 * projected, 0.0, 1.0);\
     }\
   ', (hasDerivatives ? '#extension GL_OES_standard_derivatives : enable\n' : '') + '\
     ' + helperFunctions + '\
@@ -280,7 +286,7 @@ function Renderer() {
       gl_FragColor.g = shadow;\
       \
       /* shadow for the rim of the pool */\
-      vec2 t = intersectCube(newPos, -refractedLight, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
+      vec2 t = intersectCube(newPos, -refractedLight, vec3(-poolHalfWidth, -poolHeight, -1.0), vec3(poolHalfWidth, 2.0, 1.0));\
       gl_FragColor.r *= 1.0 / (1.0 + exp(-200.0 / (1.0 + 10.0 * (t.y - t.x)) * (newPos.y - refractedLight.y * t.y - 2.0 / 12.0)));\
     }\
   ');
