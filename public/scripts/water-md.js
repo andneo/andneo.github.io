@@ -21,8 +21,14 @@ export class RigidWaterMD {
     this.gamma=options.gamma??2.4;
     this.gammaRot=options.gammaRot??3.2;
     this.hardCoreOO=.188;
-    this.hardCoreHH=.070;
-    this.hardCoreHO=.078;
+    this.hardCoreHH=.086;
+    this.hardCoreHO=.082;
+    this.qO=-.82;
+    this.qH=.41;
+    this.coulombK=.0019;
+    this.coulombSoftening=.036;
+    this.coulombScreening=.30;
+    this.coulombCutoff=.48;
     this.maxDonorDegree=0;
     this.maxAcceptorDegree=0;
     this.maxTotalDegree=0;
@@ -104,6 +110,14 @@ export class RigidWaterMD {
     });
   }
 
+  chargedSites(m){
+    const hydrogens=this.hydrogenSites(m);
+    return[
+      {type:'O',charge:this.qO,rx:0,ry:0,x:m.x,y:m.y},
+      ...hydrogens.map(h=>({...h,type:'H',charge:this.qH})),
+    ];
+  }
+
   resetForces(){
     for(const m of this.molecules){m.fx=0;m.fy=0;m.torque=0;}
   }
@@ -122,6 +136,44 @@ export class RigidWaterMD {
     const sr2=sr*sr;
     const sr6=sr2*sr2*sr2;
     return Math.min(2.4,24*epsilon*(2*sr6*sr6-sr6)/distance);
+  }
+
+  electrostaticForce(distance,q1,q2){
+    if(distance>=this.coulombCutoff)return 0;
+    const softened=Math.sqrt(distance*distance+this.coulombSoftening*this.coulombSoftening);
+    const screening=Math.exp(-softened/this.coulombScreening);
+    const taperStart=this.coulombCutoff*.78;
+    let taper=1;
+    if(distance>taperStart){
+      const x=(distance-taperStart)/(this.coulombCutoff-taperStart);
+      taper=.5*(1+Math.cos(Math.PI*x));
+    }
+    const derivative=-this.coulombK*q1*q2*screening*
+      (1/(softened*softened)+1/(this.coulombScreening*softened));
+    return Math.max(-.34,Math.min(.34,derivative*taper));
+  }
+
+  applyElectrostatics(){
+    for(let i=0;i<this.molecules.length;i++){
+      const a=this.molecules[i];
+      const aSites=this.chargedSites(a);
+      for(let j=i+1;j<this.molecules.length;j++){
+        const b=this.molecules[j];
+        const bSites=this.chargedSites(b);
+        for(const sa of aSites)for(const sb of bSites){
+          const dx=this.minimumImage(sb.x-sa.x);
+          const dy=this.minimumImage(sb.y-sa.y);
+          const d=Math.hypot(dx,dy);
+          if(d<=1e-7||d>=this.coulombCutoff)continue;
+          const scalar=this.electrostaticForce(d,sa.charge,sb.charge);
+          if(!scalar)continue;
+          const ux=dx/d,uy=dy/d;
+          const fx=ux*scalar,fy=uy*scalar;
+          this.addSiteForce(a,sa,fx,fy);
+          this.addSiteForce(b,sb,-fx,-fy);
+        }
+      }
+    }
   }
 
   applyRepulsions(){
@@ -146,7 +198,7 @@ export class RigidWaterMD {
         // Hydrogen–hydrogen excluded volume.
         for(const ha of ah)for(const hb of bh){
           dx=this.minimumImage(hb.x-ha.x);dy=this.minimumImage(hb.y-ha.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.078,.008);
+          f=this.wcaForce(d,.086,.012);
           if(!f)continue;
           const ux=dx/d,uy=dy/d;
           this.addSiteForce(a,ha,-ux*f,-uy*f);
@@ -156,7 +208,7 @@ export class RigidWaterMD {
         // Short-range H–O cores in both directions.
         for(const ha of ah){
           dx=this.minimumImage(b.x-ha.x);dy=this.minimumImage(b.y-ha.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.086,.009);
+          f=this.wcaForce(d,.090,.011);
           if(f){
             const ux=dx/d,uy=dy/d;
             this.addSiteForce(a,ha,-ux*f,-uy*f);
@@ -165,7 +217,7 @@ export class RigidWaterMD {
         }
         for(const hb of bh){
           dx=this.minimumImage(a.x-hb.x);dy=this.minimumImage(a.y-hb.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.086,.009);
+          f=this.wcaForce(d,.090,.011);
           if(f){
             const ux=dx/d,uy=dy/d;
             this.addSiteForce(b,hb,-ux*f,-uy*f);
@@ -272,10 +324,10 @@ export class RigidWaterMD {
   }
 
   applyHydrogenBonds(){
-    const epsilon=.030;
+    const epsilon=.013;
     const target=.132;
     const width=.042;
-    const angularTorque=.0085;
+    const angularTorque=.0035;
 
     for(const bond of this.bonds.values()){
       const c=this.candidate(
@@ -310,6 +362,7 @@ export class RigidWaterMD {
   computeForces(){
     this.resetForces();
     this.applyRepulsions();
+    this.applyElectrostatics();
     this.updateBondNetwork();
     this.applyHydrogenBonds();
   }
@@ -401,7 +454,7 @@ export class RigidWaterMD {
             d=Math.hypot(dx,dy)||1e-8;
             if(d>=this.hardCoreHH)continue;
             const nx=dx/d,ny=dy/d;
-            const correction=(this.hardCoreHH-d)*.26+.0001;
+            const correction=(this.hardCoreHH-d)*.34+.0001;
             a.x=this.wrap(a.x-nx*correction);
             a.y=this.wrap(a.y-ny*correction);
             b.x=this.wrap(b.x+nx*correction);
@@ -414,7 +467,7 @@ export class RigidWaterMD {
             d=Math.hypot(dx,dy)||1e-8;
             if(d<this.hardCoreHO){
               const nx=dx/d,ny=dy/d;
-              const correction=(this.hardCoreHO-d)*.22+.0001;
+              const correction=(this.hardCoreHO-d)*.28+.0001;
               a.x=this.wrap(a.x-nx*correction);
               a.y=this.wrap(a.y-ny*correction);
               b.x=this.wrap(b.x+nx*correction);
@@ -427,7 +480,7 @@ export class RigidWaterMD {
             d=Math.hypot(dx,dy)||1e-8;
             if(d<this.hardCoreHO){
               const nx=dx/d,ny=dy/d;
-              const correction=(this.hardCoreHO-d)*.22+.0001;
+              const correction=(this.hardCoreHO-d)*.28+.0001;
               b.x=this.wrap(b.x-nx*correction);
               b.y=this.wrap(b.y-ny*correction);
               a.x=this.wrap(a.x+nx*correction);
@@ -482,6 +535,9 @@ export class RigidWaterMD {
       minOO:separation.oo,
       minHH:separation.hh,
       minHO:separation.ho,
+      qO:this.qO,
+      qH:this.qH,
+      electrostaticCutoff:this.coulombCutoff,
     };
   }
 }
