@@ -113,7 +113,7 @@ const scenes = [
   .water-story[data-scene="0"] .water-story__canvas{opacity:0}
   .water-story__lens{position:absolute;z-index:4;left:32%;top:50%;width:clamp(736px,60.8vw,896px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
   .water-story[data-scene="0"] .water-story__lens{opacity:1}
-  .water-story__lens-window{position:absolute;z-index:0;left:15.38%;top:22.22%;width:50.49%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:transparent}
+  .water-story__lens-window{position:absolute;z-index:0;left:15.38%;top:22.22%;width:50.49%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#b7d6df}
   .water-story__lens-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   .water-story__lens-shell{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block;object-fit:contain;filter:drop-shadow(0 14px 22px rgba(0,0,0,.20));user-select:none}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
@@ -139,7 +139,7 @@ const scenes = [
   .water-story__representation input{width:100%;accent-color:var(--cool)}
   .water-story__representation div{display:flex;justify-content:space-between;color:var(--text-3);font:500 .58rem/1 var(--font-sans)}
 
-  :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
+  :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}\n  :global(:root[data-theme=dark]) .water-story__lens-window{background:#17303a}
   :global(:root[data-theme=light]) .water-story__stage{background:#dfe9ec}
 
   @media(max-width:760px){
@@ -198,6 +198,7 @@ const scenes = [
       this.seed();
       this.bind();
       this.resize();
+      this.dataset.paused='false';
       this.setScene(0,true);
       this.ro=new ResizeObserver(()=>this.resize());
       this.ro.observe(this.stage);
@@ -239,6 +240,7 @@ const scenes = [
       }));
       this.querySelector<HTMLButtonElement>('[data-water-pause]')?.addEventListener('click',e=>{
         this.paused=!this.paused;
+        this.dataset.paused=String(this.paused);
         const button=e.currentTarget as HTMLButtonElement;
         button.setAttribute('aria-pressed',String(this.paused));
         button.textContent=this.paused?'Resume motion':'Pause motion';
