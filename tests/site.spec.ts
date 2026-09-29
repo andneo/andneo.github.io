@@ -465,12 +465,32 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(lensShellBox!.height).toBeGreaterThan(400);
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
- await expect(lensCanvas).toHaveAttribute('data-model','overdamped-langevin-rigid-water');
- await expect(lensCanvas).toHaveAttribute('data-dynamics','brownian-rigidbody-directional-hbond-v2');
- await expect(lensCanvas).toHaveAttribute('data-hbond-force','directional-donor-acceptor');
+ await expect(lensCanvas).toHaveAttribute('data-model','rigid-water-langevin-md');
+ await expect(lensCanvas).toHaveAttribute('data-dynamics','inertial-translation-rotation-transient-network');
+ await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-120hz');
+ await expect(lensCanvas).toHaveAttribute('data-hbond-valence','2-donor-2-acceptor');
+ await expect(lensCanvas).toHaveAttribute('data-repulsion','oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen');
+ await expect(lensCanvas).toHaveAttribute('data-background','opaque-microscopic-water');
  await expect(story).toHaveAttribute('data-lens-ready','true');
- await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds'))).toBeGreaterThan(0);
- await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-visible-molecules'))).toBeGreaterThan(5);
+
+ const initialSteps=Number(await lensCanvas.getAttribute('data-md-steps')||0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-md-steps')||0)).toBeGreaterThan(initialSteps+10);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-mean-speed')||0)).toBeGreaterThan(.01);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-mean-angular-speed')||0)).toBeGreaterThan(.05);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:10000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-bonds-formed')||0),{timeout:10000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-bonds-broken')||0),{timeout:12000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-visible-molecules')||0)).toBeGreaterThan(12);
+ expect(Number(await lensCanvas.getAttribute('data-max-donor-degree'))).toBeLessThanOrEqual(2);
+ expect(Number(await lensCanvas.getAttribute('data-max-acceptor-degree'))).toBeLessThanOrEqual(2);
+ expect(Number(await lensCanvas.getAttribute('data-max-total-degree'))).toBeLessThanOrEqual(4);
+
+ const lensPixels=await lensCanvas.evaluate((canvas:HTMLCanvasElement)=>{
+  const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
+  const points=[[canvas.width*.5,canvas.height*.5],[canvas.width*.25,canvas.height*.5],[canvas.width*.5,canvas.height*.25]];
+  return points.map(([x,y])=>ctx.getImageData(Math.floor(x),Math.floor(y),1,1).data[3]);
+ });
+ expect(lensPixels.every(alpha=>alpha===255)).toBe(true);
 
  const heroBox=await hero.boundingBox();
  expect(heroBox).not.toBeNull();
