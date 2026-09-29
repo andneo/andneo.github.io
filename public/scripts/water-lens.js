@@ -11,7 +11,7 @@ class WaterLens {
     this.radius=1;
     this.center={x:0,y:0};
     this.visibleRadius=.75;
-    this.md=new RigidWaterMD({count:28,domainHalf:.80,dt:1/120});
+    this.md=new RigidWaterMD({count:28,domainHalf:.80,dt:1/180,temperature:.026,gamma:2.4,gammaRot:3.2});
     this.accumulator=0;
     this.last=performance.now();
     this.visible=true;
@@ -26,7 +26,7 @@ class WaterLens {
     canvas.dataset.moleculeCount=String(this.md.count);
     canvas.dataset.model='rigid-water-langevin-md';
     canvas.dataset.dynamics='inertial-translation-rotation-transient-network';
-    canvas.dataset.integrator='baoab-120hz';
+    canvas.dataset.integrator='baoab-180hz';
     canvas.dataset.hbondValence='2-donor-2-acceptor';
     canvas.dataset.repulsion='oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen';
     canvas.dataset.background='opaque-microscopic-water';
@@ -65,16 +65,16 @@ class WaterLens {
 
     // Fully opaque microscopic medium. The macroscopic pool iframe must never
     // composite through the aperture.
-    ctx.fillStyle=dark?'#17303a':'#b7d6df';
+    ctx.fillStyle=dark?'#10262f':'#8eb9c6';
     ctx.fillRect(0,0,this.width,this.height);
 
     const g=ctx.createRadialGradient(
       this.width*.36,this.height*.28,0,
       this.center.x,this.center.y,this.radius*1.05
     );
-    g.addColorStop(0,dark?'rgba(133,190,202,.55)':'rgba(240,252,253,.88)');
-    g.addColorStop(.54,dark?'rgba(58,115,130,.30)':'rgba(173,215,225,.48)');
-    g.addColorStop(1,dark?'rgba(4,26,34,.46)':'rgba(77,139,157,.34)');
+    g.addColorStop(0,dark?'rgba(102,159,172,.34)':'rgba(205,233,239,.52)');
+    g.addColorStop(.54,dark?'rgba(38,89,103,.18)':'rgba(128,181,194,.24)');
+    g.addColorStop(1,dark?'rgba(2,20,27,.30)':'rgba(46,103,119,.22)');
     ctx.fillStyle=g;
     ctx.fillRect(0,0,this.width,this.height);
 
@@ -83,7 +83,7 @@ class WaterLens {
       this.center.x,this.center.y,this.radius
     );
     vignette.addColorStop(0,'rgba(0,0,0,0)');
-    vignette.addColorStop(1,dark?'rgba(0,10,14,.32)':'rgba(20,68,82,.16)');
+    vignette.addColorStop(1,dark?'rgba(0,8,12,.28)':'rgba(17,59,72,.20)');
     ctx.fillStyle=vignette;
     ctx.fillRect(0,0,this.width,this.height);
   }
@@ -102,14 +102,16 @@ class WaterLens {
 
     const ageFade=Math.min(1,bond.age/.10);
     const strength=Math.max(.18,Math.min(1,bond.score??.4));
-    const alpha=.18+.55*ageFade*strength;
+    const alpha=.48+.44*ageFade*strength;
 
     const ctx=this.ctx;
     ctx.save();
     ctx.lineCap='round';
-    ctx.setLineDash([4.5,4.5]);
-    ctx.lineWidth=1.2;
-    ctx.strokeStyle=`rgba(221,247,255,${alpha})`;
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth=1.8;
+    ctx.shadowColor='rgba(30,96,122,.28)';
+    ctx.shadowBlur=2;
+    ctx.strokeStyle=`rgba(247,252,255,${alpha})`;
     ctx.beginPath();
     ctx.moveTo(p1.x,p1.y);
     ctx.lineTo(p2.x,p2.y);
@@ -206,6 +208,9 @@ class WaterLens {
     this.canvas.dataset.maxDonorDegree=String(d.maxDonorDegree);
     this.canvas.dataset.maxAcceptorDegree=String(d.maxAcceptorDegree);
     this.canvas.dataset.maxTotalDegree=String(d.maxTotalDegree);
+    this.canvas.dataset.minOo=d.minOO.toFixed(4);
+    this.canvas.dataset.minHh=d.minHH.toFixed(4);
+    this.canvas.dataset.minHo=d.minHO.toFixed(4);
     this.canvas.dataset.visibleMolecules=String(
       this.md.molecules.filter(m=>Math.hypot(m.x,m.y)<=this.visibleRadius).length
     );
@@ -217,9 +222,9 @@ class WaterLens {
 
     const active=this.visible&&this.host?.dataset.scene==='0'&&this.host?.dataset.paused!=='true';
     if(active){
-      this.accumulator=Math.min(this.accumulator+elapsed,this.md.dt*4);
+      this.accumulator=Math.min(this.accumulator+elapsed,this.md.dt*6);
       let steps=0;
-      while(this.accumulator>=this.md.dt&&steps<4){
+      while(this.accumulator>=this.md.dt&&steps<6){
         this.md.integrate();
         this.accumulator-=this.md.dt;
         steps++;
