@@ -24,12 +24,12 @@ class WaterLens {
 
     canvas.dataset.renderer='molecular-lens';
     canvas.dataset.moleculeCount=String(this.md.count);
-    canvas.dataset.model='rigid-water-langevin-md';
+    canvas.dataset.model='tip4p-style-rigid-water-md';
     canvas.dataset.dynamics='inertial-translation-rotation-transient-network';
     canvas.dataset.integrator='baoab-180hz';
     canvas.dataset.hbondValence='2-donor-2-acceptor';
     canvas.dataset.repulsion='oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen';
-    canvas.dataset.electrostatics='screened-partial-charge-3-site';
+    canvas.dataset.electrostatics='screened-tip4p-style-m-site';
     canvas.dataset.background='opaque-microscopic-water';
     if(this.host)this.host.dataset.lensReady='true';
 
@@ -214,6 +214,8 @@ class WaterLens {
     this.canvas.dataset.minHo=d.minHO.toFixed(4);
     this.canvas.dataset.qO=d.qO.toFixed(2);
     this.canvas.dataset.qH=d.qH.toFixed(2);
+    this.canvas.dataset.qM=d.qM.toFixed(2);
+    this.canvas.dataset.oM=d.oM.toFixed(4);
     this.canvas.dataset.electrostaticK=d.electrostaticK.toFixed(4);
     this.canvas.dataset.netCharge=d.netCharge.toFixed(4);
     this.canvas.dataset.visibleMolecules=String(
