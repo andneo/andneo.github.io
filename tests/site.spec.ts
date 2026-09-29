@@ -470,6 +470,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-180hz');
  await expect(lensCanvas).toHaveAttribute('data-hbond-valence','2-donor-2-acceptor');
  await expect(lensCanvas).toHaveAttribute('data-repulsion','oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen');
+ await expect(lensCanvas).toHaveAttribute('data-electrostatics','screened-partial-charge-3-site');
  await expect(lensCanvas).toHaveAttribute('data-background','opaque-microscopic-water');
  await expect(story).toHaveAttribute('data-lens-ready','true');
 
@@ -485,8 +486,11 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(Number(await lensCanvas.getAttribute('data-max-acceptor-degree'))).toBeLessThanOrEqual(2);
  expect(Number(await lensCanvas.getAttribute('data-max-total-degree'))).toBeLessThanOrEqual(4);
  expect(Number(await lensCanvas.getAttribute('data-min-oo'))).toBeGreaterThanOrEqual(.187);
- expect(Number(await lensCanvas.getAttribute('data-min-hh'))).toBeGreaterThanOrEqual(.069);
- expect(Number(await lensCanvas.getAttribute('data-min-ho'))).toBeGreaterThanOrEqual(.077);
+ expect(Number(await lensCanvas.getAttribute('data-min-hh'))).toBeGreaterThanOrEqual(.095);
+ expect(Number(await lensCanvas.getAttribute('data-min-ho'))).toBeGreaterThanOrEqual(.085);
+ expect(Number(await lensCanvas.getAttribute('data-q-o'))).toBeCloseTo(-.84,2);
+ expect(Number(await lensCanvas.getAttribute('data-q-h'))).toBeCloseTo(.42,2);
+ expect(Math.abs(Number(await lensCanvas.getAttribute('data-net-charge')))).toBeLessThan(1e-6);
 
  const lensPixels=await lensCanvas.evaluate((canvas:HTMLCanvasElement)=>{
   const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
