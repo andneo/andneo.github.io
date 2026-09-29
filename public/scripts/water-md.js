@@ -17,9 +17,12 @@ export class RigidWaterMD {
     this.bondsFormed=0;
     this.bondsBroken=0;
     this.randomState=0x13579bdf;
-    this.temperature=options.temperature??.18;
-    this.gamma=options.gamma??1.35;
-    this.gammaRot=options.gammaRot??1.8;
+    this.temperature=options.temperature??.026;
+    this.gamma=options.gamma??2.4;
+    this.gammaRot=options.gammaRot??3.2;
+    this.hardCoreOO=.188;
+    this.hardCoreHH=.070;
+    this.hardCoreHO=.078;
     this.maxDonorDegree=0;
     this.maxAcceptorDegree=0;
     this.maxTotalDegree=0;
@@ -63,10 +66,10 @@ export class RigidWaterMD {
         if(this.molecules.some(o=>Math.hypot(this.minimumImage(x-o.x),this.minimumImage(y-o.y))<minSep))continue;
         this.molecules.push({
           id:i,x,y,
-          vx:(this.random()-.5)*.16,
-          vy:(this.random()-.5)*.16,
+          vx:(this.random()-.5)*.055,
+          vy:(this.random()-.5)*.055,
           angle:this.random()*TAU,
-          omega:(this.random()-.5)*2.0,
+          omega:(this.random()-.5)*.55,
           fx:0,fy:0,torque:0,
         });
         placed=true;
@@ -133,7 +136,7 @@ export class RigidWaterMD {
         // Oxygen–oxygen excluded volume.
         let dx=this.minimumImage(b.x-a.x),dy=this.minimumImage(b.y-a.y);
         let d=Math.hypot(dx,dy);
-        let f=this.wcaForce(d,.165,.010);
+        let f=this.wcaForce(d,.172,.018);
         if(f){
           const ux=dx/d,uy=dy/d;
           this.addCenterForce(a,-ux*f,-uy*f);
@@ -143,7 +146,7 @@ export class RigidWaterMD {
         // Hydrogen–hydrogen excluded volume.
         for(const ha of ah)for(const hb of bh){
           dx=this.minimumImage(hb.x-ha.x);dy=this.minimumImage(hb.y-ha.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.075,.0045);
+          f=this.wcaForce(d,.078,.008);
           if(!f)continue;
           const ux=dx/d,uy=dy/d;
           this.addSiteForce(a,ha,-ux*f,-uy*f);
@@ -153,7 +156,7 @@ export class RigidWaterMD {
         // Short-range H–O cores in both directions.
         for(const ha of ah){
           dx=this.minimumImage(b.x-ha.x);dy=this.minimumImage(b.y-ha.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.082,.006);
+          f=this.wcaForce(d,.086,.009);
           if(f){
             const ux=dx/d,uy=dy/d;
             this.addSiteForce(a,ha,-ux*f,-uy*f);
@@ -162,7 +165,7 @@ export class RigidWaterMD {
         }
         for(const hb of bh){
           dx=this.minimumImage(a.x-hb.x);dy=this.minimumImage(a.y-hb.y);d=Math.hypot(dx,dy);
-          f=this.wcaForce(d,.082,.006);
+          f=this.wcaForce(d,.086,.009);
           if(f){
             const ux=dx/d,uy=dy/d;
             this.addSiteForce(b,hb,-ux*f,-uy*f);
@@ -269,10 +272,10 @@ export class RigidWaterMD {
   }
 
   applyHydrogenBonds(){
-    const epsilon=.040;
+    const epsilon=.030;
     const target=.132;
     const width=.042;
-    const angularTorque=.012;
+    const angularTorque=.0085;
 
     for(const bond of this.bonds.values()){
       const c=this.candidate(
@@ -347,6 +350,7 @@ export class RigidWaterMD {
       m.angle+=half*m.omega;
     }
 
+    this.resolveHardCoreConstraints();
     this.computeForces();
 
     // B: second half kick.
@@ -359,12 +363,112 @@ export class RigidWaterMD {
     this.stepCount++;
   }
 
+  resolveHardCoreConstraints(){
+    // Force-based repulsion alone can penetrate at finite dt. A small
+    // position-level projection guarantees non-overlap while retaining
+    // the smooth Langevin dynamics between contacts.
+    for(let pass=0;pass<3;pass++){
+      for(let i=0;i<this.molecules.length;i++){
+        const a=this.molecules[i];
+        for(let j=i+1;j<this.molecules.length;j++){
+          const b=this.molecules[j];
+
+          let dx=this.minimumImage(b.x-a.x);
+          let dy=this.minimumImage(b.y-a.y);
+          let d=Math.hypot(dx,dy)||1e-8;
+          if(d<this.hardCoreOO){
+            const nx=dx/d,ny=dy/d;
+            const correction=(this.hardCoreOO-d)*.5+.0002;
+            a.x=this.wrap(a.x-nx*correction);
+            a.y=this.wrap(a.y-ny*correction);
+            b.x=this.wrap(b.x+nx*correction);
+            b.y=this.wrap(b.y+ny*correction);
+
+            const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+            if(relative<0){
+              const impulse=-relative*.55;
+              a.vx-=nx*impulse;a.vy-=ny*impulse;
+              b.vx+=nx*impulse;b.vy+=ny*impulse;
+            }
+          }
+
+          const ah=this.hydrogenSites(a);
+          const bh=this.hydrogenSites(b);
+
+          for(const ha of ah)for(const hb of bh){
+            dx=this.minimumImage(hb.x-ha.x);
+            dy=this.minimumImage(hb.y-ha.y);
+            d=Math.hypot(dx,dy)||1e-8;
+            if(d>=this.hardCoreHH)continue;
+            const nx=dx/d,ny=dy/d;
+            const correction=(this.hardCoreHH-d)*.26+.0001;
+            a.x=this.wrap(a.x-nx*correction);
+            a.y=this.wrap(a.y-ny*correction);
+            b.x=this.wrap(b.x+nx*correction);
+            b.y=this.wrap(b.y+ny*correction);
+          }
+
+          for(const ha of ah){
+            dx=this.minimumImage(b.x-ha.x);
+            dy=this.minimumImage(b.y-ha.y);
+            d=Math.hypot(dx,dy)||1e-8;
+            if(d<this.hardCoreHO){
+              const nx=dx/d,ny=dy/d;
+              const correction=(this.hardCoreHO-d)*.22+.0001;
+              a.x=this.wrap(a.x-nx*correction);
+              a.y=this.wrap(a.y-ny*correction);
+              b.x=this.wrap(b.x+nx*correction);
+              b.y=this.wrap(b.y+ny*correction);
+            }
+          }
+          for(const hb of bh){
+            dx=this.minimumImage(a.x-hb.x);
+            dy=this.minimumImage(a.y-hb.y);
+            d=Math.hypot(dx,dy)||1e-8;
+            if(d<this.hardCoreHO){
+              const nx=dx/d,ny=dy/d;
+              const correction=(this.hardCoreHO-d)*.22+.0001;
+              b.x=this.wrap(b.x-nx*correction);
+              b.y=this.wrap(b.y-ny*correction);
+              a.x=this.wrap(a.x+nx*correction);
+              a.y=this.wrap(a.y+ny*correction);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  minimumSeparations(){
+    let oo=Infinity,hh=Infinity,ho=Infinity;
+    for(let i=0;i<this.molecules.length;i++){
+      const a=this.molecules[i];
+      const ah=this.hydrogenSites(a);
+      for(let j=i+1;j<this.molecules.length;j++){
+        const b=this.molecules[j];
+        const bh=this.hydrogenSites(b);
+        oo=Math.min(oo,Math.hypot(this.minimumImage(b.x-a.x),this.minimumImage(b.y-a.y)));
+        for(const ha of ah)for(const hb of bh){
+          hh=Math.min(hh,Math.hypot(this.minimumImage(hb.x-ha.x),this.minimumImage(hb.y-ha.y)));
+        }
+        for(const ha of ah){
+          ho=Math.min(ho,Math.hypot(this.minimumImage(b.x-ha.x),this.minimumImage(b.y-ha.y)));
+        }
+        for(const hb of bh){
+          ho=Math.min(ho,Math.hypot(this.minimumImage(a.x-hb.x),this.minimumImage(a.y-hb.y)));
+        }
+      }
+    }
+    return{oo,hh,ho};
+  }
+
   diagnostics(){
     let speed=0,angular=0;
     for(const m of this.molecules){
       speed+=Math.hypot(m.vx,m.vy);
       angular+=Math.abs(m.omega);
     }
+    const separation=this.minimumSeparations();
     return{
       steps:this.stepCount,
       bonds:this.bonds.size,
@@ -375,6 +479,9 @@ export class RigidWaterMD {
       maxDonorDegree:this.maxDonorDegree,
       maxAcceptorDegree:this.maxAcceptorDegree,
       maxTotalDegree:this.maxTotalDegree,
+      minOO:separation.oo,
+      minHH:separation.hh,
+      minHO:separation.ho,
     };
   }
 }
