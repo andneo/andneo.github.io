@@ -10,6 +10,7 @@ export class RigidWaterMD {
     this.mass=1;
     this.inertia=.012;
     this.oh=.072;
+    this.om=.012;
     this.acceptorRadius=.064;
     this.molecules=[];
     this.bonds=new Map();
@@ -24,10 +25,12 @@ export class RigidWaterMD {
     this.hardCoreHH=.096;
     this.hardCoreHO=.086;
 
-    // Neutral three-site partial-charge model. These are reduced simulation
-    // units rather than SI charges; qO + 2*qH remains exactly zero.
-    this.qO=-.84;
+    // TIP4P-style charge geometry in reduced simulation units.
+    // O remains the steric/covalent centre but carries no point charge.
+    // The negative charge sits on an invisible M-site along the HOH bisector.
+    this.qO=0;
     this.qH=.42;
+    this.qM=-.84;
     this.coulombK=.0031;
     this.coulombSoftening=.030;
     this.coulombScreening=.34;
@@ -113,11 +116,24 @@ export class RigidWaterMD {
     });
   }
 
+  mSite(m){
+    return{
+      type:'M',
+      index:0,
+      angle:m.angle,
+      rx:Math.cos(m.angle)*this.om,
+      ry:Math.sin(m.angle)*this.om,
+      x:m.x+Math.cos(m.angle)*this.om,
+      y:m.y+Math.sin(m.angle)*this.om,
+      charge:this.qM,
+    };
+  }
+
   chargedSites(m){
     const hydrogens=this.hydrogenSites(m);
     return[
-      {type:'O',charge:this.qO,rx:0,ry:0,x:m.x,y:m.y},
       ...hydrogens.map(h=>({...h,type:'H',charge:this.qH})),
+      this.mSite(m),
     ];
   }
 
@@ -327,10 +343,10 @@ export class RigidWaterMD {
   }
 
   applyHydrogenBonds(){
-    const epsilon=.0085;
+    const epsilon=.0065;
     const target=.132;
     const width=.042;
-    const angularTorque=.0022;
+    const angularTorque=.0016;
 
     for(const bond of this.bonds.values()){
       const c=this.candidate(
@@ -540,9 +556,11 @@ export class RigidWaterMD {
       minHO:separation.ho,
       qO:this.qO,
       qH:this.qH,
+      qM:this.qM,
+      oM:this.om,
       electrostaticCutoff:this.coulombCutoff,
       electrostaticK:this.coulombK,
-      netCharge:this.qO+2*this.qH,
+      netCharge:this.qO+2*this.qH+this.qM,
     };
   }
 }
