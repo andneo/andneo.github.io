@@ -10,9 +10,7 @@
     "check": "astro check",
     "validate:site": "node scripts/check-site.mjs",
     "validate": "npm run check && npm run build && npm run validate:baseline && npm run validate:site",
-    "test:browser": "node scripts/browser-suite.mjs",
-    "predev": "node scripts/materialize-magnifier.mjs",
-    "prebuild": "node scripts/materialize-magnifier.mjs"
+    "test:browser": "node scripts/browser-suite.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.0",
