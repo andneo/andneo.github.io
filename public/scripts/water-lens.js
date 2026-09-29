@@ -29,6 +29,7 @@ class WaterLens {
     canvas.dataset.integrator='baoab-180hz';
     canvas.dataset.hbondValence='2-donor-2-acceptor';
     canvas.dataset.repulsion='oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen';
+    canvas.dataset.electrostatics='screened-partial-charge-3-site';
     canvas.dataset.background='opaque-microscopic-water';
     if(this.host)this.host.dataset.lensReady='true';
 
@@ -211,6 +212,10 @@ class WaterLens {
     this.canvas.dataset.minOo=d.minOO.toFixed(4);
     this.canvas.dataset.minHh=d.minHH.toFixed(4);
     this.canvas.dataset.minHo=d.minHO.toFixed(4);
+    this.canvas.dataset.qO=d.qO.toFixed(2);
+    this.canvas.dataset.qH=d.qH.toFixed(2);
+    this.canvas.dataset.electrostaticK=d.electrostaticK.toFixed(4);
+    this.canvas.dataset.netCharge=d.netCharge.toFixed(4);
     this.canvas.dataset.visibleMolecules=String(
       this.md.molecules.filter(m=>Math.hypot(m.x,m.y)<=this.visibleRadius).length
     );
