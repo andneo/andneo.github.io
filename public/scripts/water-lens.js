@@ -66,27 +66,27 @@ class WaterLens {
     const ctx=this.ctx;
     const dark=document.documentElement.dataset.theme==='dark';
 
-    // Fully opaque microscopic medium. The macroscopic pool iframe must never
-    // composite through the aperture.
-    ctx.fillStyle=dark?'#10262f':'#8eb9c6';
+    // Fully opaque microscopic medium. Keep this purely presentational:
+    // the MD state and force model are unchanged.
+    ctx.fillStyle=dark?'#1d2024':'#34383d';
     ctx.fillRect(0,0,this.width,this.height);
 
     const g=ctx.createRadialGradient(
       this.width*.36,this.height*.28,0,
-      this.center.x,this.center.y,this.radius*1.05
+      this.center.x,this.center.y,this.radius*1.06
     );
-    g.addColorStop(0,dark?'rgba(102,159,172,.34)':'rgba(205,233,239,.52)');
-    g.addColorStop(.54,dark?'rgba(38,89,103,.18)':'rgba(128,181,194,.24)');
-    g.addColorStop(1,dark?'rgba(2,20,27,.30)':'rgba(46,103,119,.22)');
+    g.addColorStop(0,dark?'rgba(132,139,146,.18)':'rgba(165,171,178,.18)');
+    g.addColorStop(.52,dark?'rgba(73,79,85,.15)':'rgba(102,108,114,.14)');
+    g.addColorStop(1,dark?'rgba(6,8,10,.34)':'rgba(15,18,21,.28)');
     ctx.fillStyle=g;
     ctx.fillRect(0,0,this.width,this.height);
 
     const vignette=ctx.createRadialGradient(
-      this.center.x,this.center.y,this.radius*.46,
+      this.center.x,this.center.y,this.radius*.44,
       this.center.x,this.center.y,this.radius
     );
     vignette.addColorStop(0,'rgba(0,0,0,0)');
-    vignette.addColorStop(1,dark?'rgba(0,8,12,.28)':'rgba(17,59,72,.20)');
+    vignette.addColorStop(1,dark?'rgba(0,0,0,.34)':'rgba(0,0,0,.25)');
     ctx.fillStyle=vignette;
     ctx.fillRect(0,0,this.width,this.height);
   }
