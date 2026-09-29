@@ -25,11 +25,13 @@ class WaterLens {
     canvas.dataset.renderer='molecular-lens';
     canvas.dataset.moleculeCount=String(this.md.count);
     canvas.dataset.model='tip4p-style-rigid-water-md';
-    canvas.dataset.dynamics='inertial-translation-rotation-transient-network';
+    canvas.dataset.dynamics='planar-translation-3d-rotation-transient-network';
     canvas.dataset.integrator='baoab-180hz';
     canvas.dataset.hbondValence='2-donor-2-acceptor';
     canvas.dataset.repulsion='oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen';
-    canvas.dataset.electrostatics='screened-tip4p-style-m-site';
+    canvas.dataset.electrostatics='screened-tip4p-style-m-site-3d';
+    canvas.dataset.orientation='quaternion-3d';
+    canvas.dataset.translation='planar-xy';
     canvas.dataset.background='opaque-microscopic-water';
     if(this.host)this.host.dataset.lensReady='true';
 
@@ -95,9 +97,11 @@ class WaterLens {
     if(!this.visibleMolecule(donor)&&!this.visibleMolecule(acceptor))return;
 
     const h=this.md.hydrogenSites(donor)[bond.donorIndex];
-    const a=this.md.acceptorSites(acceptor)[bond.acceptorIndex];
-    const dx=this.md.minimumImage(a.x-h.x);
-    const dy=this.md.minimumImage(a.y-h.y);
+
+    // The 3D acceptor geometry decides whether the bond exists, but the
+    // visible chemical convention remains O-H···O.
+    const dx=this.md.minimumImage(acceptor.x-h.x);
+    const dy=this.md.minimumImage(acceptor.y-h.y);
     const p1=this.toCanvas(h.x,h.y);
     const p2=this.toCanvas(h.x+dx,h.y+dy);
 
@@ -124,40 +128,51 @@ class WaterLens {
     const ctx=this.ctx;
     const p=this.toCanvas(m.x,m.y);
     const scale=Math.max(.92,Math.min(1.42,this.radius/175));
-    const ohPixels=21.0*scale;
     const oxygenRadius=10.6*scale;
-    const hydrogenRadius=5.9*scale;
-    const half=52.25*Math.PI/180;
+    const hydrogenBase=5.9*scale;
+    const sites=this.md.hydrogenSites(m);
 
-    const h1={
-      x:p.x+Math.cos(m.angle-half)*ohPixels,
-      y:p.y+Math.sin(m.angle-half)*ohPixels,
-    };
-    const h2={
-      x:p.x+Math.cos(m.angle+half)*ohPixels,
-      y:p.y+Math.sin(m.angle+half)*ohPixels,
-    };
+    const hydrogens=sites.map(site=>{
+      const hp=this.toCanvas(site.x,site.y);
+      const depth=site.z/this.md.oh;
+      return{
+        ...hp,
+        z:site.z,
+        depth,
+        radius:hydrogenBase*(1+.16*depth),
+        alpha:.76+.20*((depth+1)*.5),
+      };
+    });
 
+    // Orthographic projection: bond shortening is the visual cue for tilt.
     ctx.strokeStyle='rgba(239,243,243,.86)';
     ctx.lineWidth=2.15*scale;
     ctx.lineCap='round';
     ctx.beginPath();
-    ctx.moveTo(p.x,p.y);ctx.lineTo(h1.x,h1.y);
-    ctx.moveTo(p.x,p.y);ctx.lineTo(h2.x,h2.y);
+    for(const h of hydrogens){
+      ctx.moveTo(p.x,p.y);
+      ctx.lineTo(h.x,h.y);
+    }
     ctx.stroke();
 
-    for(const h of [h1,h2]){
+    // Draw the farther hydrogen first so near/far ordering remains legible.
+    hydrogens.sort((a,b)=>a.z-b.z);
+    for(const h of hydrogens){
+      const r=Math.max(3.9*scale,h.radius);
       const hg=ctx.createRadialGradient(
-        h.x-hydrogenRadius*.34,h.y-hydrogenRadius*.38,.5,
-        h.x,h.y,hydrogenRadius
+        h.x-r*.34,h.y-r*.38,.5,
+        h.x,h.y,r
       );
-      hg.addColorStop(0,'#ffffff');
-      hg.addColorStop(.68,'#edf0ef');
-      hg.addColorStop(1,'#b8c2c4');
+      hg.addColorStop(0,'rgba(255,255,255,1)');
+      hg.addColorStop(.68,'rgba(237,240,239,.98)');
+      hg.addColorStop(1,'rgba(184,194,196,.96)');
+      ctx.save();
+      ctx.globalAlpha=h.alpha;
       ctx.fillStyle=hg;
       ctx.beginPath();
-      ctx.arc(h.x,h.y,hydrogenRadius,0,Math.PI*2);
+      ctx.arc(h.x,h.y,r,0,Math.PI*2);
       ctx.fill();
+      ctx.restore();
     }
 
     const og=ctx.createRadialGradient(
@@ -172,7 +187,6 @@ class WaterLens {
     ctx.arc(p.x,p.y,oxygenRadius,0,Math.PI*2);
     ctx.fill();
   }
-
   draw(){
     const ctx=this.ctx;
     ctx.save();
@@ -206,6 +220,8 @@ class WaterLens {
     this.canvas.dataset.bondsBroken=String(d.broken);
     this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(4);
     this.canvas.dataset.meanAngularSpeed=d.meanAngularSpeed.toFixed(4);
+    this.canvas.dataset.meanOutOfPlane=d.meanOutOfPlane.toFixed(4);
+    this.canvas.dataset.maxCenterZ=d.maxCenterZ.toFixed(6);
     this.canvas.dataset.maxDonorDegree=String(d.maxDonorDegree);
     this.canvas.dataset.maxAcceptorDegree=String(d.maxAcceptorDegree);
     this.canvas.dataset.maxTotalDegree=String(d.maxTotalDegree);
