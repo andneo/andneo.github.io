@@ -302,7 +302,7 @@ export class RigidWaterMD {
     const a=this.acceptorSites(acceptor)[acceptorIndex];
     const dv=this.siteDelta(h,a);
     const r=Math.hypot(dv.x,dv.y,dv.z);
-    const rMax=loose?.245:.215;
+    const rMax=loose ? .245 : .215;
     if(r<.075||r>rMax)return null;
 
     const ux=dv.x/r,uy=dv.y/r,uz=dv.z/r;
@@ -314,12 +314,12 @@ export class RigidWaterMD {
     };
     const donorAlign=donorOH.x*ux+donorOH.y*uy+donorOH.z*uz;
     const acceptorAlign=-(acceptorDir.x*ux+acceptorDir.y*uy+acceptorDir.z*uz);
-    if(donorAlign<(loose?.58:.74)||acceptorAlign<(loose?.38:.58))return null;
+    if(donorAlign<(loose ? .58 : .74)||acceptorAlign<(loose ? .38 : .58))return null;
 
     const target=.132,width=.045;
     const radial=Math.exp(-Math.pow((r-target)/width,2));
     const score=radial*Math.pow(Math.max(0,donorAlign),4)*Math.pow(Math.max(0,acceptorAlign),3);
-    if(score<(loose?.025:.065))return null;
+    if(score<(loose ? .025 : .065))return null;
     return{donor,donorIndex,acceptor,acceptorIndex,h,a,dx:dv.x,dy:dv.y,dz:dv.z,r,ux,uy,uz,donorAlign,acceptorAlign,score};
   }
 
