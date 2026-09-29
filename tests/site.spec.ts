@@ -465,12 +465,12 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(lensShellBox!.height).toBeGreaterThan(400);
  await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
- await expect(lensCanvas).toHaveAttribute('data-model','rigid-water-langevin-md');
+ await expect(lensCanvas).toHaveAttribute('data-model','tip4p-style-rigid-water-md');
  await expect(lensCanvas).toHaveAttribute('data-dynamics','inertial-translation-rotation-transient-network');
  await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-180hz');
  await expect(lensCanvas).toHaveAttribute('data-hbond-valence','2-donor-2-acceptor');
  await expect(lensCanvas).toHaveAttribute('data-repulsion','oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen');
- await expect(lensCanvas).toHaveAttribute('data-electrostatics','screened-partial-charge-3-site');
+ await expect(lensCanvas).toHaveAttribute('data-electrostatics','screened-tip4p-style-m-site');
  await expect(lensCanvas).toHaveAttribute('data-background','opaque-microscopic-water');
  await expect(story).toHaveAttribute('data-lens-ready','true');
 
@@ -488,8 +488,11 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(Number(await lensCanvas.getAttribute('data-min-oo'))).toBeGreaterThanOrEqual(.187);
  expect(Number(await lensCanvas.getAttribute('data-min-hh'))).toBeGreaterThanOrEqual(.095);
  expect(Number(await lensCanvas.getAttribute('data-min-ho'))).toBeGreaterThanOrEqual(.085);
- expect(Number(await lensCanvas.getAttribute('data-q-o'))).toBeCloseTo(-.84,2);
+ expect(Number(await lensCanvas.getAttribute('data-q-o'))).toBeCloseTo(0,2);
  expect(Number(await lensCanvas.getAttribute('data-q-h'))).toBeCloseTo(.42,2);
+ expect(Number(await lensCanvas.getAttribute('data-q-m'))).toBeCloseTo(-.84,2);
+ expect(Number(await lensCanvas.getAttribute('data-o-m'))).toBeGreaterThan(.010);
+ expect(Number(await lensCanvas.getAttribute('data-o-m'))).toBeLessThan(.014);
  expect(Math.abs(Number(await lensCanvas.getAttribute('data-net-charge')))).toBeLessThan(1e-6);
 
  const lensPixels=await lensCanvas.evaluate((canvas:HTMLCanvasElement)=>{
