@@ -118,7 +118,7 @@ export class RigidWaterMD {
     const sr=sigma/distance;
     const sr2=sr*sr;
     const sr6=sr2*sr2*sr2;
-    return 24*epsilon*(2*sr6*sr6-sr6)/distance;
+    return Math.min(2.4,24*epsilon*(2*sr6*sr6-sr6)/distance);
   }
 
   applyRepulsions(){
@@ -284,7 +284,7 @@ export class RigidWaterMD {
       // Gaussian attractive well. Positive here pulls donor H toward acceptor site.
       const delta=(c.r-target)/width;
       const angular=c.donorAlign*c.donorAlign*c.acceptorAlign*c.acceptorAlign;
-      const magnitude=-2*epsilon*delta/width*Math.exp(-delta*delta)*angular;
+      const magnitude=2*epsilon*delta/width*Math.exp(-delta*delta)*angular;
       const fx=c.ux*magnitude,fy=c.uy*magnitude;
       this.addSiteForce(c.donor,c.h,fx,fy);
       this.addSiteForce(c.acceptor,c.a,-fx,-fy);
