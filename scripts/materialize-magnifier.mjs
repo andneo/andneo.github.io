@@ -56,13 +56,13 @@ const v4Encoded = v4Parts
   .map((name) => fs.readFileSync(path.join(assetsDir, name), 'utf8').trim())
   .join('');
 
-if (v4Encoded.length !== 104752) {
-  throw new Error(`Magnifier v4 payload length mismatch: expected 104752, got ${v4Encoded.length}.`);
+if (v4Encoded.length !== 85020) {
+  throw new Error(`Magnifier v4 payload length mismatch: expected 85020, got ${v4Encoded.length}.`);
 }
 
 const v4Bytes = Buffer.from(v4Encoded, 'base64');
-if (v4Bytes.length !== 78564) {
-  throw new Error(`Magnifier v4 byte length mismatch: expected 78564, got ${v4Bytes.length}.`);
+if (v4Bytes.length !== 63757) {
+  throw new Error(`Magnifier v4 byte length mismatch: expected 63757, got ${v4Bytes.length}.`);
 }
 
 if (
