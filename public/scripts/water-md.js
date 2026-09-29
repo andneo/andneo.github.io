@@ -178,21 +178,21 @@ export class RigidWaterMD {
     const a=this.acceptorSites(acceptor)[acceptorIndex];
     const dx=this.minimumImage(a.x-h.x),dy=this.minimumImage(a.y-h.y);
     const r=Math.hypot(dx,dy);
-    const rMax=loose?.245:.215;
+    const rMax=loose ? .245 : .215;
     if(r<.075||r>rMax)return null;
 
     const ux=dx/r,uy=dy/r;
     const donorAlign=Math.cos(h.angle)*ux+Math.sin(h.angle)*uy;
     const acceptorAlign=-(Math.cos(a.angle)*ux+Math.sin(a.angle)*uy);
-    const minDonor=loose?.58:.74;
-    const minAccept=loose?.38:.58;
+    const minDonor=loose ? .58 : .74;
+    const minAccept=loose ? .38 : .58;
     if(donorAlign<minDonor||acceptorAlign<minAccept)return null;
 
     const target=.132;
     const width=.045;
     const radial=Math.exp(-Math.pow((r-target)/width,2));
     const score=radial*Math.pow(Math.max(0,donorAlign),4)*Math.pow(Math.max(0,acceptorAlign),3);
-    if(score<(loose?.025:.065))return null;
+    if(score<(loose ? .025 : .065))return null;
     return{donor,donorIndex,acceptor,acceptorIndex,h,a,dx,dy,r,ux,uy,donorAlign,acceptorAlign,score};
   }
 
