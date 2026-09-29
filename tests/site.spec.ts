@@ -467,7 +467,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
  await expect(lensCanvas).toHaveAttribute('data-model','rigid-water-langevin-md');
  await expect(lensCanvas).toHaveAttribute('data-dynamics','inertial-translation-rotation-transient-network');
- await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-120hz');
+ await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-180hz');
  await expect(lensCanvas).toHaveAttribute('data-hbond-valence','2-donor-2-acceptor');
  await expect(lensCanvas).toHaveAttribute('data-repulsion','oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen');
  await expect(lensCanvas).toHaveAttribute('data-background','opaque-microscopic-water');
@@ -484,6 +484,9 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(Number(await lensCanvas.getAttribute('data-max-donor-degree'))).toBeLessThanOrEqual(2);
  expect(Number(await lensCanvas.getAttribute('data-max-acceptor-degree'))).toBeLessThanOrEqual(2);
  expect(Number(await lensCanvas.getAttribute('data-max-total-degree'))).toBeLessThanOrEqual(4);
+ expect(Number(await lensCanvas.getAttribute('data-min-oo'))).toBeGreaterThanOrEqual(.187);
+ expect(Number(await lensCanvas.getAttribute('data-min-hh'))).toBeGreaterThanOrEqual(.069);
+ expect(Number(await lensCanvas.getAttribute('data-min-ho'))).toBeGreaterThanOrEqual(.077);
 
  const lensPixels=await lensCanvas.evaluate((canvas:HTMLCanvasElement)=>{
   const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
