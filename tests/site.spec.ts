@@ -446,7 +446,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lensShell).toBeVisible();
  await expect(lensShell).toHaveAttribute('src','/images/research/magnifier-shell-v3.webp');
  await expect(lensShell).toHaveAttribute('data-magnifier-render','blender');
- await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth)).toBeGreaterThan(500);
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth)).toBeGreaterThan(1800);
  const shellCoverage=await lensShell.evaluate((img:HTMLImageElement)=>{
   const sample=document.createElement('canvas');
   sample.width=180;
