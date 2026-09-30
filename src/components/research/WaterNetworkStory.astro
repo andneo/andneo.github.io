@@ -8,7 +8,7 @@ const scenes = [
   {
     kicker:'02 · monolayer',
     title:'Confine the network.',
-    copy:'A browser-scale coarse-grained experiment with 250 rigid H₂O molecules in a periodic monolayer. Temperature enters through kBT, while lateral pressure is sampled with constant-pressure area moves. This is not the first-principles model used for the published phase diagram.',
+    copy:'A browser-scale coarse-grained experiment with 250 water molecules in a periodic monolayer. The oxygen network can choose between open three-fold and denser four-fold local environments while temperature and lateral pressure are sampled in an NPT Monte Carlo model. This is not the first-principles potential used for the published phase diagram.',
   },
   {
     kicker:'03 · molecules',
@@ -112,11 +112,11 @@ const scenes = [
         </div>
         <input id="monolayer-pressure" data-monolayer-pressure type="range" min="0" max="6" step="0.1" value="1" />
         <div class="water-story__thermo-metrics" aria-live="polite">
-          <span>virial pressure <strong data-monolayer-measured-pressure>1.0 GPa</strong></span>
+          <span>config. pressure <strong data-monolayer-measured-pressure>1.0 GPa</strong></span>
           <span>areal density <strong data-monolayer-density>—</strong></span>
         </div>
         <p data-monolayer-status>250 molecules · periodic monolayer</p>
-        <small>Coarse-grained NPT sampler · 5 Å confinement-work convention</small>
+        <small>Shape-flexible coarse-grained NPT sampler · 5 Å confinement-work convention</small>
       </div>
 
     </div>

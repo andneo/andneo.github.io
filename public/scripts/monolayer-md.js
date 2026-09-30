@@ -4,155 +4,105 @@ const KB_KJ_MOL_K=0.00831446261815324;
 const GPA_NM3_TO_KJ_MOL=602.214076;
 
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
-function quatNormalize(q){
-  const n=Math.hypot(q.w,q.x,q.y,q.z)||1;
-  q.w/=n;q.x/=n;q.y/=n;q.z/=n;
+function wrapAngle(a){
+  while(a>Math.PI)a-=Math.PI*2;
+  while(a<=-Math.PI)a+=Math.PI*2;
+  return a;
 }
-function quatMul(a,b){
-  return{
-    w:a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z,
-    x:a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
-    y:a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
-    z:a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,
-  };
-}
-function rotateVec(q,v){
-  const tx=2*(q.y*v.z-q.z*v.y);
-  const ty=2*(q.z*v.x-q.x*v.z);
-  const tz=2*(q.x*v.y-q.y*v.x);
-  return{
-    x:v.x+q.w*tx+(q.y*tz-q.z*ty),
-    y:v.y+q.w*ty+(q.z*tx-q.x*tz),
-    z:v.z+q.w*tz+(q.x*ty-q.y*tx),
-  };
-}
-function cross(a,b){
-  return{x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x};
+function circularMean(a,b){
+  return Math.atan2(Math.sin(a)+Math.sin(b),Math.cos(a)+Math.cos(b));
 }
 
 export class MonolayerWaterMD{
   constructor(options={}){
     this.count=options.count??250;
-
-    // Geometry is in nm and energies are in kJ/mol. The dynamics use an
-    // arbitrary but fixed time unit; thermodynamic ratios are not arbitrary:
-    // kBT is calculated from the requested Kelvin temperature.
-    this.dt=options.dt??1/600;
-    this.mass=18.015;
-    this.inertia=.085;
-    this.oh=.0957;
-    this.acceptorRadius=.065;
     this.temperatureKelvin=options.temperatureKelvin??240;
-    this.pressureGPa=options.pressureGPa??1.0;
+    this.pressureGPa=options.pressureGPa??1;
     this.kBT=KB_KJ_MOL_K*this.temperatureKelvin;
-    this.gamma=2.0;
-    this.gammaRot=2.4;
 
-    // A continuous conservative four-patch model. O centres repel through WCA;
-    // each of the two H donor sites attracts either of two virtual acceptor
-    // sites on a neighbouring water through a Gaussian well. The display bond
-    // graph is derived from this potential and never feeds back into the force.
+    // Coarse-grained O-network Hamiltonian. The old four-patch pair model
+    // rewarded every nearby donor/acceptor contact and therefore drove a
+    // close-packed triangular oxygen layer. This model instead gives each
+    // oxygen a low-energy three-coordinate basin, a slightly higher-energy
+    // four-coordinate basin, and a steep penalty above four neighbours.
+    // Pressure can therefore trade open 3-fold networks for denser 4-fold
+    // networks rather than simply creating 5-6 close neighbours.
     this.ooSigma=.260;
     this.ooEpsilon=5.0;
     this.ooCutoff=Math.pow(2,1/6)*this.ooSigma;
-    this.hBondEpsilon=7.0;
-    this.hBondR0=.125;
-    this.hBondWidth=.028;
-    this.hBondCutoff=.280;
+    this.networkOn=.300;
+    this.networkOff=.360;
+    this.networkBondDepth=.80;
+    this.coordK3=4.0;
+    this.coordK4=4.0;
+    this.coord4Offset=3.2;
+    this.overCoordK=22.0;
+    this.angularK3=2.4;
+    this.angularK4=1.8;
 
-    this.interactionCutoff=.64;
-    this.skin=.09;
-    this.listCutoff=this.interactionCutoff+this.skin;
+    this.skin=.095;
+    this.listCutoff=this.networkOff+this.skin;
+    this.translationStep=.020;
+    this.translationAttempts=0;
+    this.translationAccepted=0;
+    this.translationWindowAttempts=0;
+    this.translationWindowAccepted=0;
 
-    // The released 144-water starting cell is ~37.56 x 37.30 A, corresponding
-    // to 10.28 molecules/nm^2. Use that areal density for the 250-water box.
+    // The released 144-water structure used in the paper has an in-plane
+    // density of ~10.28 waters/nm^2. Start the 250-water browser system there.
     this.initialArealDensity=10.2800643033;
-    this.domainHalf=.5*Math.sqrt(this.count/this.initialArealDensity);
-    this.referenceHalf=this.domainHalf;
-    this.minDomainHalf=1.62;
-    this.maxDomainHalf=3.20;
+    const initialArea=this.count/this.initialArealDensity;
+    const side=Math.sqrt(initialArea);
+    this.cell={lx:side,ly:side,shear:0};
+    this.minArea=this.count/22;
+    this.maxArea=this.count/6.5;
+    this.maxAspect=1.62;
+    this.maxShearFraction=.34;
 
-    // The paper reports inferred confinement pressure Pconf and uses a 5 A
-    // confinement width. Since Pconf=Pxy*z/w, Pxy*(A*z)=Pconf*(A*w), so the
-    // correct pressure work for an isotropic area move is Pconf*w*dA.
+    // P_conf * A * w is the pressure-work term corresponding to the 5 A
+    // confinement width used in the paper.
     this.confinementWidthNm=.50;
     this.pressureWorkScale=GPA_NM3_TO_KJ_MOL*this.confinementWidthNm;
 
     this.molecules=[];
-    this.bonds=new Map();
     this.neighborPairs=[];
     this.neighborsOf=Array.from({length:this.count},()=>[]);
     this.refX=new Float64Array(this.count);
     this.refY=new Float64Array(this.count);
-
-    this.randomState=0x6d2b79f5;
-    this.stepCount=0;
     this.neighborRebuilds=0;
-    this.neighborAge=0;
     this.neighborDirty=true;
-    this.bondsFormed=0;
-    this.bondsBroken=0;
-    this.maxDonorDegree=0;
-    this.maxAcceptorDegree=0;
-    this.maxTotalDegree=0;
 
-    this.virial=0;
-    this.potentialEnergy=0;
-    this.virialPressureGPa=0;
-    this.virialPressureEMA=0;
-
-    // NPT sampling uses Metropolis area moves instead of a feedback controller.
-    // This removes the previous arbitrary pressure-to-box mapping.
-    this.areaMoveInterval=14;
-    this.areaLogStep=.0045;
+    this.areaLogStep=.008;
     this.areaMoveAttempts=0;
     this.areaMoveAccepted=0;
     this.areaWindowAttempts=0;
     this.areaWindowAccepted=0;
+    this.shapeLogStep=.010;
+    this.shearStep=.012;
+    this.shapeMoveAttempts=0;
+    this.shapeMoveAccepted=0;
 
-    // Small Metropolis rigid-body rotations accelerate orientational
-    // equilibration at low T while preserving the canonical distribution.
-    this.orientationMoveInterval=3;
-    this.orientationMoveAngle=.20;
-    this.orientationMoveAttempts=0;
-    this.orientationMoveAccepted=0;
+    this.moveCount=0;
+    this.bonds=new Map();
+    this.bondsFormed=0;
+    this.bondsBroken=0;
+    this.degree3Fraction=0;
+    this.degree4Fraction=0;
+    this.overCoordinatedFraction=0;
+    this.meanCoordination=0;
+    this.networkEnergy=0;
+    this.potentialEnergy=0;
 
-    // Parameter changes trigger extra *equilibrium-preserving* Monte Carlo
-    // attempts. These accelerate relaxation after a slider move without
-    // changing the target NPT distribution.
-    this.pressureRelaxationMoves=500;
-    this.orientationRelaxationMoves=800;
-    this.temperatureRescales=0;
+    this.pressureEstimateGPa=this.pressureGPa;
+    this.pressureEstimateEMA=this.pressureGPa;
+    this.lastPressureEstimateMove=-1e9;
 
+    this.relaxationFrames=180;
+    this.randomState=0x6d2b79f5;
     this.seed();
     this.rebuildNeighborList();
-    this.computeForces(true);
-    this.updatePressureEstimate(true);
-  }
-
-  setTemperatureKelvin(value){
-    const nextKelvin=clamp(Number(value)||240,120,500);
-    const nextKBT=KB_KJ_MOL_K*nextKelvin;
-    if(this.molecules.length&&this.kBT>0){
-      const scale=clamp(Math.sqrt(nextKBT/this.kBT),.35,3.0);
-      for(const m of this.molecules){
-        m.vx*=scale;m.vy*=scale;
-        m.wx*=scale;m.wy*=scale;m.wz*=scale;
-      }
-      this.temperatureRescales++;
-    }
-    this.temperatureKelvin=nextKelvin;
-    this.kBT=nextKBT;
-    this.orientationRelaxationMoves=Math.max(this.orientationRelaxationMoves,800);
-    this.pressureRelaxationMoves=Math.max(this.pressureRelaxationMoves,300);
-  }
-
-  setPressureGPa(value){
-    const next=clamp(Number(value)||0,0,6);
-    if(Math.abs(next-this.pressureGPa)>.02){
-      this.pressureRelaxationMoves=Math.max(this.pressureRelaxationMoves,500);
-    }
-    this.pressureGPa=next;
+    this.potentialEnergy=this.totalEnergy();
+    this.updateBondNetwork(true);
   }
 
   random(){
@@ -161,58 +111,70 @@ export class MonolayerWaterMD{
     this.randomState=x|0;
     return((x>>>0)+.5)/4294967296;
   }
-  gaussian(){
-    const u=Math.max(1e-12,this.random());
-    return Math.sqrt(-2*Math.log(u))*Math.cos(Math.PI*2*this.random());
+
+  setTemperatureKelvin(value){
+    const next=clamp(Number(value)||240,120,500);
+    if(Math.abs(next-this.temperatureKelvin)>1)this.relaxationFrames=Math.max(this.relaxationFrames,180);
+    this.temperatureKelvin=next;
+    this.kBT=KB_KJ_MOL_K*next;
   }
-  wrap(v){
-    const span=this.domainHalf*2;
-    while(v>=this.domainHalf)v-=span;
-    while(v< -this.domainHalf)v+=span;
-    return v;
+
+  setPressureGPa(value){
+    const next=clamp(Number(value)||0,0,6);
+    if(Math.abs(next-this.pressureGPa)>.02)this.relaxationFrames=Math.max(this.relaxationFrames,220);
+    this.pressureGPa=next;
   }
-  minimumImage(d){
-    const span=this.domainHalf*2;
-    if(d>this.domainHalf)d-=span;
-    if(d< -this.domainHalf)d+=span;
-    return d;
+
+  area(cell=this.cell){return cell.lx*cell.ly;}
+  aspect(cell=this.cell){return cell.lx/cell.ly;}
+
+  fractional(x,y,cell=this.cell){
+    const fy=y/cell.ly;
+    const fx=(x-cell.shear*fy)/cell.lx;
+    return{fx,fy};
+  }
+
+  cartesian(fx,fy,cell=this.cell){
+    return{x:fx*cell.lx+fy*cell.shear,y:fy*cell.ly};
+  }
+
+  wrapPoint(m){
+    let{fx,fy}=this.fractional(m.x,m.y);
+    fx-=Math.floor(fx+.5);
+    fy-=Math.floor(fy+.5);
+    const p=this.cartesian(fx,fy);
+    m.x=p.x;m.y=p.y;
+  }
+
+  minimumImageVector(dx,dy,cell=this.cell){
+    let fy=dy/cell.ly;
+    let fx=(dx-cell.shear*fy)/cell.lx;
+    fx-=Math.round(fx);
+    fy-=Math.round(fy);
+    return{x:fx*cell.lx+fy*cell.shear,y:fy*cell.ly};
+  }
+
+  distanceBetween(a,b){
+    const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+    return{x:d.x,y:d.y,r:Math.hypot(d.x,d.y)};
   }
 
   seed(){
-    // Random sequential placement avoids seeding a square crystal. The
-    // conservative repulsion then relaxes residual close contacts.
     const minSep=.220;
     for(let id=0;id<this.count;id++){
       let placed=false;
-      for(let attempt=0;attempt<2200&&!placed;attempt++){
-        const x=(this.random()*2-1)*this.domainHalf;
-        const y=(this.random()*2-1)*this.domainHalf;
+      for(let attempt=0;attempt<3000&&!placed;attempt++){
+        const p=this.cartesian(this.random()-.5,this.random()-.5);
         let clear=true;
         for(const other of this.molecules){
-          if(Math.hypot(this.minimumImage(x-other.x),this.minimumImage(y-other.y))<minSep){
-            clear=false;break;
-          }
+          const d=this.minimumImageVector(p.x-other.x,p.y-other.y);
+          if(Math.hypot(d.x,d.y)<minSep){clear=false;break;}
         }
         if(!clear)continue;
-
-        const yaw=this.random()*Math.PI*2;
-        const tilt=(this.random()-.5)*.38;
-        const halfYaw=yaw*.5,halfTilt=tilt*.5;
-        const qYaw={w:Math.cos(halfYaw),x:0,y:0,z:Math.sin(halfYaw)};
-        const qTilt={w:Math.cos(halfTilt),x:Math.sin(halfTilt),y:0,z:0};
-        const q=quatMul(qTilt,qYaw);
-        quatNormalize(q);
-
-        const sigmaV=Math.sqrt(this.kBT/this.mass);
-        const sigmaW=Math.sqrt(this.kBT/this.inertia);
         this.molecules.push({
-          id,x,y,z:0,
-          vx:this.gaussian()*sigmaV,vy:this.gaussian()*sigmaV,
-          q,
-          wx:this.gaussian()*sigmaW*.45,
-          wy:this.gaussian()*sigmaW*.45,
-          wz:this.gaussian()*sigmaW*.45,
-          fx:0,fy:0,tx:0,ty:0,tz:0,
+          id,x:p.x,y:p.y,
+          visualAngle:this.random()*Math.PI*2,
+          targetAngle:this.random()*Math.PI*2,
         });
         placed=true;
       }
@@ -220,443 +182,423 @@ export class MonolayerWaterMD{
     }
   }
 
-  localToSite(m,local,index=0){
-    const r=rotateVec(m.q,local);
-    return{index,rx:r.x,ry:r.y,rz:r.z,x:m.x+r.x,y:m.y+r.y,z:r.z};
+  switchWeight(r){
+    if(r<=this.networkOn)return 1;
+    if(r>=this.networkOff)return 0;
+    const x=(r-this.networkOn)/(this.networkOff-this.networkOn);
+    return .5*(1+Math.cos(Math.PI*x));
   }
-  hydrogenSites(m){
-    return[-HALF_WATER_ANGLE,HALF_WATER_ANGLE].map((a,index)=>
-      this.localToSite(m,{x:Math.cos(a)*this.oh,y:Math.sin(a)*this.oh,z:0},index)
-    );
-  }
-  acceptorSites(m){
-    return[-HALF_WATER_ANGLE,HALF_WATER_ANGLE].map((a,index)=>
-      this.localToSite(m,{x:-Math.cos(a)*this.acceptorRadius,y:Math.sin(a)*this.acceptorRadius,z:0},index)
-    );
-  }
-  sites(m){return{h:this.hydrogenSites(m),a:this.acceptorSites(m)};}
-  makeSiteCache(){return this.molecules.map(m=>this.sites(m));}
-  siteDelta(a,b){
-    return{x:this.minimumImage(b.x-a.x),y:this.minimumImage(b.y-a.y),z:b.z-a.z};
+
+  wcaPotential(r){
+    if(r<=1e-10)return 1e9;
+    if(r>=this.ooCutoff)return 0;
+    const sr=this.ooSigma/r;
+    const sr6=Math.pow(sr,6);
+    return 4*this.ooEpsilon*(sr6*sr6-sr6)+this.ooEpsilon;
   }
 
   needsNeighborRebuild(){
-    if(this.neighborDirty||this.neighborAge>=36)return true;
-    const threshold=this.skin*.5;
+    if(this.neighborDirty)return true;
+    const threshold=this.skin*.45;
     for(let i=0;i<this.count;i++){
       const m=this.molecules[i];
-      const dx=this.minimumImage(m.x-this.refX[i]);
-      const dy=this.minimumImage(m.y-this.refY[i]);
-      if(dx*dx+dy*dy>threshold*threshold)return true;
+      const d=this.minimumImageVector(m.x-this.refX[i],m.y-this.refY[i]);
+      if(d.x*d.x+d.y*d.y>threshold*threshold)return true;
     }
     return false;
   }
 
   rebuildNeighborList(){
-    const span=this.domainHalf*2;
-    const cellsPerAxis=Math.max(3,Math.floor(span/this.listCutoff));
-    const head=new Int32Array(cellsPerAxis*cellsPerAxis);head.fill(-1);
-    const next=new Int32Array(this.count);next.fill(-1);
-    const cellOf=new Int32Array(this.count);
-    const neighbors=Array.from({length:this.count},()=>[]);
-    const toCell=v=>{
-      let c=Math.floor((v+this.domainHalf)/span*cellsPerAxis);
-      if(c<0)c=0;if(c>=cellsPerAxis)c=cellsPerAxis-1;
-      return c;
-    };
-
-    for(let i=0;i<this.count;i++){
-      const m=this.molecules[i];
-      const cx=toCell(m.x),cy=toCell(m.y),cell=cy*cellsPerAxis+cx;
-      cellOf[i]=cell;next[i]=head[cell];head[cell]=i;
-      this.refX[i]=m.x;this.refY[i]=m.y;
-    }
-
+    // For N=250, an O(N^2) rebuild is cheaper and more robust than maintaining
+    // a skew-cell linked list. The expensive per-move work still uses this
+    // Verlet list, so rebuilds are infrequent and force/energy locality is O(N).
     const pairs=[];
+    const neighbors=Array.from({length:this.count},()=>[]);
     const cutoff2=this.listCutoff*this.listCutoff;
     for(let i=0;i<this.count;i++){
-      const cell=cellOf[i];
-      const cx=cell%cellsPerAxis,cy=Math.floor(cell/cellsPerAxis);
-      for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
-        const nx=(cx+ox+cellsPerAxis)%cellsPerAxis;
-        const ny=(cy+oy+cellsPerAxis)%cellsPerAxis;
-        let j=head[ny*cellsPerAxis+nx];
-        while(j!==-1){
-          if(j>i){
-            const a=this.molecules[i],b=this.molecules[j];
-            const dx=this.minimumImage(b.x-a.x),dy=this.minimumImage(b.y-a.y);
-            if(dx*dx+dy*dy<cutoff2){
-              pairs.push([i,j]);neighbors[i].push(j);neighbors[j].push(i);
-            }
-          }
-          j=next[j];
+      const a=this.molecules[i];
+      for(let j=i+1;j<this.count;j++){
+        const b=this.molecules[j];
+        const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+        if(d.x*d.x+d.y*d.y<cutoff2){
+          pairs.push([i,j]);
+          neighbors[i].push(j);
+          neighbors[j].push(i);
         }
       }
+      this.refX[i]=a.x;this.refY[i]=a.y;
     }
-
     this.neighborPairs=pairs;
     this.neighborsOf=neighbors;
-    this.cellsPerAxis=cellsPerAxis;
     this.neighborRebuilds++;
-    this.neighborAge=0;
     this.neighborDirty=false;
   }
 
-  resetForces(){
-    for(const m of this.molecules){m.fx=0;m.fy=0;m.tx=0;m.ty=0;m.tz=0;}
-  }
-  addSiteForce(m,site,fx,fy,fz){
-    m.fx+=fx;m.fy+=fy;
-    const t=cross({x:site.rx,y:site.ry,z:site.rz},{x:fx,y:fy,z:fz});
-    m.tx+=t.x;m.ty+=t.y;m.tz+=t.z;
-  }
-  addCenterForce(m,fx,fy){m.fx+=fx;m.fy+=fy;}
-
-  wcaPotential(distance){
-    if(distance<=1e-10)return 1e9;
-    if(distance>=this.ooCutoff)return 0;
-    const sr=this.ooSigma/distance;
-    const sr2=sr*sr,sr6=sr2*sr2*sr2,sr12=sr6*sr6;
-    return 4*this.ooEpsilon*(sr12-sr6)+this.ooEpsilon;
-  }
-  wcaForce(distance){
-    if(distance<=1e-10||distance>=this.ooCutoff)return 0;
-    const sr=this.ooSigma/distance;
-    const sr2=sr*sr,sr6=sr2*sr2*sr2,sr12=sr6*sr6;
-    return 24*this.ooEpsilon*(2*sr12-sr6)/distance;
-  }
-
-  patchPotential(distance){
-    if(distance>=this.hBondCutoff)return 0;
-    const delta=(distance-this.hBondR0)/this.hBondWidth;
-    return-this.hBondEpsilon*Math.exp(-delta*delta);
-  }
-  patchDerivative(distance){
-    if(distance<=1e-10||distance>=this.hBondCutoff)return 0;
-    const delta=(distance-this.hBondR0)/this.hBondWidth;
-    return 2*this.hBondEpsilon*delta/this.hBondWidth*Math.exp(-delta*delta);
-  }
-
-  pairPotentialFromSites(a,b,sa,sb){
-    const dx=this.minimumImage(b.x-a.x),dy=this.minimumImage(b.y-a.y);
-    const centerDistance=Math.hypot(dx,dy);
-    if(centerDistance>=this.interactionCutoff)return 0;
-    let energy=this.wcaPotential(centerDistance);
-
-    for(const h of sa.h)for(const acc of sb.a){
-      const dv=this.siteDelta(h,acc);
-      energy+=this.patchPotential(Math.hypot(dv.x,dv.y,dv.z));
+  angularPatternEnergy(vectors,k){
+    if(k<3)return 0;
+    const chosen=vectors.slice().sort((a,b)=>a.r-b.r).slice(0,k);
+    chosen.sort((a,b)=>a.angle-b.angle);
+    const gaps=[];
+    for(let i=0;i<k;i++){
+      const next=i===k-1?chosen[0].angle+Math.PI*2:chosen[i+1].angle;
+      gaps.push(next-chosen[i].angle);
     }
-    for(const h of sb.h)for(const acc of sa.a){
-      const dv=this.siteDelta(h,acc);
-      energy+=this.patchPotential(Math.hypot(dv.x,dv.y,dv.z));
+    gaps.sort((a,b)=>a-b);
+
+    if(k===3){
+      const target=2*Math.PI/3;
+      let strain=0;
+      for(const gap of gaps)strain+=(gap-target)*(gap-target);
+      return this.angularK3*strain;
     }
+
+    const square=[90,90,90,90].map(v=>v*Math.PI/180);
+    const rhombic=[72,72,98,118].map(v=>v*Math.PI/180);
+    let sq=0,rh=0;
+    for(let i=0;i<4;i++){
+      sq+=(gaps[i]-square[i])*(gaps[i]-square[i]);
+      rh+=(gaps[i]-rhombic[i])*(gaps[i]-rhombic[i]);
+    }
+    return this.angularK4*Math.min(sq,rh+.06);
+  }
+
+  centerNetworkEnergy(i){
+    const a=this.molecules[i];
+    const vectors=[];
+    let coordination=0;
+    for(const j of this.neighborsOf[i]){
+      const b=this.molecules[j];
+      const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+      const r=Math.hypot(d.x,d.y);
+      const w=this.switchWeight(r);
+      if(w<=0)continue;
+      coordination+=w;
+      vectors.push({x:d.x,y:d.y,r,weight:w,angle:Math.atan2(d.y,d.x)});
+    }
+
+    const u3=this.coordK3*(coordination-3)*(coordination-3);
+    const u4=this.coord4Offset+this.coordK4*(coordination-4)*(coordination-4);
+    let energy=Math.min(u3,u4)-.5*this.networkBondDepth*coordination;
+    const excess=Math.max(0,coordination-4.05);
+    energy+=this.overCoordK*Math.pow(excess,4);
+
+    let k=0;
+    if(coordination>=2.45&&coordination<3.55)k=3;
+    else if(coordination>=3.55&&vectors.length>=4)k=4;
+    if(k)energy+=this.angularPatternEnergy(vectors,k);
     return energy;
   }
 
-  applyPatchForce(donor,hydrogen,acceptor,acceptorSite){
-    const dv=this.siteDelta(hydrogen,acceptorSite);
-    const r=Math.hypot(dv.x,dv.y,dv.z);
-    const derivative=this.patchDerivative(r);
-    if(!derivative)return this.patchPotential(r);
-    const fx=dv.x/r*derivative,fy=dv.y/r*derivative,fz=dv.z/r*derivative;
-    this.addSiteForce(donor,hydrogen,fx,fy,fz);
-    this.addSiteForce(acceptor,acceptorSite,-fx,-fy,-fz);
-    return this.patchPotential(r);
+  pairRepulsionEnergy(i,j){
+    const d=this.distanceBetween(this.molecules[i],this.molecules[j]);
+    return this.wcaPotential(d.r);
   }
 
-  applyPairForces(a,b,sa,sb){
-    const centerDx=this.minimumImage(b.x-a.x);
-    const centerDy=this.minimumImage(b.y-a.y);
-    const centerDistance=Math.hypot(centerDx,centerDy);
-    if(centerDistance>=this.interactionCutoff)return 0;
-
-    const beforeFx=a.fx,beforeFy=a.fy;
-    let energy=this.wcaPotential(centerDistance);
-    const repulsion=this.wcaForce(centerDistance);
-    if(repulsion){
-      const ux=centerDx/centerDistance,uy=centerDy/centerDistance;
-      this.addCenterForce(a,-ux*repulsion,-uy*repulsion);
-      this.addCenterForce(b,ux*repulsion,uy*repulsion);
-    }
-
-    for(const h of sa.h)for(const acc of sb.a)energy+=this.applyPatchForce(a,h,b,acc);
-    for(const h of sb.h)for(const acc of sa.a)energy+=this.applyPatchForce(b,h,a,acc);
-
-    const pairFx=a.fx-beforeFx,pairFy=a.fy-beforeFy;
-    this.virial+=-centerDx*pairFx-centerDy*pairFy;
-    return energy;
-  }
-
-  listedPotentialEnergy(){
+  totalEnergy(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    const cache=this.makeSiteCache();
+    let pair=0,network=0;
+    for(const[ia,ib]of this.neighborPairs)pair+=this.pairRepulsionEnergy(ia,ib);
+    for(let i=0;i<this.count;i++)network+=this.centerNetworkEnergy(i);
+    this.networkEnergy=network;
+    return pair+network;
+  }
+
+  localMoveEnergy(i,affected){
     let energy=0;
-    for(const [ia,ib] of this.neighborPairs){
-      energy+=this.pairPotentialFromSites(
-        this.molecules[ia],this.molecules[ib],cache[ia],cache[ib]
-      );
-    }
+    for(const j of this.neighborsOf[i])energy+=this.pairRepulsionEnergy(i,j);
+    for(const j of affected)energy+=this.centerNetworkEnergy(j);
     return energy;
   }
 
-  localPotentialEnergy(id){
-    const m=this.molecules[id];
-    const sm=this.sites(m);
-    let energy=0;
-    for(const j of this.neighborsOf[id]){
-      const other=this.molecules[j];
-      energy+=this.pairPotentialFromSites(m,other,sm,this.sites(other));
-    }
-    return energy;
-  }
-
-  updateBondNetwork(cache=this.makeSiteCache()){
-    const previous=this.bonds;
-    const candidates=[];
-    const threshold=-this.hBondEpsilon*.50;
-
-    const collect=(donor,acceptor,donorSites,acceptorSites)=>{
-      for(let di=0;di<2;di++)for(let ai=0;ai<2;ai++){
-        const h=donorSites.h[di],acc=acceptorSites.a[ai];
-        const dv=this.siteDelta(h,acc);
-        const r=Math.hypot(dv.x,dv.y,dv.z);
-        const energy=this.patchPotential(r);
-        if(energy<=threshold){
-          candidates.push({donorId:donor.id,donorIndex:di,acceptorId:acceptor.id,acceptorIndex:ai,energy,r});
-        }
-      }
-    };
-
-    for(const [ia,ib] of this.neighborPairs){
-      collect(this.molecules[ia],this.molecules[ib],cache[ia],cache[ib]);
-      collect(this.molecules[ib],this.molecules[ia],cache[ib],cache[ia]);
-    }
-    candidates.sort((a,b)=>a.energy-b.energy);
-
-    const next=new Map(),donorUsed=new Set(),acceptorUsed=new Set(),pairUsed=new Set();
-    for(const c of candidates){
-      const dk=c.donorId+':'+c.donorIndex;
-      const ak=c.acceptorId+':'+c.acceptorIndex;
-      const pairKey=c.donorId<c.acceptorId?c.donorId+'-'+c.acceptorId:c.acceptorId+'-'+c.donorId;
-      if(donorUsed.has(dk)||acceptorUsed.has(ak)||pairUsed.has(pairKey))continue;
-      const key=dk+'>'+ak;
-      donorUsed.add(dk);acceptorUsed.add(ak);pairUsed.add(pairKey);
-      next.set(key,{...c,key,age:(previous.get(key)?.age??0)+this.dt*6});
-    }
-
-    for(const key of next.keys())if(!previous.has(key))this.bondsFormed++;
-    for(const key of previous.keys())if(!next.has(key))this.bondsBroken++;
-    this.bonds=next;
-
-    const donor=new Uint8Array(this.count),acceptor=new Uint8Array(this.count);
-    for(const b of next.values()){donor[b.donorId]++;acceptor[b.acceptorId]++;}
-    let md=0,ma=0,mt=0;
-    for(let i=0;i<this.count;i++){
-      md=Math.max(md,donor[i]);ma=Math.max(ma,acceptor[i]);mt=Math.max(mt,donor[i]+acceptor[i]);
-    }
-    this.maxDonorDegree=md;this.maxAcceptorDegree=ma;this.maxTotalDegree=mt;
-  }
-
-  computeForces(forceBondUpdate=false){
+  attemptTranslationMove(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    this.resetForces();
-    this.virial=0;
-    this.potentialEnergy=0;
-    const cache=this.makeSiteCache();
-
-    for(const [ia,ib] of this.neighborPairs){
-      this.potentialEnergy+=this.applyPairForces(
-        this.molecules[ia],this.molecules[ib],cache[ia],cache[ib]
-      );
-    }
-
-    if(forceBondUpdate||this.stepCount%6===0)this.updateBondNetwork(cache);
-  }
-
-  rotateOrientation(m,dt){
-    const omega={w:0,x:m.wx,y:m.wy,z:m.wz};
-    const dq=quatMul(omega,m.q);
-    m.q.w+=.5*dq.w*dt;m.q.x+=.5*dq.x*dt;m.q.y+=.5*dq.y*dt;m.q.z+=.5*dq.z*dt;
-    quatNormalize(m.q);
-  }
-
-  attemptOrientationMove(){
-    if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    const id=Math.floor(this.random()*this.count);
-    const m=this.molecules[id];
-    const oldQ={...m.q};
-    const oldEnergy=this.localPotentialEnergy(id);
-
-    let ax=this.gaussian(),ay=this.gaussian(),az=this.gaussian();
-    const n=Math.hypot(ax,ay,az)||1;ax/=n;ay/=n;az/=n;
-    const angle=(this.random()*2-1)*this.orientationMoveAngle;
-    const half=.5*angle,s=Math.sin(half);
-    const dq={w:Math.cos(half),x:ax*s,y:ay*s,z:az*s};
-    m.q=quatMul(dq,m.q);quatNormalize(m.q);
-
-    const newEnergy=this.localPotentialEnergy(id);
+    const i=Math.floor(this.random()*this.count);
+    const m=this.molecules[i];
+    const affected=[i,...this.neighborsOf[i]];
+    const oldEnergy=this.localMoveEnergy(i,affected);
+    const ox=m.x,oy=m.y;
+    m.x+= (this.random()*2-1)*this.translationStep;
+    m.y+= (this.random()*2-1)*this.translationStep;
+    this.wrapPoint(m);
+    const newEnergy=this.localMoveEnergy(i,affected);
     const delta=newEnergy-oldEnergy;
     const accept=delta<=0||Math.log(Math.max(1e-12,this.random()))<-delta/this.kBT;
-    this.orientationMoveAttempts++;
-    if(accept)this.orientationMoveAccepted++;
-    else m.q=oldQ;
+
+    this.translationAttempts++;
+    this.translationWindowAttempts++;
+    if(accept){
+      this.translationAccepted++;
+      this.translationWindowAccepted++;
+    }else{
+      m.x=ox;m.y=oy;
+    }
+    this.adaptTranslationStep();
+    return accept;
+  }
+
+  adaptTranslationStep(){
+    if(this.translationWindowAttempts<300)return;
+    const rate=this.translationWindowAccepted/this.translationWindowAttempts;
+    if(rate<.28)this.translationStep=Math.max(.004,this.translationStep*.88);
+    else if(rate>.52)this.translationStep=Math.min(.030,this.translationStep*1.10);
+    this.translationWindowAttempts=0;
+    this.translationWindowAccepted=0;
+  }
+
+  fractionalSnapshot(cell=this.cell){
+    return this.molecules.map(m=>this.fractional(m.x,m.y,cell));
+  }
+
+  applyCell(cell,fractions){
+    this.cell={...cell};
+    for(let i=0;i<this.count;i++){
+      const p=this.cartesian(fractions[i].fx,fractions[i].fy);
+      this.molecules[i].x=p.x;this.molecules[i].y=p.y;
+    }
+    this.neighborDirty=true;
+    this.rebuildNeighborList();
   }
 
   attemptAreaMove(){
-    const oldHalf=this.domainHalf;
-    const oldArea=4*oldHalf*oldHalf;
+    const oldCell={...this.cell};
+    const fractions=this.fractionalSnapshot(oldCell);
+    const oldArea=this.area(oldCell);
+    const oldEnergy=this.totalEnergy();
     const dlnA=(this.random()*2-1)*this.areaLogStep;
     const scale=Math.exp(.5*dlnA);
-    const newHalf=oldHalf*scale;
+    const newCell={
+      lx:oldCell.lx*scale,
+      ly:oldCell.ly*scale,
+      shear:oldCell.shear*scale,
+    };
+    const newArea=this.area(newCell);
     this.areaMoveAttempts++;
     this.areaWindowAttempts++;
 
-    if(newHalf<this.minDomainHalf||newHalf>this.maxDomainHalf){
-      this.adaptAreaStep();
-      return false;
+    if(newArea<this.minArea||newArea>this.maxArea){
+      this.adaptAreaStep();return false;
     }
 
-    // The Verlet skin is far wider than a single trial scale displacement, so
-    // the current pair list safely contains every pair that could enter the
-    // interaction cutoff during this one trial. Rebuild after acceptance.
-    if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    const oldEnergy=this.listedPotentialEnergy();
-    this.domainHalf=newHalf;
-    for(const m of this.molecules){m.x*=scale;m.y*=scale;}
-    const newEnergy=this.listedPotentialEnergy();
-    const newArea=4*newHalf*newHalf;
-
+    this.applyCell(newCell,fractions);
+    const newEnergy=this.totalEnergy();
     const pressureWork=this.pressureGPa*this.pressureWorkScale*(newArea-oldArea);
     const logAcceptance=
       -(newEnergy-oldEnergy+pressureWork)/this.kBT+
       this.count*Math.log(newArea/oldArea);
-
     const accept=logAcceptance>=0||Math.log(Math.max(1e-12,this.random()))<logAcceptance;
+
     if(accept){
       this.areaMoveAccepted++;
       this.areaWindowAccepted++;
-      this.neighborDirty=true;
+      this.potentialEnergy=newEnergy;
     }else{
-      const inverse=1/scale;
-      this.domainHalf=oldHalf;
-      for(const m of this.molecules){m.x*=inverse;m.y*=inverse;}
+      this.applyCell(oldCell,fractions);
+      this.potentialEnergy=oldEnergy;
     }
     this.adaptAreaStep();
     return accept;
   }
 
   adaptAreaStep(){
-    if(this.areaWindowAttempts<80)return;
+    if(this.areaWindowAttempts<100)return;
     const rate=this.areaWindowAccepted/this.areaWindowAttempts;
-    if(rate<.22)this.areaLogStep=Math.max(.0008,this.areaLogStep*.82);
-    else if(rate>.48)this.areaLogStep=Math.min(.018,this.areaLogStep*1.18);
-    this.areaWindowAttempts=0;
-    this.areaWindowAccepted=0;
+    if(rate<.22)this.areaLogStep=Math.max(.001,this.areaLogStep*.84);
+    else if(rate>.48)this.areaLogStep=Math.min(.025,this.areaLogStep*1.16);
+    this.areaWindowAttempts=0;this.areaWindowAccepted=0;
   }
 
-  updatePressureEstimate(immediate=false){
-    const area=4*this.domainHalf*this.domainHalf;
-    const pressureKJMolNm3=
-      (this.count*this.kBT+.5*this.virial)/(area*this.confinementWidthNm);
-    const pressure=pressureKJMolNm3/GPA_NM3_TO_KJ_MOL;
-    this.virialPressureGPa=pressure;
-    if(immediate||!Number.isFinite(this.virialPressureEMA))this.virialPressureEMA=pressure;
-    else this.virialPressureEMA+=.025*(pressure-this.virialPressureEMA);
+  attemptShapeMove(){
+    const oldCell={...this.cell};
+    const fractions=this.fractionalSnapshot(oldCell);
+    const oldEnergy=this.totalEnergy();
+    const dlog=(this.random()*2-1)*this.shapeLogStep;
+    const newCell={
+      lx:oldCell.lx*Math.exp(dlog),
+      ly:oldCell.ly*Math.exp(-dlog),
+      shear:oldCell.shear+(this.random()*2-1)*this.shearStep*Math.min(oldCell.lx,oldCell.ly),
+    };
+    const aspect=newCell.lx/newCell.ly;
+    this.shapeMoveAttempts++;
+    if(
+      aspect>this.maxAspect||aspect<1/this.maxAspect||
+      Math.abs(newCell.shear)>this.maxShearFraction*newCell.lx
+    )return false;
+
+    this.applyCell(newCell,fractions);
+    const newEnergy=this.totalEnergy();
+    const delta=newEnergy-oldEnergy;
+    const accept=delta<=0||Math.log(Math.max(1e-12,this.random()))<-delta/this.kBT;
+    if(accept){
+      this.shapeMoveAccepted++;
+      this.potentialEnergy=newEnergy;
+    }else{
+      this.applyCell(oldCell,fractions);
+      this.potentialEnergy=oldEnergy;
+    }
+    return accept;
   }
 
-  integrate(){
-    const dt=this.dt,half=.5*dt;
+  updateBondNetwork(force=false){
+    if(this.needsNeighborRebuild())this.rebuildNeighborList();
+    const previous=this.bonds;
+    const candidates=[];
+    for(const[ia,ib]of this.neighborPairs){
+      const d=this.distanceBetween(this.molecules[ia],this.molecules[ib]);
+      const w=this.switchWeight(d.r);
+      if(w>.22)candidates.push({ia,ib,r:d.r,score:w});
+    }
+    candidates.sort((a,b)=>b.score-a.score||a.r-b.r);
+    const degree=new Uint8Array(this.count);
+    const next=new Map();
+    for(const c of candidates){
+      if(degree[c.ia]>=4||degree[c.ib]>=4)continue;
+      const key=c.ia+'-'+c.ib;
+      degree[c.ia]++;degree[c.ib]++;
+      next.set(key,{key,a:c.ia,b:c.ib,r:c.r,score:c.score,age:(previous.get(key)?.age??0)+1});
+    }
+    if(force||this.moveCount%120===0){
+      for(const key of next.keys())if(!previous.has(key))this.bondsFormed++;
+      for(const key of previous.keys())if(!next.has(key))this.bondsBroken++;
+    }
+    this.bonds=next;
 
-    for(const m of this.molecules){
-      m.vx+=half*m.fx/this.mass;m.vy+=half*m.fy/this.mass;
-      m.wx+=half*m.tx/this.inertia;m.wy+=half*m.ty/this.inertia;m.wz+=half*m.tz/this.inertia;
+    let d3=0,d4=0,over=0,sum=0;
+    for(const d of degree){
+      sum+=d;if(d===3)d3++;if(d===4)d4++;if(d>4)over++;
+    }
+    this.meanCoordination=sum/this.count;
+    this.degree3Fraction=d3/this.count;
+    this.degree4Fraction=d4/this.count;
+    this.overCoordinatedFraction=over/this.count;
+    this.updateVisualAngles();
+  }
+
+  updateVisualAngles(){
+    const adj=Array.from({length:this.count},()=>[]);
+    for(const bond of this.bonds.values()){
+      const a=this.molecules[bond.a],b=this.molecules[bond.b];
+      const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+      const aa=Math.atan2(d.y,d.x);
+      adj[bond.a].push(aa);
+      adj[bond.b].push(wrapAngle(aa+Math.PI));
     }
 
-    for(const m of this.molecules){
-      m.x=this.wrap(m.x+half*m.vx);m.y=this.wrap(m.y+half*m.vy);
-      this.rotateOrientation(m,half);
+    for(let i=0;i<this.count;i++){
+      const m=this.molecules[i],angles=adj[i];
+      if(!angles.length)continue;
+      let target=angles[0]-HALF_WATER_ANGLE;
+      if(angles.length>=2){
+        let best=Infinity,bestTarget=target;
+        for(let a=0;a<angles.length;a++)for(let b=a+1;b<angles.length;b++){
+          const p1=circularMean(
+            angles[a]-HALF_WATER_ANGLE,
+            angles[b]+HALF_WATER_ANGLE
+          );
+          const e1=Math.abs(wrapAngle(p1+HALF_WATER_ANGLE-angles[a]))+
+            Math.abs(wrapAngle(p1-HALF_WATER_ANGLE-angles[b]));
+          const p2=circularMean(
+            angles[a]+HALF_WATER_ANGLE,
+            angles[b]-HALF_WATER_ANGLE
+          );
+          const e2=Math.abs(wrapAngle(p2-HALF_WATER_ANGLE-angles[a]))+
+            Math.abs(wrapAngle(p2+HALF_WATER_ANGLE-angles[b]));
+          if(e1<best){best=e1;bestTarget=p1;}
+          if(e2<best){best=e2;bestTarget=p2;}
+        }
+        target=bestTarget;
+      }
+      m.targetAngle=target;
+      m.visualAngle=wrapAngle(m.visualAngle+.22*wrapAngle(target-m.visualAngle));
     }
+  }
 
-    const cv=Math.exp(-this.gamma*dt),cw=Math.exp(-this.gammaRot*dt);
-    const sv=Math.sqrt(this.kBT*(1-cv*cv)/this.mass);
-    const sw=Math.sqrt(this.kBT*(1-cw*cw)/this.inertia);
-    for(const m of this.molecules){
-      m.vx=cv*m.vx+sv*this.gaussian();
-      m.vy=cv*m.vy+sv*this.gaussian();
-      m.wx=cw*m.wx+sw*this.gaussian();
-      m.wy=cw*m.wy+sw*this.gaussian();
-      m.wz=cw*m.wz+sw*this.gaussian();
-    }
+  estimatePressure(){
+    if(this.moveCount-this.lastPressureEstimateMove<900)return this.pressureEstimateEMA;
+    this.lastPressureEstimateMove=this.moveCount;
+    const oldCell={...this.cell};
+    const fractions=this.fractionalSnapshot(oldCell);
+    const oldArea=this.area(oldCell);
+    const eps=.0015;
 
-    for(const m of this.molecules){
-      m.x=this.wrap(m.x+half*m.vx);m.y=this.wrap(m.y+half*m.vy);
-      this.rotateOrientation(m,half);
-    }
+    const scalePlus=Math.sqrt(1+eps);
+    const plus={lx:oldCell.lx*scalePlus,ly:oldCell.ly*scalePlus,shear:oldCell.shear*scalePlus};
+    this.applyCell(plus,fractions);
+    const uPlus=this.totalEnergy();
+    const aPlus=this.area();
 
-    this.neighborAge++;
-    if(this.stepCount%this.orientationMoveInterval===0){
-      this.attemptOrientationMove();
-      this.attemptOrientationMove();
-    }
-    if(this.orientationRelaxationMoves>0){
-      const extra=Math.min(4,this.orientationRelaxationMoves);
-      for(let i=0;i<extra;i++)this.attemptOrientationMove();
-      this.orientationRelaxationMoves-=extra;
-    }
+    const scaleMinus=Math.sqrt(1-eps);
+    const minus={lx:oldCell.lx*scaleMinus,ly:oldCell.ly*scaleMinus,shear:oldCell.shear*scaleMinus};
+    this.applyCell(minus,fractions);
+    const uMinus=this.totalEnergy();
+    const aMinus=this.area();
 
-    if(this.stepCount>0&&this.stepCount%this.areaMoveInterval===0)this.attemptAreaMove();
-    if(this.pressureRelaxationMoves>0&&this.stepCount%2===0){
+    this.applyCell(oldCell,fractions);
+    this.potentialEnergy=this.totalEnergy();
+
+    const dUdA=(uPlus-uMinus)/(aPlus-aMinus);
+    const p2D=this.count*this.kBT/oldArea-dUdA;
+    const estimate=p2D/(this.confinementWidthNm*GPA_NM3_TO_KJ_MOL);
+    this.pressureEstimateGPa=estimate;
+    if(Number.isFinite(estimate)){
+      this.pressureEstimateEMA=.8*this.pressureEstimateEMA+.2*estimate;
+    }
+    return this.pressureEstimateEMA;
+  }
+
+  advance(baseMoves=58){
+    const extra=this.relaxationFrames>0?34:0;
+    const attempts=baseMoves+extra;
+    for(let n=0;n<attempts;n++){
+      this.attemptTranslationMove();
+      this.moveCount++;
+      if(this.moveCount%45===0)this.attemptAreaMove();
+      if(this.moveCount%70===0)this.attemptShapeMove();
+    }
+    if(this.relaxationFrames>0){
       this.attemptAreaMove();
-      this.pressureRelaxationMoves--;
+      this.attemptShapeMove();
+      this.relaxationFrames--;
     }
-
-    this.computeForces();
-
-    for(const m of this.molecules){
-      m.vx+=half*m.fx/this.mass;m.vy+=half*m.fy/this.mass;
-      m.wx+=half*m.tx/this.inertia;m.wy+=half*m.ty/this.inertia;m.wz+=half*m.tz/this.inertia;
-    }
-
-    this.updatePressureEstimate();
-    this.stepCount++;
+    if(this.needsNeighborRebuild())this.rebuildNeighborList();
+    this.potentialEnergy=this.totalEnergy();
+    this.updateBondNetwork();
+    this.estimatePressure();
   }
 
   diagnostics(){
-    let speed=0,angular=0;
-    for(const m of this.molecules){
-      speed+=Math.hypot(m.vx,m.vy);
-      angular+=Math.hypot(m.wx,m.wy,m.wz);
-    }
-    const area=4*this.domainHalf*this.domainHalf;
-    const areaAcceptance=this.areaMoveAttempts?this.areaMoveAccepted/this.areaMoveAttempts:0;
-    const orientationAcceptance=this.orientationMoveAttempts?
-      this.orientationMoveAccepted/this.orientationMoveAttempts:0;
+    const area=this.area();
+    const translationAcceptance=this.translationAttempts?
+      this.translationAccepted/this.translationAttempts:0;
+    const areaAcceptance=this.areaMoveAttempts?
+      this.areaMoveAccepted/this.areaMoveAttempts:0;
+    const shapeAcceptance=this.shapeMoveAttempts?
+      this.shapeMoveAccepted/this.shapeMoveAttempts:0;
     return{
-      steps:this.stepCount,bonds:this.bonds.size,
-      formed:this.bondsFormed,broken:this.bondsBroken,
+      steps:this.moveCount,
+      bonds:this.bonds.size,
       bondsPerMolecule:this.bonds.size/this.count,
-      meanDegree:2*this.bonds.size/this.count,
-      meanSpeed:speed/this.count,
-      meanAngularSpeed:angular/this.count,
-      neighborPairs:this.neighborPairs.length,neighborRebuilds:this.neighborRebuilds,
-      cellsPerAxis:this.cellsPerAxis??0,averageNeighbors:this.neighborPairs.length*2/this.count,
-      domainHalf:this.domainHalf,area,arealDensity:this.count/area,
+      meanDegree:this.meanCoordination,
+      degree3Fraction:this.degree3Fraction,
+      degree4Fraction:this.degree4Fraction,
+      overCoordinatedFraction:this.overCoordinatedFraction,
+      area,arealDensity:this.count/area,
+      cellLx:this.cell.lx,cellLy:this.cell.ly,cellShear:this.cell.shear,
+      cellAspect:this.cell.lx/this.cell.ly,
       temperatureKelvin:this.temperatureKelvin,kBT:this.kBT,
-      pressureGPa:this.pressureGPa,virialPressureGPa:this.virialPressureEMA,
-      pressureWorkScale:this.pressureWorkScale,confinementWidthNm:this.confinementWidthNm,
-      hBondThermalRatio:this.hBondEpsilon/this.kBT,
+      pressureGPa:this.pressureGPa,
+      pressureEstimateGPa:this.pressureEstimateEMA,
       potentialEnergyPerMolecule:this.potentialEnergy/this.count,
-      areaMoveAttempts:this.areaMoveAttempts,areaMoveAccepted:this.areaMoveAccepted,
-      areaAcceptance,areaLogStep:this.areaLogStep,
-      orientationMoveAttempts:this.orientationMoveAttempts,
-      orientationMoveAccepted:this.orientationMoveAccepted,
-      orientationAcceptance,
-      pressureRelaxationMoves:this.pressureRelaxationMoves,
-      orientationRelaxationMoves:this.orientationRelaxationMoves,
-      temperatureRescales:this.temperatureRescales,
-      maxDonorDegree:this.maxDonorDegree,maxAcceptorDegree:this.maxAcceptorDegree,
-      maxTotalDegree:this.maxTotalDegree,
+      networkEnergyPerMolecule:this.networkEnergy/this.count,
+      neighborPairs:this.neighborPairs.length,
+      neighborRebuilds:this.neighborRebuilds,
+      averageNeighbors:this.neighborPairs.length*2/this.count,
+      translationAcceptance,
+      translationStep:this.translationStep,
+      areaMoveAttempts:this.areaMoveAttempts,areaMoveAccepted:this.areaMoveAccepted,areaAcceptance,
+      shapeMoveAttempts:this.shapeMoveAttempts,shapeMoveAccepted:this.shapeMoveAccepted,shapeAcceptance,
+      pressureWorkScale:this.pressureWorkScale,
+      confinementWidthNm:this.confinementWidthNm,
+      relaxationFrames:this.relaxationFrames,
     };
   }
 }
@@ -676,7 +618,7 @@ class MonolayerExplorer{
     this.status=this.host?.querySelector('[data-monolayer-status]');
     this.md=null;
     this.width=1;this.height=1;this.dpr=1;this.last=performance.now();
-    this.accumulator=0;this.visible=true;this.frameCount=0;
+    this.visible=true;this.frameCount=0;
     this.resize=this.resize.bind(this);this.frame=this.frame.bind(this);
     this.tempInput?.addEventListener('input',()=>this.updateControls());
     this.pressureInput?.addEventListener('input',()=>this.updateControls());
@@ -685,17 +627,17 @@ class MonolayerExplorer{
     this.io.observe(this.canvas);
 
     this.resize();this.paintIdle();
-    this.canvas.dataset.renderer='monolayer-water-md';
-    this.canvas.dataset.model='rigid-four-patch-monolayer-water';
+    this.canvas.dataset.renderer='monolayer-network-mc';
+    this.canvas.dataset.model='valence-limited-network-water-v2';
     this.canvas.dataset.moleculeCount='250';
-    this.canvas.dataset.spatialIndex='cell-verlet';
-    this.canvas.dataset.boundary='periodic-xy';
-    this.canvas.dataset.ensemble='hybrid-npt-langevin-metropolis';
-    this.canvas.dataset.barostat='metropolis-area-npt';
+    this.canvas.dataset.spatialIndex='verlet-neighbor-list';
+    this.canvas.dataset.boundary='periodic-flexible-cell';
+    this.canvas.dataset.ensemble='npt-metropolis-network';
+    this.canvas.dataset.barostat='metropolis-area-and-shape';
     this.canvas.dataset.pressureCoupling='pconf-times-area-times-5A-width';
-    this.canvas.dataset.pressureEstimator='2d-virial-over-effective-confinement-volume';
-    this.canvas.dataset.temperatureCoupling='physical-kbt-langevin-plus-metropolis';
-    this.canvas.dataset.potential='continuous-conservative-four-patch';
+    this.canvas.dataset.pressureEstimator='finite-difference-configurational';
+    this.canvas.dataset.temperatureCoupling='boltzmann-metropolis-kbt';
+    this.canvas.dataset.potential='coordination-saturated-multiwell-network';
     this.canvas.dataset.viewFill='full-height';
     requestAnimationFrame(this.frame);
   }
@@ -734,18 +676,34 @@ class MonolayerExplorer{
 
   view(){
     const mobile=this.width<760;
-    const boxSize=Math.min(
-      this.height*(mobile?.62:.94),
-      this.width*(mobile?.94:.58)
-    );
+    const c=this.md?.cell??{lx:4.93,ly:4.93,shear:0};
+    const spanX=c.lx+Math.abs(c.shear);
+    const spanY=c.ly;
+    const maxWidth=this.width*(mobile?.92:.60);
+    const maxHeight=this.height*(mobile?.62:.94);
+    const scale=Math.min(maxWidth/spanX,maxHeight/spanY);
     const cx=mobile?this.width*.5:this.width*.70;
     const cy=mobile?this.height*.62:this.height*.50;
-    const half=this.md?.domainHalf??2.4657;
-    const scale=boxSize/(2*half);
-    return{boxSize,cx,cy,left:cx-boxSize*.5,top:cy-boxSize*.5,scale};
+    return{cx,cy,scale};
   }
 
   toCanvas(x,y,view){return{x:view.cx+x*view.scale,y:view.cy-y*view.scale};}
+
+  cellCorners(view){
+    const c=this.md.cell;
+    return[
+      this.toCanvas(-c.lx/2-c.shear/2,-c.ly/2,view),
+      this.toCanvas( c.lx/2-c.shear/2,-c.ly/2,view),
+      this.toCanvas( c.lx/2+c.shear/2, c.ly/2,view),
+      this.toCanvas(-c.lx/2+c.shear/2, c.ly/2,view),
+    ];
+  }
+
+  clipCell(ctx,corners){
+    ctx.beginPath();ctx.moveTo(corners[0].x,corners[0].y);
+    for(let i=1;i<corners.length;i++)ctx.lineTo(corners[i].x,corners[i].y);
+    ctx.closePath();ctx.clip();
+  }
 
   paintIdle(){
     const dark=document.documentElement.dataset.theme==='dark';
@@ -755,50 +713,51 @@ class MonolayerExplorer{
 
   draw(){
     const ctx=this.ctx,view=this.view(),dark=document.documentElement.dataset.theme==='dark';
+    const corners=this.cellCorners(view);
     ctx.fillStyle=dark?'#111a20':'#dfe9ec';ctx.fillRect(0,0,this.width,this.height);
 
-    const glow=ctx.createRadialGradient(view.cx,view.cy,0,view.cx,view.cy,view.boxSize*.72);
+    const radius=Math.min(this.height*.68,this.width*.46);
+    const glow=ctx.createRadialGradient(view.cx,view.cy,0,view.cx,view.cy,radius);
     glow.addColorStop(0,dark?'rgba(50,75,84,.50)':'rgba(176,203,211,.68)');
     glow.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=glow;ctx.fillRect(0,0,this.width,this.height);
 
-    ctx.save();ctx.beginPath();ctx.rect(view.left,view.top,view.boxSize,view.boxSize);ctx.clip();
-    ctx.fillStyle=dark?'rgba(12,24,30,.80)':'rgba(225,238,241,.90)';
-    ctx.fillRect(view.left,view.top,view.boxSize,view.boxSize);
+    ctx.save();this.clipCell(ctx,corners);
+    ctx.fillStyle=dark?'rgba(12,24,30,.82)':'rgba(225,238,241,.91)';
+    ctx.fillRect(0,0,this.width,this.height);
 
-    const bondWidth=clamp(view.scale*.0055,.72,1.35);
-    ctx.lineWidth=bondWidth;ctx.setLineDash([4,3]);
-    ctx.strokeStyle=dark?'rgba(167,211,224,.38)':'rgba(42,103,123,.34)';
+    ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.strokeStyle=dark?'rgba(167,211,224,.40)':'rgba(42,103,123,.35)';
     for(const bond of this.md.bonds.values()){
-      const donor=this.md.molecules[bond.donorId];
-      const acceptor=this.md.molecules[bond.acceptorId];
-      const h=this.md.hydrogenSites(donor)[bond.donorIndex];
-      const dx=this.md.minimumImage(acceptor.x-h.x);
-      const dy=this.md.minimumImage(acceptor.y-h.y);
-      const a=this.toCanvas(h.x,h.y,view);
-      const b=this.toCanvas(h.x+dx,h.y+dy,view);
-      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      const a=this.md.molecules[bond.a],b=this.md.molecules[bond.b];
+      const d=this.md.minimumImageVector(b.x-a.x,b.y-a.y);
+      const p=this.toCanvas(a.x,a.y,view);
+      const q=this.toCanvas(a.x+d.x,a.y+d.y,view);
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    ctx.strokeStyle=dark?'rgba(236,241,240,.66)':'rgba(80,92,94,.56)';
-    ctx.lineWidth=clamp(view.scale*.0058,.72,1.45);
+    const oh=.0957;
+    ctx.strokeStyle=dark?'rgba(236,241,240,.68)':'rgba(80,92,94,.58)';
+    ctx.lineWidth=1;
     ctx.beginPath();
     for(const m of this.md.molecules){
       const o=this.toCanvas(m.x,m.y,view);
-      for(const h of this.md.hydrogenSites(m)){
-        const hp=this.toCanvas(h.x,h.y,view);
-        ctx.moveTo(o.x,o.y);ctx.lineTo(hp.x,hp.y);
+      for(const sign of[-1,1]){
+        const angle=m.visualAngle+sign*HALF_WATER_ANGLE;
+        const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
+        ctx.moveTo(o.x,o.y);ctx.lineTo(h.x,h.y);
       }
     }
     ctx.stroke();
 
-    const hRadius=clamp(view.scale*.0100,1.20,2.15);
-    const oRadius=clamp(view.scale*.0177,2.15,3.85);
+    const hRadius=clamp(view.scale*.009,1.05,2.05);
+    const oRadius=clamp(view.scale*.017,2.05,3.75);
     ctx.fillStyle=dark?'#f1eee7':'#fffdf7';ctx.beginPath();
-    for(const m of this.md.molecules)for(const h of this.md.hydrogenSites(m)){
-      const p=this.toCanvas(h.x,h.y,view);
-      ctx.moveTo(p.x+hRadius,p.y);ctx.arc(p.x,p.y,hRadius,0,Math.PI*2);
+    for(const m of this.md.molecules)for(const sign of[-1,1]){
+      const angle=m.visualAngle+sign*HALF_WATER_ANGLE;
+      const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
+      ctx.moveTo(h.x+hRadius,h.y);ctx.arc(h.x,h.y,hRadius,0,Math.PI*2);
     }
     ctx.fill();
 
@@ -810,9 +769,10 @@ class MonolayerExplorer{
     ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle=dark?'rgba(197,220,226,.16)':'rgba(50,94,108,.16)';
-    ctx.lineWidth=1;
-    ctx.strokeRect(view.left+.5,view.top+.5,view.boxSize-1,view.boxSize-1);
+    ctx.strokeStyle=dark?'rgba(197,220,226,.17)':'rgba(50,94,108,.18)';
+    ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(corners[0].x,corners[0].y);
+    for(let i=1;i<corners.length;i++)ctx.lineTo(corners[i].x,corners[i].y);
+    ctx.closePath();ctx.stroke();
   }
 
   updateDiagnostics(){
@@ -822,60 +782,53 @@ class MonolayerExplorer{
     this.canvas.dataset.hydrogenBonds=String(d.bonds);
     this.canvas.dataset.bondsPerMolecule=d.bondsPerMolecule.toFixed(3);
     this.canvas.dataset.meanDegree=d.meanDegree.toFixed(3);
+    this.canvas.dataset.degree3Fraction=d.degree3Fraction.toFixed(3);
+    this.canvas.dataset.degree4Fraction=d.degree4Fraction.toFixed(3);
+    this.canvas.dataset.overcoordinatedFraction=d.overCoordinatedFraction.toFixed(3);
     this.canvas.dataset.neighborPairs=String(d.neighborPairs);
     this.canvas.dataset.neighborRebuilds=String(d.neighborRebuilds);
-    this.canvas.dataset.cellsPerAxis=String(d.cellsPerAxis);
     this.canvas.dataset.averageNeighbors=d.averageNeighbors.toFixed(2);
-    this.canvas.dataset.domainHalf=d.domainHalf.toFixed(4);
     this.canvas.dataset.boxArea=d.area.toFixed(4);
     this.canvas.dataset.arealDensity=d.arealDensity.toFixed(4);
+    this.canvas.dataset.cellAspect=d.cellAspect.toFixed(4);
+    this.canvas.dataset.cellShear=d.cellShear.toFixed(4);
     this.canvas.dataset.temperatureK=String(Math.round(d.temperatureKelvin));
     this.canvas.dataset.kbt=d.kBT.toFixed(5);
     this.canvas.dataset.pressureGpa=d.pressureGPa.toFixed(1);
-    this.canvas.dataset.measuredPressureGpa=d.virialPressureGPa.toFixed(2);
+    this.canvas.dataset.measuredPressureGpa=d.pressureEstimateGPa.toFixed(2);
     this.canvas.dataset.pressureWorkScale=d.pressureWorkScale.toFixed(6);
     this.canvas.dataset.confinementWidthNm=d.confinementWidthNm.toFixed(3);
-    this.canvas.dataset.hbondThermalRatio=d.hBondThermalRatio.toFixed(3);
     this.canvas.dataset.potentialEnergyPerMolecule=d.potentialEnergyPerMolecule.toFixed(4);
+    this.canvas.dataset.networkEnergyPerMolecule=d.networkEnergyPerMolecule.toFixed(4);
+    this.canvas.dataset.translationAcceptance=d.translationAcceptance.toFixed(3);
+    this.canvas.dataset.translationStep=d.translationStep.toFixed(4);
     this.canvas.dataset.areaMoveAttempts=String(d.areaMoveAttempts);
-    this.canvas.dataset.areaMoveAccepted=String(d.areaMoveAccepted);
     this.canvas.dataset.areaMoveAcceptance=d.areaAcceptance.toFixed(3);
-    this.canvas.dataset.areaLogStep=d.areaLogStep.toFixed(5);
-    this.canvas.dataset.orientationMoveAttempts=String(d.orientationMoveAttempts);
-    this.canvas.dataset.orientationMoveAcceptance=d.orientationAcceptance.toFixed(3);
-    this.canvas.dataset.pressureRelaxationRemaining=String(d.pressureRelaxationMoves);
-    this.canvas.dataset.orientationRelaxationRemaining=String(d.orientationRelaxationMoves);
-    this.canvas.dataset.temperatureRescales=String(d.temperatureRescales);
-    this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(5);
-    this.canvas.dataset.meanAngularSpeed=d.meanAngularSpeed.toFixed(5);
-    this.canvas.dataset.maxTotalDegree=String(d.maxTotalDegree);
+    this.canvas.dataset.shapeMoveAttempts=String(d.shapeMoveAttempts);
+    this.canvas.dataset.shapeMoveAcceptance=d.shapeAcceptance.toFixed(3);
+    this.canvas.dataset.relaxationFrames=String(d.relaxationFrames);
 
     if(this.measuredPressureOutput){
-      this.measuredPressureOutput.textContent=d.virialPressureGPa.toFixed(1)+' GPa';
+      this.measuredPressureOutput.textContent=d.pressureEstimateGPa.toFixed(1)+' GPa';
     }
     if(this.densityOutput)this.densityOutput.textContent=d.arealDensity.toFixed(2);
     if(this.status){
       this.status.textContent=
         d.bonds+' H-bonds · degree '+d.meanDegree.toFixed(2)+
-        ' · area MC '+Math.round(d.areaAcceptance*100)+'%';
+        ' · 3-fold '+Math.round(d.degree3Fraction*100)+'%'+
+        ' · 4-fold '+Math.round(d.degree4Fraction*100)+'%';
     }
   }
 
-  frame(now){
-    const elapsed=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;
+  frame(){
     const active=this.visible&&this.host?.dataset.scene==='1'&&this.host?.dataset.paused!=='true';
     if(active){
       this.ensureSimulation();
-      this.accumulator=Math.min(this.accumulator+elapsed,this.md.dt*7);
-      let steps=0;
-      while(this.accumulator>=this.md.dt&&steps<7){
-        this.md.integrate();
-        this.accumulator-=this.md.dt;
-        steps++;
-      }
+      const mobile=this.width<760;
+      this.md.advance(mobile?34:58);
       this.draw();this.frameCount++;
       if(this.frameCount%6===0)this.updateDiagnostics();
-    }else this.accumulator=0;
+    }
     requestAnimationFrame(this.frame);
   }
 }
