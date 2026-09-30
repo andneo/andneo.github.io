@@ -1,0 +1,7 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { url } from '../../lib/content';
+interface Props { publications: CollectionEntry<'publications'>[]; }
+const { publications }=Astro.props;
+---
+<ul class="content-list">{publications.map(p=><li><h3><a href={url('publications',p.id)}>{p.data.title}</a></h3><p>{p.data.authors.join(', ')}</p><p class="meta">{p.data.journal}{p.data.journal&&' · '}{p.data.year} · {p.data.status}</p></li>)}</ul>

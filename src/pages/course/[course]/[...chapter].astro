@@ -1,0 +1,7 @@
+---
+import Redirect from '../../../components/navigation/Redirect.astro';
+import {published,courseChapters,url} from '../../../lib/content';
+export async function getStaticPaths(){return (await Promise.all((await published('courses')).map(async c=>(await courseChapters(c.id)).map(p=>({params:{course:c.id,chapter:p.id.slice(c.id.length+1)},props:{to:url('chapters',p.id)}}))))).flat();}
+const {to}=Astro.props;
+---
+<Redirect to={to}/>

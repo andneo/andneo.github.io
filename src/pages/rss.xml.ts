@@ -1,0 +1,4 @@
+import {published,byId,url} from '../lib/content';
+import {SITE_URL,SITE_NAME} from '../config';
+const xml=(s:string)=>s.replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]!));
+export async function GET(){const posts=(await published('post')).sort((a,b)=>b.data.date.valueOf()-a.data.date.valueOf()||byId(a,b));return new Response(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${xml(SITE_NAME)}</title><link>${SITE_URL}</link><description>Scientific articles</description>${posts.map(p=>`<item><title>${xml(p.data.title)}</title><link>${SITE_URL}${url('post',p.id)}</link><guid>${SITE_URL}${url('post',p.id)}</guid><pubDate>${p.data.date.toUTCString()}</pubDate><description>${xml(p.data.description??'')}</description></item>`).join('')}</channel></rss>`,{headers:{'Content-Type':'application/xml'}});}

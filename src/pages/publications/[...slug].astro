@@ -1,0 +1,20 @@
+---
+import {render,type CollectionEntry} from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Toc from '../../components/navigation/Toc.astro';
+import Resources from '../../components/content/Resources.astro';
+import {published,url} from '../../lib/content';
+export async function getStaticPaths(){return (await published('publications')).map(pub=>({params:{slug:pub.id},props:{pub}}));}
+interface Props{pub:CollectionEntry<'publications'>;}
+const {pub}=Astro.props;const d=pub.data;const {Content,headings}=await render(pub);
+const projects=(await published('project')).filter(p=>p.data.publications.includes(pub.id));
+const resources=[...d.resources,...(d.pdf?[{label:'PDF',href:d.pdf}]:[]),...(d.slides?[{label:'Slides',href:d.slides}]:[]),...(d.doi?[{label:'DOI',href:`https://doi.org/${d.doi}`}]:[]),...(d.arxiv?[{label:'arXiv',href:`https://arxiv.org/abs/${d.arxiv}`}]:[]),...(d.repo?[{label:'Code',href:d.repo}]:[])];
+---
+<Base title={d.title} description={d.abstract??d.description} type="article">
+ <Fragment slot="head"><meta name="citation_title" content={d.title}/>{d.authors.map(a=><meta name="citation_author" content={a}/>)}<meta name="citation_publication_date" content={String(d.year)}/>{d.journal&&<meta name="citation_journal_title" content={d.journal}/>}</Fragment>
+ <div class="reading-shell container page"><aside class="reading-toc"><Toc headings={headings}/></aside><article class="reading-main"><a href="/publications/">Publications</a><h1>{d.title}</h1><p>{d.authors.join(', ')}</p><p class="meta">{d.journal} · {d.year} · {d.status}</p><Resources resources={resources}/>
+ {d.abstract&&<section><h2>Abstract</h2><p class="prose">{d.abstract}</p></section>}
+ <div class="prose"><Content/></div>
+ {projects.length>0&&<section><h2>Related research</h2><ul>{projects.map(p=><li><a href={url('project',p.id)}>{p.data.title}</a></li>)}</ul></section>}
+ </article></div>
+</Base>

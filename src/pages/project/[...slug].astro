@@ -1,0 +1,7 @@
+---
+import Redirect from '../../components/navigation/Redirect.astro';
+import {published,url} from '../../lib/content';
+export async function getStaticPaths(){return (await published('project')).map(p=>({params:{slug:p.id},props:{to:url('project',p.id)}}));}
+const {to}=Astro.props;
+---
+<Redirect to={to}/>

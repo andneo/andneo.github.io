@@ -1,374 +1,166 @@
 ---
-import { AUTHOR, SOCIAL, NAV, ACCENT_HUE, SITE_NAME } from '../config';
+import { AUTHOR, SOCIAL, NAV, SITE_NAME, SITE_URL } from '../config';
+import { validateContent } from '../lib/content';
 import '../styles/global.css';
-
-interface Props {
-  title?: string;
-  description?: string;
-  noCanvas?: boolean;
-}
-
-const { title, description = AUTHOR.bio.replace(/<[^>]+>/g, '').slice(0, 160), noCanvas = false } = Astro.props;
-const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
-const path = Astro.url.pathname;
-
-function isActive(href: string) {
-  if (href === '/' || href === '/#about') return path === '/';
-  const clean = href.replace('/#','').replace('#','');
-  return clean.length > 1 && path.startsWith(clean);
-}
+import 'katex/dist/katex.min.css';
+await validateContent();
+interface Props { title?: string; description?: string; noCanvas?: boolean; image?: string; type?: 'website' | 'article'; noindex?: boolean; }
+const { title, description = AUTHOR.bio.replace(/<[^>]+>/g, '').slice(0,160), image, type = 'website', noindex = false } = Astro.props;
+const pageTitle = title ? `${title} | ${SITE_NAME}` : `${AUTHOR.name} | ${SITE_NAME}`;
+const canonical = new URL(Astro.url.pathname, SITE_URL);
+const active = (href: string) => !href.includes('#') && (href === '/' ? Astro.url.pathname === '/' : Astro.url.pathname.startsWith(href));
 ---
-
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content={description} />
-  <title>{pageTitle}</title>
-
-  <meta property="og:title"       content={pageTitle} />
-  <meta property="og:description" content={description} />
-  <meta property="og:type"        content="website" />
-
-  <!-- View Transitions API — eliminates white flash between pages -->
-  <meta name="view-transition" content="same-origin" />
-
-  <!-- KaTeX -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous" />
-
-  <!-- Accent hue -->
-  <style define:vars={{ accentHue: ACCENT_HUE }}>
-    :root { --hue: var(--accentHue); }
-  </style>
-
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-</head>
-
-<body>
-  <!-- Background removed: using HeroSim instead -->
-
-  <!-- ═══ NAVBAR ═══ -->
-  <header class="navbar" id="navbar">
-    <div class="container navbar-inner">
-      <a href="/" class="navbar-brand">
-        <span class="brand-text">{SITE_NAME}</span>
-      </a>
-
-      <nav class="navbar-links" id="navbar-links" role="navigation" aria-label="Main navigation">
-        {NAV.map(item => (
-          item.children ? (
-            <div class="nav-dropdown">
-              <button class="nav-link nav-link--dropdown" aria-haspopup="true" aria-expanded="false">
-                {item.label}
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"/></svg>
-              </button>
-              <div class="nav-dropdown-menu">
-                {item.children.map(child => (
-                  <a href={child.href} class="nav-dropdown-item">{child.label}</a>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <a
-              href={item.href}
-              class:list={['nav-link', { 'nav-link--active': isActive(item.href) }]}
-            >
-              {item.label}
-            </a>
-          )
-        ))}
-      </nav>
-
-      <div class="navbar-actions">
-        <button class="theme-btn" id="theme-btn" aria-label="Toggle dark mode">
-          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-        <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
-          <span></span><span></span><span></span>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={new URL(image, SITE_URL)} />}
+    <link rel="alternate" type="application/rss+xml" title={SITE_NAME} href="/rss.xml" />
+    <meta name="color-scheme" content="light dark" />
+    <script is:inline>
+      try { const theme = localStorage.getItem('theme'); if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme; } catch {}
+    </script>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" data-header data-shrunk="false">
+      <div class="container header-inner" data-header-track>
+        <a class="brand" href="/">{SITE_NAME}</a>
+        <nav class="site-nav" aria-label="Main navigation" data-navbar>
+          {NAV.map(item => <a href={item.href} aria-current={active(item.href) ? 'page' : undefined}>{item.label}</a>)}
+        </nav>
+        <button class="theme-button" type="button" hidden aria-label="Dark theme" title="Switch to dark theme">
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.5 8.5 0 1 0 20.2 15.3Z"></path>
+          </svg>
+          <svg class="theme-icon theme-icon-sun is-hidden" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.5"></circle>
+            <path d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.3 5.3 6.7 6.7M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"></path>
+          </svg>
         </button>
       </div>
-    </div>
-  </header>
-
-  <main style="position: relative; z-index: 1;">
-    <slot />
-  </main>
-
-  <footer class="footer" style="position: relative; z-index: 1;">
-    <div class="container footer-inner">
-      <div class="footer-left">
-        <span class="footer-brand">{SITE_NAME}</span>
-        <div class="footer-links">
-          {SOCIAL.github        && <a href={SOCIAL.github}        target="_blank" rel="noopener">GitHub</a>}
-          {SOCIAL.twitter       && <a href={SOCIAL.twitter}       target="_blank" rel="noopener">Twitter</a>}
-          {SOCIAL.googleScholar && <a href={SOCIAL.googleScholar} target="_blank" rel="noopener">Scholar</a>}
-          {SOCIAL.orcid         && <a href={SOCIAL.orcid}         target="_blank" rel="noopener">ORCID</a>}
-        </div>
+    </header>
+    <main id="main" tabindex="-1"><slot /></main>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <p>© {new Date().getFullYear()} {AUTHOR.name}</p>
+        <nav aria-label="Contact and profiles">
+          <a class="footer-social" href={`mailto:${AUTHOR.email}`} aria-label="Email" title="Email">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <path d="m4 7 8 6 8-6"></path>
+            </svg>
+          </a>
+          {SOCIAL.github && <a class="footer-social" href={SOCIAL.github} aria-label="GitHub" title="GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 22v-4.2c.04-1.03-.36-2.02-1.1-2.73 3.68-.41 7.55-1.81 7.55-8.18A6.38 6.38 0 0 0 19.75 2.5 5.93 5.93 0 0 0 19.59 0S18.53-.34 15 1.67a15.38 15.38 0 0 0-8 0C3.47-.34 2.41 0 2.41 0a5.93 5.93 0 0 0-.16 2.5A6.38 6.38 0 0 0 .55 6.9c0 6.35 3.87 7.75 7.55 8.18A3.7 3.7 0 0 0 7 17.65V22"></path>
+              <path d="M7 19c-3 .92-3-1.5-4.2-2"></path>
+            </svg>
+          </a>}
+          {SOCIAL.googleScholar && <a class="footer-social" href={SOCIAL.googleScholar} aria-label="Google Scholar" title="Google Scholar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m2 9 10-5 10 5-10 5Z"></path>
+              <path d="M6 12v5c3 2.2 9 2.2 12 0v-5"></path>
+              <path d="M22 9v6"></path>
+            </svg>
+          </a>}
+          {SOCIAL.orcid && <a class="footer-social" href={SOCIAL.orcid} aria-label="ORCID" title="ORCID">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8.2 10.4v5.2"></path>
+              <circle cx="8.2" cy="7.9" r=".65" class="footer-social-fill"></circle>
+              <path d="M11.6 10.4h2.1a2.6 2.6 0 0 1 0 5.2h-2.1Z"></path>
+            </svg>
+          </a>}
+        </nav>
       </div>
-      <p class="footer-copy">© {new Date().getFullYear()} {AUTHOR.name}</p>
-    </div>
-  </footer>
-
-  <script>
-    // ── Theme ──────────────────────────────────────────────────────
-    const html = document.documentElement;
-    const themeBtn = document.getElementById('theme-btn');
-    const stored = localStorage.getItem('theme') ??
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    html.setAttribute('data-theme', stored);
-
-    themeBtn?.addEventListener('click', () => {
-      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-    });
-
-    // ── Hamburger ─────────────────────────────────────────────────
-    const ham  = document.getElementById('hamburger');
-    const navL = document.getElementById('navbar-links');
-    ham?.addEventListener('click', () => {
-      const open = navL?.classList.toggle('open');
-      ham.setAttribute('aria-expanded', open ? 'true' : 'false');
-      ham.classList.toggle('open', !!open);
-    });
-    document.addEventListener('click', e => {
-      if (!ham?.contains(e.target as Node) && !navL?.contains(e.target as Node)) {
-        navL?.classList.remove('open');
-        ham?.classList.remove('open');
-      }
-    });
-
-    // ── Dropdowns ─────────────────────────────────────────────────
-    document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
-          b.setAttribute('aria-expanded', 'false');
-          b.closest('.nav-dropdown')?.classList.remove('open');
-        });
-        if (!expanded) {
-          btn.setAttribute('aria-expanded', 'true');
-          btn.closest('.nav-dropdown')?.classList.add('open');
-        }
-      });
-    });
-    document.addEventListener('click', e => {
-      if (!(e.target as Element).closest('.nav-dropdown')) {
-        document.querySelectorAll<HTMLButtonElement>('.nav-link--dropdown').forEach(b => {
-          b.setAttribute('aria-expanded', 'false');
-          b.closest('.nav-dropdown')?.classList.remove('open');
+    </footer>
+    <script>
+      const themeButton = document.querySelector<HTMLButtonElement>('.theme-button');
+      if (themeButton) {
+        const moonIcon = themeButton.querySelector<SVGElement>('.theme-icon-moon');
+        const sunIcon = themeButton.querySelector<SVGElement>('.theme-icon-sun');
+        themeButton.hidden = false;
+        const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+        const updateTheme = () => {
+          const isDark = dark();
+          const action = isDark ? 'Light theme' : 'Dark theme';
+          themeButton.setAttribute('aria-label', action);
+          themeButton.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+          moonIcon?.classList.toggle('is-hidden', isDark);
+          sunIcon?.classList.toggle('is-hidden', !isDark);
+        };
+        updateTheme();
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+        themeButton.addEventListener('click', () => {
+          const next = dark() ? 'light' : 'dark';
+          document.documentElement.dataset.theme = next;
+          try { localStorage.setItem('theme', next); } catch {}
+          updateTheme();
         });
       }
-    });
 
-    // ── Scroll shadow ──────────────────────────────────────────────
-    const navbar = document.getElementById('navbar');
-    const onScroll = () => navbar?.classList.toggle('scrolled', window.scrollY > 8);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+      const header = document.querySelector<HTMLElement>('[data-header]');
+      const track = document.querySelector<HTMLElement>('[data-header-track]');
+      if (header && track) {
+        let scrollFrame = 0;
+        let resizeFrame = 0;
+        const shrinkAt = 96;
+        const growAt = 28;
 
-    // ── Page transition: fade on navigate ─────────────────────────
-    // Intercept all internal link clicks and do a soft fade
-    document.addEventListener('click', (e) => {
-      const target = (e.target as Element).closest('a');
-      if (!target) return;
-      const href = target.getAttribute('href');
-      if (!href) return;
-      // Skip external, hash-only, and download links
-      if (
-        href.startsWith('http') ||
-        href.startsWith('mailto') ||
-        href.startsWith('#') ||
-        target.hasAttribute('download') ||
-        target.getAttribute('target') === '_blank'
-      ) return;
-      // Skip if modifier key held
-      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        const measure = () => {
+          resizeFrame = 0;
+          if (innerWidth < 780) {
+            header.style.removeProperty('--header-compact');
+            return;
+          }
+          const style = getComputedStyle(track);
+          const gap = Number.parseFloat(style.columnGap) || 0;
+          const visible = [...track.children].filter((child): child is HTMLElement =>
+            child instanceof HTMLElement && child.getClientRects().length > 0
+          );
+          let width =
+            Number.parseFloat(style.paddingLeft) +
+            Number.parseFloat(style.paddingRight) +
+            Number.parseFloat(style.borderLeftWidth) +
+            Number.parseFloat(style.borderRightWidth);
+          visible.forEach((child, index) => {
+            width += child.getBoundingClientRect().width + (index ? gap : 0);
+          });
+          header.style.setProperty('--header-compact', `${Math.ceil(width + 4)}px`);
+        };
 
-      e.preventDefault();
-      document.body.classList.add('page-leaving');
-      setTimeout(() => { window.location.href = href; }, 180);
-    });
-  </script>
-</body>
+        const apply = () => {
+          scrollFrame = 0;
+          const shrunk = header.dataset.shrunk === 'true';
+          if (!shrunk && scrollY > shrinkAt) header.dataset.shrunk = 'true';
+          else if (shrunk && scrollY < growAt) header.dataset.shrunk = 'false';
+        };
+
+        addEventListener('scroll', () => {
+          if (scrollFrame) return;
+          scrollFrame = requestAnimationFrame(apply);
+        }, { passive: true });
+
+        addEventListener('resize', () => {
+          if (resizeFrame) return;
+          resizeFrame = requestAnimationFrame(measure);
+        }, { passive: true });
+
+        document.fonts?.ready.then(measure).catch(() => {});
+        measure();
+        apply();
+      }
+    </script>
+  </body>
 </html>
-
-<style>
-/* ── Page transition ── */
-body {
-  transition: opacity 180ms ease;
-}
-body.page-leaving {
-  opacity: 0;
-}
-
-/* ── Navbar ── */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  background: var(--bg);
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--t), box-shadow var(--t), background var(--t-slow);
-}
-.navbar.scrolled {
-  border-color: var(--border);
-  box-shadow: 0 1px 16px rgba(0,0,0,.07);
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.navbar-inner {
-  display: flex;
-  align-items: center;
-  height: 60px;
-  gap: 1.5rem;
-}
-
-/* Brand */
-.navbar-brand {
-  text-decoration: none;
-  flex-shrink: 0;
-  margin-right: auto;
-}
-.brand-text {
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--text);
-  text-transform: lowercase;
-  transition: color var(--t);
-}
-.navbar-brand:hover .brand-text { color: var(--accent); }
-
-/* Nav links */
-.navbar-links { display: flex; align-items: center; gap: 0.1rem; }
-.nav-link {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-2);
-  padding: 0.35em 0.7em;
-  border-radius: var(--r);
-  transition: color var(--t), background var(--t);
-  cursor: pointer;
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  font-family: var(--font-sans);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.nav-link:hover          { color: var(--text); background: var(--bg-off); }
-.nav-link--active        { color: var(--accent) !important; }
-
-/* Dropdown */
-.nav-dropdown { position: relative; }
-.nav-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: 0 8px 32px rgba(0,0,0,.12);
-  padding: 0.4rem;
-  display: none;
-  z-index: 300;
-}
-.nav-dropdown.open .nav-dropdown-menu { display: flex; flex-direction: column; }
-.nav-dropdown-item {
-  font-size: 0.875rem;
-  color: var(--text-2);
-  padding: 0.5em 0.85em;
-  border-radius: var(--r);
-  transition: background var(--t), color var(--t);
-  white-space: nowrap;
-  text-decoration: none;
-}
-.nav-dropdown-item:hover { background: var(--bg-off); color: var(--text); }
-
-/* Theme button */
-.theme-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 0.35em 0.45em;
-  cursor: pointer;
-  color: var(--text-2);
-  display: flex;
-  align-items: center;
-  transition: background var(--t), color var(--t);
-}
-.theme-btn:hover { background: var(--bg-off); color: var(--text); }
-[data-theme="light"] .icon-moon { display: block; }
-[data-theme="light"] .icon-sun  { display: none; }
-[data-theme="dark"]  .icon-moon { display: none; }
-[data-theme="dark"]  .icon-sun  { display: block; }
-
-/* Hamburger */
-.hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-}
-.hamburger span { display: block; width: 20px; height: 2px; background: var(--text-2); border-radius: 2px; transition: transform var(--t), opacity var(--t); }
-.hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-.hamburger.open span:nth-child(2) { opacity: 0; }
-.hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
-
-/* Footer */
-.footer {
-  border-top: 1px solid var(--border);
-  padding: 1.75rem 0;
-  margin-top: auto;
-  background: var(--bg);
-}
-.footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-.footer-left  { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-.footer-brand { font-size: 0.85rem; font-weight: 600; color: var(--text-3); letter-spacing: 0.04em; text-transform: lowercase; }
-.footer-links { display: flex; flex-wrap: wrap; gap: 1.25rem; }
-.footer-links a { font-size: 0.82rem; color: var(--text-3); transition: color var(--t); }
-.footer-links a:hover { color: var(--accent); }
-.footer-copy  { font-size: 0.78rem; color: var(--text-3); }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .hamburger { display: flex; }
-  .navbar-links {
-    position: fixed;
-    top: 60px; left: 0; right: 0;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.1rem;
-    padding: 0.6rem 1rem 1rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,.1);
-    transform: translateY(-6px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--t), transform var(--t);
-    z-index: 199;
-  }
-  .navbar-links.open { opacity: 1; pointer-events: all; transform: translateY(0); }
-  .nav-link { padding: 0.6em 0.9em; }
-  .nav-dropdown-menu { position: static; box-shadow: none; border: none; padding-left: 1rem; }
-  .nav-dropdown.open .nav-dropdown-menu { display: flex; }
-}
-</style>

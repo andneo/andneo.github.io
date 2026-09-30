@@ -1,0 +1,17 @@
+node_modules/
+.astro/
+dist/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+.venv/
+__pycache__/
+*.pyc
+*.o
+*.mod
+*.blend1
+coverage/
+playwright-report/
+test-results/

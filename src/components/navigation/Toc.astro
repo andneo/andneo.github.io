@@ -1,0 +1,7 @@
+---
+import type { MarkdownHeading } from 'astro';
+interface Props { headings?: MarkdownHeading[]; }
+const headings = (Astro.props.headings ?? []).filter(h=>h.depth===2||h.depth===3);
+---
+{headings.length>0 && <details class="page-toc" open><summary>On this page</summary><nav aria-label="On this page"><ul>{headings.map(h=><li class:list={{sub:h.depth===3}}><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul></nav></details>}
+<style>.page-toc{font:.85rem/1.5 var(--font-sans);color:var(--text-2)}summary{font-weight:600;padding:.5rem 0}ul{list-style:none;padding:0;margin:.5rem 0}li{margin:.45rem 0}.sub{padding-left:1rem}a{text-decoration:none}a:hover{text-decoration:underline}</style>

@@ -1,0 +1,35 @@
+---
+interface Series { label: string; points: [number, number][]; }
+interface Props { title: string; description: string; series: Series[]; xLabel: string; yLabel: string; download?: string; }
+const { title, description, series, xLabel, yLabel, download } = Astro.props;
+if (!series.length || series.some(s => !s.points.length || s.points.some(p => p.some(v => !Number.isFinite(v))))) throw new Error(`${title}: plot requires nonempty finite data`);
+const points = series.flatMap(s => s.points);
+const xs = points.map(p=>p[0]), ys = points.map(p=>p[1]);
+const xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(...ys), ymax=Math.max(...ys);
+const coords = (p: [number,number]) => `${55+(p[0]-xmin)/(xmax-xmin || 1)*610},${315-(p[1]-ymin)/(ymax-ymin || 1)*260}`;
+---
+<scientific-plot>
+  <figure>
+    <svg viewBox="0 0 720 380" role="img" aria-label={`${title}. ${description}`}>
+      <path d="M55 45V315H665" fill="none" stroke="currentColor" />
+      {series.map((s,i)=><polyline data-series={i} points={s.points.map(coords).join(' ')} fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray={i % 2 ? '7 4' : undefined} />)}
+      <text x="360" y="365" text-anchor="middle">{xLabel}</text><text x="15" y="180" transform="rotate(-90 15 180)" text-anchor="middle">{yLabel}</text>
+      <text x="55" y="340">{xmin}</text><text x="665" y="340" text-anchor="end">{xmax}</text><text x="55" y="35">{ymin}–{ymax} {yLabel}</text>
+    </svg>
+    <figcaption><strong>{title}.</strong> {description}{download && <> <a href={download}>Download data</a></>}</figcaption>
+  </figure>
+  <fieldset hidden><legend>Visible series</legend>{series.map((s,i)=><label><input type="checkbox" checked data-series={i} /> {s.label}</label>)}</fieldset>
+  <details><summary>Data table</summary><table><thead><tr><th>Series</th><th>{xLabel}</th><th>{yLabel}</th></tr></thead><tbody>{series.flatMap(s=>s.points.map(p=><tr><th scope="row">{s.label}</th><td>{p[0]}</td><td>{p[1]}</td></tr>))}</tbody></table></details>
+</scientific-plot>
+<script>
+  class ScientificPlot extends HTMLElement {
+    connectedCallback() {
+      const fieldset=this.querySelector('fieldset'); if(fieldset) fieldset.hidden=false;
+      this.querySelectorAll<HTMLInputElement>('input').forEach(input=>input.addEventListener('change',()=>{
+        this.querySelector<SVGElement>(`polyline[data-series="${input.dataset.series}"]`)?.setAttribute('visibility',input.checked?'visible':'hidden');
+      }));
+    }
+  }
+  if(!customElements.get('scientific-plot')) customElements.define('scientific-plot',ScientificPlot);
+</script>
+<style>scientific-plot{display:block}svg{width:100%;color:var(--accent)}text{font:14px var(--font-sans);fill:var(--text)}fieldset{display:flex;flex-wrap:wrap;gap:1rem;border:1px solid var(--border);font:.9rem var(--font-sans)}</style>

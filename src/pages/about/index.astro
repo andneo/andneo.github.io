@@ -1,0 +1,15 @@
+---
+import Base from '../../layouts/Base.astro';
+import { AUTHOR, CONTACT } from '../../config';
+---
+<Base title="About">
+  <article class="container--narrow page">
+    <p class="eyebrow">About</p>
+    <h1>{AUTHOR.name}</h1>
+    <p>{AUTHOR.title} · {AUTHOR.institution}</p>
+    <div class="prose" set:html={AUTHOR.bio} />
+    <p><a href="/cv/">Curriculum vitae</a></p>
+    <h2 id="contact">Contact</h2>
+    <p><a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a><br />{CONTACT.location}</p>
+  </article>
+</Base>
