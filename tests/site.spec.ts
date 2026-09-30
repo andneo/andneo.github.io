@@ -568,17 +568,18 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(canvas).toHaveCSS('opacity','0');
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
- await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-mc');
- await expect(monolayerCanvas).toHaveAttribute('data-model','valence-limited-network-water-v2');
+ await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','smooth-multiwell-network-water-md-v3');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-flexible-cell');
- await expect(monolayerCanvas).toHaveAttribute('data-ensemble','npt-metropolis-network');
- await expect(monolayerCanvas).toHaveAttribute('data-barostat','metropolis-area-and-shape');
- await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','pconf-times-area-times-5A-width');
+ await expect(monolayerCanvas).toHaveAttribute('data-ensemble','langevin-md-weak-coupling-npt');
+ await expect(monolayerCanvas).toHaveAttribute('data-barostat','continuous-flexible-cell-weak-coupling');
+ await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','configurational-pressure-plus-ideal-term');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
- await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','boltzmann-metropolis-kbt');
- await expect(monolayerCanvas).toHaveAttribute('data-potential','coordination-saturated-multiwell-network');
+ await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
+ await expect(monolayerCanvas).toHaveAttribute('data-potential','smooth-coordination-multiwell-network');
+ await expect(monolayerCanvas).toHaveAttribute('data-dynamics','continuous-diffusive-md');
  await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
@@ -590,35 +591,38 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:15000}).toBeGreaterThan(0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(2.5);
  expect(Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction')||0)).toBe(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-force-evaluations')||0),{timeout:15000}).toBeGreaterThan(1000);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-barostat-updates')||0),{timeout:15000}).toBeGreaterThan(1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')||0),{timeout:15000}).toBeGreaterThan(.05);
+ const initialMsd=Number(await monolayerCanvas.getAttribute('data-msd')||0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-msd')||0),{timeout:15000}).toBeGreaterThan(initialMsd+.002);
 
  const temperature=story.locator('[data-monolayer-temperature]');
  const pressure=story.locator('[data-monolayer-pressure]');
 
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-area-move-attempts')||0),{timeout:15000}).toBeGreaterThan(20);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-shape-move-attempts')||0),{timeout:15000}).toBeGreaterThan(10);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-relaxation-frames')||0),{timeout:20000}).toBe(0);
  expect(Number(await monolayerCanvas.getAttribute('data-pressure-work-scale'))).toBeCloseTo(301.107038,3);
  expect(Number(await monolayerCanvas.getAttribute('data-confinement-width-nm'))).toBeCloseTo(.5,3);
 
  const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
  const initialDegree4=Number(await monolayerCanvas.getAttribute('data-degree4-fraction'));
+ const initialSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
 
  await temperature.fill('500');
  await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('500 K');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(500);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kbt'))).toBeCloseTo(4.15723,3);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-relaxation-frames')||0),{timeout:20000}).toBe(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:15000}).toBeGreaterThan(initialSpeed*1.08);
+ const hotSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
 
  await temperature.fill('120');
  await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('120 K');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(120);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kbt'))).toBeCloseTo(.99774,3);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-relaxation-frames')||0),{timeout:20000}).toBe(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:15000}).toBeLessThan(hotSpeed*.95);
 
  await pressure.fill('6');
  await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('6.0 GPa');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(6,1);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-relaxation-frames')||0),{timeout:25000}).toBe(0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-degree4-fraction')),{timeout:25000}).toBeGreaterThan(initialDegree4+.15);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-measured-pressure-gpa')),{timeout:25000}).toBeGreaterThan(4);
