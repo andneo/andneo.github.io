@@ -136,8 +136,7 @@ function Renderer() {
           /* Intersect only the horizontal floor. Side walls are intentionally absent. */\
           float tFloor = (-poolHeight - origin.y) / ray.y;\
           vec3 floorHit = origin + ray * tFloor;\
-          /* Use a finer floor texture scale so the view reads as slightly
-             more zoomed out without changing the current camera perspective. */\
+          /* Finer floor texture scale: smaller tiles, unchanged camera perspective. */\
           vec2 floorCoord = floorHit.xz * 0.78 + 0.5;\
           vec3 floorColor = texture2D(tiles, floorCoord).rgb * 0.58;\
           vec3 refractedLight = -refract(-light, vec3(0.0, 1.0, 0.0), IOR_AIR / IOR_WATER);\
