@@ -49,6 +49,7 @@ export class MonolayerWaterMD{
     this.coulombScreening=.34;
     this.coulombCutoff=.52;
     this.hBondEpsilon=.018;
+    this.temperatureRescales=0;
 
     this.interactionCutoff=.68;
     this.skin=.08;
@@ -101,18 +102,36 @@ export class MonolayerWaterMD{
   }
 
   reducedTemperature(kelvin){
+    // Deliberately wide reduced-temperature span for a browser-timescale
+    // experiment: the H-bond well is several kBT deep at the cold end and
+    // substantially easier to disrupt at the hot end.
     const x=clamp((kelvin-120)/380,0,1);
-    return .0075+x*.0445;
+    return .005+x*.065;
   }
   setTemperatureKelvin(value){
-    this.temperatureKelvin=clamp(Number(value)||240,120,500);
-    const x=clamp((this.temperatureKelvin-120)/380,0,1);
-    this.temperature=this.reducedTemperature(this.temperatureKelvin);
-    // Friction changes only relaxation time, not the target equilibrium.
-    // Lower friction when cold lets directional H-bond torques anneal instead
-    // of simply freezing the initial geometry.
-    this.gamma=1.35+x*1.15;
-    this.gammaRot=1.45+x*1.75;
+    const nextKelvin=clamp(Number(value)||240,120,500);
+    const previousTemperature=this.temperature;
+    const nextTemperature=this.reducedTemperature(nextKelvin);
+
+    // An abrupt thermostat set-point change should be visible immediately.
+    // Rescale existing translational and rotational velocities by sqrt(T2/T1)
+    // before the Langevin bath takes over. This preserves directions and does
+    // not prescribe any particular network topology.
+    if(previousTemperature>0&&this.molecules.length){
+      const scale=clamp(Math.sqrt(nextTemperature/previousTemperature),.32,3.2);
+      for(const m of this.molecules){
+        m.vx*=scale;m.vy*=scale;
+        m.wx*=scale;m.wy*=scale;m.wz*=scale;
+      }
+      this.temperatureRescales++;
+    }
+
+    this.temperatureKelvin=nextKelvin;
+    this.temperature=nextTemperature;
+    // Keep thermostat coupling independent of the chosen temperature so a
+    // hotter state is not visually cancelled by stronger damping.
+    this.gamma=1.8;
+    this.gammaRot=2.2;
   }
   setPressureGPa(value){
     this.pressureGPa=clamp(Number(value)||0,0,6);
@@ -403,32 +422,56 @@ export class MonolayerWaterMD{
     this.maxDonorDegree=md;this.maxAcceptorDegree=ma;this.maxTotalDegree=mt;
   }
 
-  applyHydrogenBonds(){
-    const target=.137,width=.050;
-    for(const bond of this.bonds.values()){
-      const donor=this.molecules[bond.donorId],acceptor=this.molecules[bond.acceptorId];
-      const c=this.candidate(donor,bond.donorIndex,acceptor,bond.acceptorIndex,true);
-      if(!c)continue;
-      const beforeFx=donor.fx,beforeFy=donor.fy;
-      const centerDx=this.minimumImage(acceptor.x-donor.x);
-      const centerDy=this.minimumImage(acceptor.y-donor.y);
-      const delta=(c.r-target)/width;
-      const angular=c.donorAlign*c.donorAlign*c.acceptorAlign*c.acceptorAlign;
-      const magnitude=2*this.hBondEpsilon*delta/width*Math.exp(-delta*delta)*angular;
-      const fx=c.ux*magnitude,fy=c.uy*magnitude,fz=c.uz*magnitude;
-      this.addSiteForce(donor,c.h,fx,fy,fz);
-      this.addSiteForce(acceptor,c.a,-fx,-fy,-fz);
-      this.virial+=-centerDx*(donor.fx-beforeFx)-centerDy*(donor.fy-beforeFy);
+  applyDirectionalHydrogenBond(c){
+    const donor=c.donor,acceptor=c.acceptor;
+    const beforeFx=donor.fx,beforeFy=donor.fy;
+    const centerDx=this.minimumImage(acceptor.x-donor.x);
+    const centerDy=this.minimumImage(acceptor.y-donor.y);
+    const target=.137,width=.052;
+    const delta=(c.r-target)/width;
+    const angular=
+      c.donorAlign*c.donorAlign*
+      c.acceptorAlign*c.acceptorAlign;
+    const magnitude=
+      2*this.hBondEpsilon*delta/width*
+      Math.exp(-delta*delta)*angular;
+    const fx=c.ux*magnitude,fy=c.uy*magnitude,fz=c.uz*magnitude;
+    this.addSiteForce(donor,c.h,fx,fy,fz);
+    this.addSiteForce(acceptor,c.a,-fx,-fy,-fz);
+    this.virial+=-centerDx*(donor.fx-beforeFx)-centerDy*(donor.fy-beforeFy);
+  }
+
+  bestDirectionalCandidate(donor,acceptor){
+    let best=null;
+    for(let di=0;di<2;di++)for(let ai=0;ai<2;ai++){
+      const c=this.candidate(donor,di,acceptor,ai,true);
+      if(c&&(!best||c.score>best.score))best=c;
     }
+    return best;
+  }
+
+  applyHydrogenBondPairForces(a,b){
+    const dx=this.minimumImage(b.x-a.x),dy=this.minimumImage(b.y-a.y);
+    if(dx*dx+dy*dy>.46*.46)return;
+    // The directional H-bond potential acts on plausible nearby pairs before
+    // a discrete display bond is assigned. This lets cold molecules anneal
+    // into aligned bonds instead of requiring a lucky pre-aligned encounter.
+    const ab=this.bestDirectionalCandidate(a,b);
+    const ba=this.bestDirectionalCandidate(b,a);
+    if(ab)this.applyDirectionalHydrogenBond(ab);
+    if(ba)this.applyDirectionalHydrogenBond(ba);
   }
 
   computeForces(forceBondUpdate=false){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
     this.resetForces();
     this.virial=0;
-    for(const [ia,ib] of this.neighborPairs)this.applyPairForces(this.molecules[ia],this.molecules[ib]);
+    for(const [ia,ib] of this.neighborPairs){
+      const a=this.molecules[ia],b=this.molecules[ib];
+      this.applyPairForces(a,b);
+      this.applyHydrogenBondPairForces(a,b);
+    }
     if(forceBondUpdate||this.stepCount%4===0)this.updateBondNetwork();
-    this.applyHydrogenBonds();
   }
 
   instantaneousPressure(){
@@ -534,6 +577,9 @@ export class MonolayerWaterMD{
       reducedPressure:this.pressureEMA,targetReducedPressure:this.targetReducedPressure(),
       measuredPressureGPa:this.measuredPressureGPa(),
       hBondThermalRatio:this.hBondEpsilon/this.temperature,
+      thermalEnergy:this.temperature,
+      temperatureRescales:this.temperatureRescales,
+      bondsPerMolecule:this.bonds.size/this.count,
       maxDonorDegree:this.maxDonorDegree,maxAcceptorDegree:this.maxAcceptorDegree,maxTotalDegree:this.maxTotalDegree,
     };
   }
@@ -570,6 +616,7 @@ class MonolayerExplorer{
     this.canvas.dataset.ensemble='qualitative-2d-npt-like';
     this.canvas.dataset.barostat='virial-feedback';
     this.canvas.dataset.pressureEstimator='2d-virial';
+    this.canvas.dataset.temperatureCoupling='kinetic-rescale-langevin-continuous-hbond';
     this.canvas.dataset.viewFill='full-height';
     requestAnimationFrame(this.frame);
   }
@@ -699,6 +746,11 @@ class MonolayerExplorer{
     this.canvas.dataset.reducedPressure=d.reducedPressure.toFixed(5);
     this.canvas.dataset.targetReducedPressure=d.targetReducedPressure.toFixed(5);
     this.canvas.dataset.hbondThermalRatio=d.hBondThermalRatio.toFixed(3);
+    this.canvas.dataset.thermalEnergy=d.thermalEnergy.toFixed(5);
+    this.canvas.dataset.temperatureRescales=String(d.temperatureRescales);
+    this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(5);
+    this.canvas.dataset.meanAngularSpeed=d.meanAngularSpeed.toFixed(5);
+    this.canvas.dataset.bondsPerMolecule=d.bondsPerMolecule.toFixed(3);
     this.canvas.dataset.maxTotalDegree=String(d.maxTotalDegree);
 
     if(this.measuredPressureOutput){
@@ -706,7 +758,7 @@ class MonolayerExplorer{
     }
     if(this.densityOutput)this.densityOutput.textContent=d.arealDensity.toFixed(2);
     if(this.status){
-      this.status.textContent=d.bonds+' H-bonds · '+d.averageNeighbors.toFixed(1)+' neighbours/molecule';
+      this.status.textContent=d.bonds+' H-bonds · '+d.bondsPerMolecule.toFixed(2)+' bonds/molecule';
     }
   }
 

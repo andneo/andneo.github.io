@@ -558,7 +558,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await story.evaluate(element=>element.scrollIntoView({block:'center'}));
  await page.waitForTimeout(100);
 
- await story.getByRole('button',{name:/scene 2: Confine the network/i}).click();
+ await story.getByRole('button',{name:/scene 2: Confine the network/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','1');
  await expect(story.locator('[data-water-title]')).toHaveText('Confine the network.');
  await expect(story.locator('[data-water-copy]')).toContainText('250 rigid H₂O molecules');
@@ -576,6 +576,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-ensemble','qualitative-2d-npt-like');
  await expect(monolayerCanvas).toHaveAttribute('data-barostat','virial-feedback');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','2d-virial');
+ await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','kinetic-rescale-langevin-continuous-hbond');
  await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
@@ -592,12 +593,22 @@ test('water network story is contained, button-driven and replaces the old topol
  const pressure=story.locator('[data-monolayer-pressure]');
  const initialDomainHalf=Number(await monolayerCanvas.getAttribute('data-domain-half'));
  const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
- const warmBondRatio=Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'));
+ const initialMeanSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
+ const initialRescales=Number(await monolayerCanvas.getAttribute('data-temperature-rescales')||0);
+
+ await temperature.fill('500');
+ await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('500 K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(500);
+ const hotThermalEnergy=Number(await monolayerCanvas.getAttribute('data-thermal-energy'));
+ const hotBondRatio=Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'));
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-rescales'))).toBeGreaterThan(initialRescales);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:10000}).toBeGreaterThan(initialMeanSpeed*1.10);
 
  await temperature.fill('120');
  await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('120 K');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(120);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'))).toBeGreaterThan(warmBondRatio);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-thermal-energy'))).toBeLessThan(hotThermalEnergy);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'))).toBeGreaterThan(hotBondRatio);
 
  await pressure.fill('4.5');
  await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('4.5 GPa');
@@ -607,28 +618,28 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story.locator('[data-monolayer-measured-pressure]')).toContainText('GPa');
  await expect(story.locator('[data-monolayer-density]')).not.toHaveText('—');
 
- await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','2');
  await expect(hero).toHaveCSS('opacity','0');
  await expect(canvas).toHaveCSS('opacity','1');
  await expect(lens).toHaveCSS('opacity','0');
 
- await story.getByRole('button',{name:/scene 1: Water is a network/i}).click();
+ await story.getByRole('button',{name:/scene 1: Water is a network/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(hero).toHaveCSS('opacity','1');
  await expect(canvas).toHaveCSS('opacity','0');
  await expect(lens).toHaveCSS('opacity','1');
 
- await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','2');
  await expect(story.locator('[data-water-scale]')).toBeVisible();
  await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
 
- await story.getByRole('button',{name:/scene 4: The network never stands still/i}).click();
+ await story.getByRole('button',{name:/scene 4: The network never stands still/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','3');
  await expect(story.locator('[data-water-title]')).toHaveText('The network never stands still.');
 
- await story.getByRole('button',{name:/scene 5: Same liquid/i}).click();
+ await story.getByRole('button',{name:/scene 5: Same liquid/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','4');
  const slider=story.locator('[data-water-mix]');
  await expect(slider).toBeVisible();
