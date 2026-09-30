@@ -111,8 +111,12 @@ const scenes = [
           <output data-monolayer-pressure-output for="monolayer-pressure">1.0 GPa</output>
         </div>
         <input id="monolayer-pressure" data-monolayer-pressure type="range" min="0" max="6" step="0.1" value="1" />
+        <div class="water-story__thermo-metrics" aria-live="polite">
+          <span>model pressure <strong data-monolayer-measured-pressure>1.0 GPa</strong></span>
+          <span>areal density <strong data-monolayer-density>—</strong></span>
+        </div>
         <p data-monolayer-status>250 molecules · periodic monolayer</p>
-        <small>Qualitative browser model · weak area barostat</small>
+        <small>Qualitative browser model · virial-feedback area barostat</small>
       </div>
 
     </div>
@@ -141,7 +145,9 @@ const scenes = [
   .water-story__lens-shell{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block;object-fit:contain;filter:drop-shadow(0 14px 22px rgba(0,0,0,.20));user-select:none}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
+  .water-story[data-scene="1"] .water-story__wash{display:none}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}
+  .water-story[data-scene="1"] .water-story__copy{display:none}
   .water-story__kicker{margin:0 0 .7rem;color:var(--cool);font:500 .64rem/1.2 var(--font-sans);letter-spacing:.14em;text-transform:uppercase}
   .water-story[data-scene="0"] .water-story__kicker{display:none}
   .water-story[data-scene="0"] .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){font-size:clamp(.9rem,1.25vw,1.05rem);color:var(--text-2)}
@@ -161,14 +167,17 @@ const scenes = [
   .water-story__representation label{display:block;margin-bottom:.55rem;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
   .water-story__representation input{width:100%;accent-color:var(--cool)}
   .water-story__representation div{display:flex;justify-content:space-between;color:var(--text-3);font:500 .58rem/1 var(--font-sans)}
-  .water-story__thermo{position:absolute;z-index:5;right:clamp(1rem,2.6vw,2rem);top:clamp(1rem,2.6vw,1.8rem);width:min(18rem,31vw);padding:.8rem .9rem .72rem;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--surface) 86%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.08);backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 260ms ease}
+  .water-story__thermo{position:absolute;z-index:5;left:clamp(1.2rem,3vw,2.2rem);top:clamp(1.1rem,3vw,2rem);width:min(18rem,29vw);padding:.9rem 1rem .8rem;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--surface) 88%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.08);backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 260ms ease}
   .water-story[data-scene="1"] .water-story__thermo{opacity:1;visibility:visible;pointer-events:auto}
   .water-story__thermo-row{display:flex;align-items:baseline;justify-content:space-between;gap:.8rem}
   .water-story__thermo-row--pressure{margin-top:.62rem}
   .water-story__thermo label{color:var(--text-3);font:600 .57rem/1 var(--font-sans);letter-spacing:.11em;text-transform:uppercase}
   .water-story__thermo output{color:var(--text-1);font:600 .7rem/1 var(--font-mono)}
   .water-story__thermo input{width:100%;margin:.48rem 0 0;accent-color:var(--cool)}
-  .water-story__thermo p{margin:.65rem 0 .2rem;color:var(--text-2);font:500 .58rem/1.35 var(--font-sans)}
+  .water-story__thermo-metrics{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.7rem;padding-top:.62rem;border-top:1px solid var(--border)}
+  .water-story__thermo-metrics span{display:grid;gap:.18rem;color:var(--text-3);font:500 .52rem/1.2 var(--font-sans);letter-spacing:.04em;text-transform:uppercase}
+  .water-story__thermo-metrics strong{color:var(--text-1);font:600 .67rem/1.2 var(--font-mono);letter-spacing:0;text-transform:none}
+  .water-story__thermo p{margin:.58rem 0 .2rem;color:var(--text-2);font:500 .58rem/1.35 var(--font-sans)}
   .water-story__thermo small{display:block;color:var(--text-3);font:400 .54rem/1.4 var(--font-sans)}
 
   :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
@@ -183,6 +192,7 @@ const scenes = [
     .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
     .water-story__thermo{left:.8rem;right:.8rem;top:.75rem;width:auto}
+    .water-story__thermo-metrics{grid-template-columns:1fr 1fr}
     .water-story__thermo p,.water-story__thermo small{display:none}
     .water-story__lens{left:auto;right:-.2rem;top:31%;width:min(124.8vw,592px)}
     .water-story__pause{font-size:.58rem}

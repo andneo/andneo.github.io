@@ -555,13 +555,14 @@ test('water network story is contained, button-driven and replaces the old topol
  await page.evaluate(()=>window.scrollBy(0,900));
  await page.waitForTimeout(150);
  await expect(story).toHaveAttribute('data-scene','0');
- await story.scrollIntoViewIfNeeded();
+ await story.evaluate(element=>element.scrollIntoView({block:'center'}));
+ await page.waitForTimeout(100);
 
  await story.getByRole('button',{name:/scene 2: Confine the network/i}).click();
  await expect(story).toHaveAttribute('data-scene','1');
  await expect(story.locator('[data-water-title]')).toHaveText('Confine the network.');
  await expect(story.locator('[data-water-copy]')).toContainText('250 rigid H₂O molecules');
- await expect(story.locator('[data-water-copy]')).toContainText('qualitative model');
+ await expect(story.locator('.water-story__copy')).toBeHidden();
  await expect(monolayerCanvas).toBeVisible();
  await expect(monolayerControls).toBeVisible();
  await expect(canvas).toHaveCSS('opacity','0');
@@ -573,6 +574,9 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','cell-verlet');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-ensemble','qualitative-2d-npt-like');
+ await expect(monolayerCanvas).toHaveAttribute('data-barostat','virial-feedback');
+ await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','2d-virial');
+ await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-steps')||0),{timeout:15000}).toBeGreaterThan(monolayerInitialSteps+6);
@@ -586,14 +590,22 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const temperature=story.locator('[data-monolayer-temperature]');
  const pressure=story.locator('[data-monolayer-pressure]');
- const initialTargetHalf=Number(await monolayerCanvas.getAttribute('data-target-domain-half'));
- await temperature.fill('420');
+ const initialDomainHalf=Number(await monolayerCanvas.getAttribute('data-domain-half'));
+ const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
+ const warmBondRatio=Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'));
+
+ await temperature.fill('120');
+ await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('120 K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(120);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hbond-thermal-ratio'))).toBeGreaterThan(warmBondRatio);
+
  await pressure.fill('4.5');
- await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('420 K');
  await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('4.5 GPa');
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(420);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(4.5,1);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-target-domain-half'))).toBeLessThan(initialTargetHalf);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-domain-half')),{timeout:15000}).toBeLessThan(initialDomainHalf-.01);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:15000}).toBeGreaterThan(initialDensity);
+ await expect(story.locator('[data-monolayer-measured-pressure]')).toContainText('GPa');
+ await expect(story.locator('[data-monolayer-density]')).not.toHaveText('—');
 
  await story.getByRole('button',{name:/scene 3: A tiny piece/i}).click();
  await expect(story).toHaveAttribute('data-scene','2');
