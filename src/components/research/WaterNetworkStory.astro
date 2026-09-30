@@ -6,9 +6,9 @@ const scenes = [
     copy:'Each H₂O molecule continually forms and breaks hydrogen bonds with its neighbours. The directional geometry of these bonds favours a fluctuating, locally tetrahedral network.',
   },
   {
-    kicker:'02 · scale',
-    title:'Down to a few nanometres.',
-    copy:'At this scale, individual water molecules become visible and the hydrogen-bond network emerges from their motion and orientation.',
+    kicker:'02 · monolayer',
+    title:'Confine the network.',
+    copy:'A browser-scale experiment with 250 rigid H₂O molecules in a periodic monolayer. Change temperature and lateral pressure and watch the hydrogen-bond network respond. This is a qualitative model rather than a reproduction of the first-principles phase diagram.',
   },
   {
     kicker:'03 · molecules',
@@ -43,6 +43,11 @@ const scenes = [
         ></iframe>
       </div>
       <canvas class="water-story__canvas" data-water-canvas aria-label="Interactive molecular view of water transforming into a network representation"></canvas>
+      <canvas
+        class="water-story__monolayer-canvas"
+        data-monolayer-canvas
+        aria-label="Interactive simulation of 250 water molecules in a periodic monolayer"
+      ></canvas>
 
       <div class="water-story__lens" data-water-lens aria-label="Magnified molecular view of water">
         <div class="water-story__lens-window">
@@ -95,6 +100,21 @@ const scenes = [
         <div><span>H₂O</span><span>network</span></div>
       </div>
 
+      <div class="water-story__thermo" data-monolayer-controls>
+        <div class="water-story__thermo-row">
+          <label for="monolayer-temperature">temperature</label>
+          <output data-monolayer-temperature-output for="monolayer-temperature">240 K</output>
+        </div>
+        <input id="monolayer-temperature" data-monolayer-temperature type="range" min="120" max="500" step="10" value="240" />
+        <div class="water-story__thermo-row water-story__thermo-row--pressure">
+          <label for="monolayer-pressure">lateral pressure</label>
+          <output data-monolayer-pressure-output for="monolayer-pressure">1.0 GPa</output>
+        </div>
+        <input id="monolayer-pressure" data-monolayer-pressure type="range" min="0" max="6" step="0.1" value="1" />
+        <p data-monolayer-status>250 molecules · periodic monolayer</p>
+        <small>Qualitative browser model · weak area barostat</small>
+      </div>
+
     </div>
 
     <script type="application/json" data-water-scenes set:html={JSON.stringify(scenes)}></script>
@@ -105,12 +125,15 @@ const scenes = [
   .water-story-shell{margin:clamp(1.5rem,3vw,2.5rem) 0 clamp(4rem,8vw,7rem)}
   .water-story{position:relative;display:block}
   .water-story__stage{position:relative;height:min(74svh,720px);min-height:520px;overflow:hidden;border:1px solid var(--panel-border);border-radius:clamp(18px,2.6vw,32px);background:var(--bg-off);box-shadow:var(--shadow-card);isolation:isolate}
-  .water-story__hero-frame,.water-story__canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity 520ms cubic-bezier(.22,.61,.36,1)}
+  .water-story__hero-frame,.water-story__canvas,.water-story__monolayer-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity 520ms cubic-bezier(.22,.61,.36,1)}
   .water-story__hero-frame{z-index:1;overflow:hidden;opacity:0;background:#000;pointer-events:none}
   .water-story__hero-iframe{position:absolute;left:0;top:0;width:100%;height:100%;border:0;pointer-events:none}
   .water-story__canvas{z-index:1;opacity:1}
+  .water-story__monolayer-canvas{z-index:1;opacity:0;pointer-events:none}
   .water-story[data-scene="0"] .water-story__hero-frame{opacity:1}
   .water-story[data-scene="0"] .water-story__canvas{opacity:0}
+  .water-story[data-scene="1"] .water-story__canvas{opacity:0}
+  .water-story[data-scene="1"] .water-story__monolayer-canvas{opacity:1}
   .water-story__lens{position:absolute;z-index:4;right:clamp(.5rem,2.2vw,2rem);top:50%;width:clamp(736px,60.8vw,896px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
   .water-story[data-scene="0"] .water-story__lens{opacity:1}
   .water-story__lens-window{position:absolute;z-index:0;left:9.8%;top:22.8%;width:50.7%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#34383d}
@@ -138,6 +161,15 @@ const scenes = [
   .water-story__representation label{display:block;margin-bottom:.55rem;color:var(--text-3);font:500 .58rem/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
   .water-story__representation input{width:100%;accent-color:var(--cool)}
   .water-story__representation div{display:flex;justify-content:space-between;color:var(--text-3);font:500 .58rem/1 var(--font-sans)}
+  .water-story__thermo{position:absolute;z-index:5;right:clamp(1rem,2.6vw,2rem);top:clamp(1rem,2.6vw,1.8rem);width:min(18rem,31vw);padding:.8rem .9rem .72rem;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--surface) 86%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.08);backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 260ms ease}
+  .water-story[data-scene="1"] .water-story__thermo{opacity:1;visibility:visible;pointer-events:auto}
+  .water-story__thermo-row{display:flex;align-items:baseline;justify-content:space-between;gap:.8rem}
+  .water-story__thermo-row--pressure{margin-top:.62rem}
+  .water-story__thermo label{color:var(--text-3);font:600 .57rem/1 var(--font-sans);letter-spacing:.11em;text-transform:uppercase}
+  .water-story__thermo output{color:var(--text-1);font:600 .7rem/1 var(--font-mono)}
+  .water-story__thermo input{width:100%;margin:.48rem 0 0;accent-color:var(--cool)}
+  .water-story__thermo p{margin:.65rem 0 .2rem;color:var(--text-2);font:500 .58rem/1.35 var(--font-sans)}
+  .water-story__thermo small{display:block;color:var(--text-3);font:400 .54rem/1.4 var(--font-sans)}
 
   :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
   :global(:root[data-theme=dark]) .water-story__lens-window{background:#1d2024}
@@ -150,6 +182,8 @@ const scenes = [
     .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
     .water-story__copy>p:not(.water-story__kicker):not(.water-story__selection){max-width:40ch}
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
+    .water-story__thermo{left:.8rem;right:.8rem;top:.75rem;width:auto}
+    .water-story__thermo p,.water-story__thermo small{display:none}
     .water-story__lens{left:auto;right:-.2rem;top:31%;width:min(124.8vw,592px)}
     .water-story__pause{font-size:.58rem}
   }
@@ -158,6 +192,9 @@ const scenes = [
 <script is:inline type="module">
   import('/scripts/water-lens.js').catch(error=>{
     console.error('Water lens failed to load',error);
+  });
+  import('/scripts/monolayer-md.js').catch(error=>{
+    console.error('Monolayer simulation failed to load',error);
   });
 </script>
 
@@ -342,7 +379,7 @@ const scenes = [
     private frame(t:number){
       this.raf=0;
       const dt=Math.min(.033,(t-this.last||16)/1000);this.last=t;
-      if(this.visible){
+      if(this.visible&&this.scene!==1){
         this.step(dt);
         const heroReady=this.dataset.heroReady==='true';
         if(this.scene!==0||!heroReady)this.draw(t);
