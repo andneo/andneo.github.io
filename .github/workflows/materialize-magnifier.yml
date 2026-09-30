@@ -1,0 +1,35 @@
+name: Materialize uploaded magnifier WebP
+
+on:
+  push:
+    branches: ['redesign/scientific-site']
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/materialize-uploaded-magnifier.mjs
+      - name: Verify and commit binary asset
+        shell: bash
+        run: |
+          test "$(wc -c < public/images/research/magnifier.webp)" -eq 66762
+          echo "c5ed0a434bb3fbfca872775ee5b0d61302a242f63ea38224c9df74405979139a  public/images/research/magnifier.webp" | sha256sum -c -
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/images/research/magnifier.webp
+          if git diff --cached --quiet; then
+            echo "Binary asset already correct."
+            exit 0
+          fi
+          git commit -m "asset: materialize high-resolution WebP magnifier"
+          git push origin HEAD:redesign/scientific-site
