@@ -435,8 +435,9 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(waterDemo.locator('html')).toHaveAttribute('data-view-scale','edge-overfill');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-drop-cadence','moderately-more-frequent');
  await expect(story).toHaveAttribute('data-scene','0');
- await expect(story.locator('[data-water-title]')).toHaveText('Water looks simple.');
- await expect(story.locator('[data-water-copy]')).toHaveText('Look closer.');
+ await expect(story.locator('[data-water-title]')).toHaveText('Water is a network.');
+ await expect(story.locator('[data-water-copy]')).toContainText('hydrogen bonds');
+ await expect(story.locator('[data-water-copy]')).toContainText('locally tetrahedral network');
  await expect(story.locator('[data-water-kicker]')).toBeHidden();
 
  const lens=story.locator('[data-water-lens]');
@@ -549,7 +550,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(canvas).toHaveCSS('opacity','1');
  await expect(lens).toHaveCSS('opacity','0');
 
- await story.getByRole('button',{name:/scene 1: Water looks simple/i}).click();
+ await story.getByRole('button',{name:/scene 1: Water is a network/i}).click();
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(hero).toHaveCSS('opacity','1');
  await expect(canvas).toHaveCSS('opacity','0');
@@ -560,9 +561,9 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story.locator('[data-water-scale]')).toBeVisible();
  await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
 
- await story.getByRole('button',{name:/scene 4: Water is a network/i}).click();
+ await story.getByRole('button',{name:/scene 4: The network never stands still/i}).click();
  await expect(story).toHaveAttribute('data-scene','3');
- await expect(story.locator('[data-water-title]')).toHaveText('Water is a network.');
+ await expect(story.locator('[data-water-title]')).toHaveText('The network never stands still.');
 
  await story.getByRole('button',{name:/scene 5: Same liquid/i}).click();
  await expect(story).toHaveAttribute('data-scene','4');
