@@ -48,6 +48,17 @@ const scenes = [
         <div class="water-story__lens-window">
           <canvas class="water-story__lens-canvas" data-water-lens-canvas aria-label="Dynamic water molecules forming transient hydrogen bonds"></canvas>
         </div>
+        <img
+          class="water-story__lens-shell"
+          src="/images/research/magnifier.webp"
+          alt=""
+          aria-hidden="true"
+          width="2048"
+          height="2048"
+          data-magnifier-render="webp-raster"
+          decoding="async"
+          loading="eager"
+        />
       </div>
 
       <div class="water-story__wash" aria-hidden="true"></div>
@@ -102,8 +113,9 @@ const scenes = [
   .water-story[data-scene="0"] .water-story__canvas{opacity:0}
   .water-story__lens{position:absolute;z-index:4;right:clamp(.5rem,2.2vw,2rem);top:50%;width:clamp(736px,60.8vw,896px);aspect-ratio:1;transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity 420ms cubic-bezier(.22,.61,.36,1)}
   .water-story[data-scene="0"] .water-story__lens{opacity:1}
-  .water-story__lens-window{position:absolute;z-index:0;left:9.55%;top:22.55%;width:51.2%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#34383d}
+  .water-story__lens-window{position:absolute;z-index:0;left:9.8%;top:22.8%;width:50.7%;aspect-ratio:1;border-radius:50%;overflow:hidden;background:#34383d}
   .water-story__lens-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .water-story__lens-shell{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block;object-fit:contain;filter:drop-shadow(0 14px 22px rgba(0,0,0,.20));user-select:none}
   .water-story__wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 88%,transparent) 0%,color-mix(in srgb,var(--bg) 45%,transparent) 34%,transparent 62%),linear-gradient(0deg,color-mix(in srgb,var(--bg) 48%,transparent),transparent 32%);z-index:2}
   .water-story[data-scene="0"] .water-story__wash{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 78%,transparent) 0%,color-mix(in srgb,var(--bg) 18%,transparent) 33%,transparent 52%)}
   .water-story__copy{position:absolute;z-index:3;left:clamp(1.2rem,4vw,4rem);top:50%;width:min(34rem,46%);transform:translateY(-50%);pointer-events:none}

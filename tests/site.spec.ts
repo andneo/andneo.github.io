@@ -441,8 +441,48 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const lens=story.locator('[data-water-lens]');
  const lensCanvas=story.locator('[data-water-lens-canvas]');
+ const lensWindow=story.locator('.water-story__lens-window');
+ const lensShell=story.locator('.water-story__lens-shell');
  await expect(lens).toBeVisible();
-magnifier-specific browser assertions await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
+ await expect(lensShell).toBeVisible();
+ await expect(lensShell).toHaveAttribute('src','/images/research/magnifier.webp');
+ await expect(lensShell).toHaveAttribute('data-magnifier-render','webp-raster');
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete?img.naturalWidth:0)).toBe(2048);
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete?img.naturalHeight:0)).toBe(2048);
+
+ const shellAlpha=await lensShell.evaluate((img:HTMLImageElement)=>{
+  const sample=document.createElement('canvas');
+  sample.width=256;
+  sample.height=256;
+  const ctx=sample.getContext('2d',{willReadFrequently:true})!;
+  ctx.drawImage(img,0,0,sample.width,sample.height);
+  const alphaAt=(x:number,y:number)=>ctx.getImageData(Math.round(x*255),Math.round(y*255),1,1).data[3];
+  return{
+   aperture:alphaAt(.352,.482),
+   ring:alphaAt(.352,.205),
+   handle:alphaAt(.75,.72),
+  };
+ });
+ expect(shellAlpha.aperture).toBeLessThan(8);
+ expect(shellAlpha.ring).toBeGreaterThan(220);
+ expect(shellAlpha.handle).toBeGreaterThan(220);
+
+ const lensShellBox=await lensShell.boundingBox();
+ const lensWindowBox=await lensWindow.boundingBox();
+ expect(lensShellBox).not.toBeNull();
+ expect(lensWindowBox).not.toBeNull();
+ const windowLeft=(lensWindowBox!.x-lensShellBox!.x)/lensShellBox!.width;
+ const windowTop=(lensWindowBox!.y-lensShellBox!.y)/lensShellBox!.height;
+ const windowWidth=lensWindowBox!.width/lensShellBox!.width;
+ const windowHeight=lensWindowBox!.height/lensShellBox!.height;
+ expect(windowLeft).toBeCloseTo(.098,2);
+ expect(windowTop).toBeCloseTo(.228,2);
+ expect(windowWidth).toBeCloseTo(.507,2);
+ expect(windowHeight).toBeCloseTo(.507,2);
+ expect(windowLeft+windowWidth).toBeLessThan(.61);
+ expect(windowTop+windowHeight).toBeLessThan(.74);
+
+ await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
  await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
  await expect(lensCanvas).toHaveAttribute('data-model','tip4p-style-rigid-water-md');
  await expect(lensCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rotation-transient-network');
