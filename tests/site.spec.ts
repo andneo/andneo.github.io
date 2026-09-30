@@ -434,6 +434,10 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(waterDemo.locator('html')).toHaveAttribute('data-wave-driving','occasional-drops-only');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-view-scale','edge-overfill');
  await expect(waterDemo.locator('html')).toHaveAttribute('data-drop-cadence','moderately-more-frequent');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-projection','compressed-perspective');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-framing','aspect-cover');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-camera-distance','3.00');
+ expect(Number(await waterDemo.locator('html').getAttribute('data-water-visible-half-width'))).toBeLessThanOrEqual(.941);
  await expect(story).toHaveAttribute('data-scene','0');
  await expect(story.locator('[data-water-title]')).toHaveText('Water is a network.');
  await expect(story.locator('[data-water-copy]')).toContainText('hydrogen bonds');
@@ -535,6 +539,13 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const headingSize=await story.locator('[data-water-title]').evaluate(node=>Number.parseFloat(getComputedStyle(node).fontSize));
  expect(headingSize).toBeLessThan(64);
+
+ const initialProjectionFov=Number(await waterDemo.locator('html').getAttribute('data-water-projection-fov'));
+ await page.setViewportSize({width:1440,height:620});
+ await expect.poll(async()=>Number(await waterDemo.locator('html').getAttribute('data-water-visible-half-width'))).toBeLessThanOrEqual(.941);
+ const shortViewportFov=Number(await waterDemo.locator('html').getAttribute('data-water-projection-fov'));
+ expect(shortViewportFov).toBeLessThanOrEqual(initialProjectionFov);
+ await page.setViewportSize({width:1440,height:1000});
 
  const stagePosition=await stage.evaluate(node=>getComputedStyle(node).position);
  expect(stagePosition).toBe('relative');

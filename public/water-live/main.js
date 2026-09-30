@@ -12,12 +12,32 @@ var water;
 var cubemap;
 var renderer;
 
+// Keep the original composition while using a longer virtual lens. Moving the
+// camera farther away and narrowing the field of view makes the top-down pool
+// read much closer to an orthographic view, so long tile rows do not bow
+// noticeably across the frame.
+var CAMERA_DISTANCE = 3.0;
+var BASE_VISIBLE_HALF_HEIGHT = 0.475;
+var COVER_HALF_EXTENT = 0.94;
+
 window.onload = function() {
   var ratio = Math.min(window.devicePixelRatio || 1, 1.6);
 
   function onresize() {
     var width = innerWidth;
     var height = innerHeight;
+    var aspect = width / Math.max(1, height);
+
+    // Treat the square water domain like an object-fit: cover image. For very
+    // wide/short viewports, tighten the vertical field of view just enough to
+    // keep the water beyond both side edges instead of exposing the clear
+    // colour. At ordinary aspect ratios the composition is unchanged.
+    var visibleHalfHeight = Math.min(
+      BASE_VISIBLE_HALF_HEIGHT,
+      COVER_HALF_EXTENT / Math.max(1, aspect)
+    );
+    var fov = 2 * Math.atan(visibleHalfHeight / CAMERA_DISTANCE) * 180 / Math.PI;
+
     gl.canvas.width = Math.max(1, Math.round(width * ratio));
     gl.canvas.height = Math.max(1, Math.round(height * ratio));
     gl.canvas.style.width = width + 'px';
@@ -25,8 +45,16 @@ window.onload = function() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.matrixMode(gl.PROJECTION);
     gl.loadIdentity();
-    gl.perspective(39, gl.canvas.width / gl.canvas.height, 0.01, 100);
+    gl.perspective(fov, aspect, 0.01, 100);
     gl.matrixMode(gl.MODELVIEW);
+
+    document.documentElement.dataset.waterProjection = 'compressed-perspective';
+    document.documentElement.dataset.waterFraming = 'aspect-cover';
+    document.documentElement.dataset.waterCameraDistance = CAMERA_DISTANCE.toFixed(2);
+    document.documentElement.dataset.waterProjectionFov = fov.toFixed(4);
+    document.documentElement.dataset.waterVisibleHalfWidth = (visibleHalfHeight * aspect).toFixed(4);
+    document.documentElement.dataset.waterVisibleHalfHeight = visibleHalfHeight.toFixed(4);
+
     draw();
   }
 
@@ -115,11 +143,11 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.loadIdentity();
 
-  // Look exactly along the surface normal. The camera is deliberately
-  // close enough that the square simulation domain is wider/taller than the
-  // viewport. The browser frame therefore crops an effectively unbounded
-  // patch of water instead of revealing the pool walls.
-  gl.translate(0, 0, -1.35);
+  // Look exactly along the surface normal. The longer camera distance,
+  // paired with the narrower projection set in onresize(), suppresses the
+  // exaggerated perspective curvature of the submerged tile grid while
+  // preserving the same crop at normal viewport proportions.
+  gl.translate(0, 0, -CAMERA_DISTANCE);
   gl.rotate(90, 1, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
