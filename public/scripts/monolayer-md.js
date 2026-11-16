@@ -71,15 +71,23 @@ export class MonolayerWaterMD{
     this.rotationCorrelationLagSteps=160;
     this.rotationCorrelation=1;
     this.rotationReference=null;
-    this.coordK3=3.2;
+    this.coordK3=8.0;
     this.coordK4=3.2;
-    this.coord4Offset=3.0;
+    this.coord4Offset=6.7;
     // Quadratic valence penalty, replacing the almost-flat quartic
     // immediately above coordination four.
     this.overCoordK=80.0;
     this.orient3Depth=2.2;
     this.orient4Depth=2.0;
     this.softMinWidth=.55;
+    // Soft oxygen shell, no artificial ring-size or crystalline template.
+    this.anglePenaltyK=80.0;
+    this.anglePenaltyCos=Math.cos(80*Math.PI/180);
+    this.radialDepth=1.5;
+    this.radialCenter=.282;
+    this.radialWidth=.038;
+    this.mixedCoordinationK=.8;
+    this.mixedCoordinationSteepness=10;
 
     this.skin=.100;
     this.listCutoff=this.networkOff+this.skin;
@@ -120,7 +128,9 @@ export class MonolayerWaterMD{
     this.shearGradient=0;
 
     this.molecules=[];
-    this.randomState=0x6d2b79f5;
+    // Independent repeat runs are required for any phase-formation claim.
+    this.randomState=(options.randomSeed??0x6d2b79f5)|0;
+    if(this.randomState===0)this.randomState=0x6d2b79f5;
     this.stepCount=0;
     this.simTime=0;
     this.forceEvaluations=0;
@@ -516,6 +526,93 @@ export class MonolayerWaterMD{
     }
   }
 
+
+  // A conservative coarse-grained oxygen network interaction. Each term
+  // depends only on instantaneous distances, angles and local coordination,
+  // never on a specified ring size or phase label.
+  cooperativeNetworkEnergy(applyForces=false){
+    const coordination=new Float64Array(this.count),edges=[];
+    let energy=0;
+    const radialWidth2=this.radialWidth*this.radialWidth;
+    for(const [i,j] of this.neighborPairs){
+      const a=this.molecules[i],b=this.molecules[j];
+      const v=this.minimumImageVector(b.x-a.x,b.y-a.y);
+      const r=Math.hypot(v.x,v.y);
+      if(r<1e-10)continue;
+      const w=this.switchWeight(r),dw=this.switchDerivative(r);
+      if(w<=0)continue;
+      coordination[i]+=w;coordination[j]+=w;
+      edges.push({i,j,r,dx:v.x,dy:v.y,w,dw});
+      const delta=r-this.radialCenter;
+      const well=Math.exp(-.5*delta*delta/radialWidth2);
+      energy-=this.radialDepth*w*well;
+      if(applyForces){
+        const dUdr=-this.radialDepth*well*(dw-w*delta/radialWidth2);
+        const fx=dUdr*v.x/r,fy=dUdr*v.y/r;
+        a.fx+=fx;a.fy+=fy;b.fx-=fx;b.fy-=fy;
+      }
+    }
+    // An effective local-coordination mixing term. Unlike coordination
+    // contacts are favored; no five-sided polygons are prescribed.
+    const k=this.mixedCoordinationSteepness,J=this.mixedCoordinationK;
+    const p4=new Float64Array(this.count),dp4=new Float64Array(this.count);
+    const dEdc=new Float64Array(this.count);
+    for(let i=0;i<this.count;i++){
+      const p=1/(1+Math.exp(-k*(coordination[i]-3.5)));
+      p4[i]=p;dp4[i]=k*p*(1-p);
+    }
+    for(const edge of edges){
+      const {i,j,w}=edge;
+      const mix=p4[i]+p4[j]-2*p4[i]*p4[j];
+      edge.mix=mix;
+      energy-=J*w*mix;
+      if(applyForces){
+        dEdc[i]-=J*w*(1-2*p4[j])*dp4[i];
+        dEdc[j]-=J*w*(1-2*p4[i])*dp4[j];
+      }
+    }
+    if(applyForces)for(const edge of edges){
+      const {i,j,r,dx,dy,dw}=edge;
+      const dUdr=(-J*edge.mix+dEdc[i]+dEdc[j])*dw;
+      const fx=dUdr*dx/r,fy=dUdr*dy/r;
+      this.molecules[i].fx+=fx;this.molecules[i].fy+=fy;
+      this.molecules[j].fx-=fx;this.molecules[j].fy-=fy;
+    }
+    // Smooth triplet penalty for acute angles (<80 degrees) suppresses
+    // triangular local packing without encoding hex/pentagon/square rings.
+    for(let i=0;i<this.count;i++){
+      const a=this.molecules[i],local=[];
+      for(const j of this.neighborsOf[i]){
+        const b=this.molecules[j];
+        const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+        const r=Math.hypot(d.x,d.y),w=this.switchWeight(r);
+        if(w<=0||r<1e-10)continue;
+        local.push({j,r,w,dw:this.switchDerivative(r),ux:d.x/r,uy:d.y/r});
+      }
+      for(let p=0;p<local.length;p++)for(let q=p+1;q<local.length;q++){
+        const v=local[p],u=local[q];
+        const co=v.ux*u.ux+v.uy*u.uy;
+        const excess=Math.max(0,co-this.anglePenaltyCos);
+        if(excess<=0)continue;
+        const weight=this.anglePenaltyK*v.w*u.w;
+        energy+=weight*excess*excess;
+        if(!applyForces)continue;
+        const base=excess*excess,deriv=2*excess;
+        const g1=this.anglePenaltyK*v.dw*u.w*base;
+        const g2=this.anglePenaltyK*u.dw*v.w*base;
+        const h1=weight*deriv/v.r,h2=weight*deriv/u.r;
+        const fx1=g1*v.ux+h1*(u.ux-co*v.ux);
+        const fy1=g1*v.uy+h1*(u.uy-co*v.uy);
+        const fx2=g2*u.ux+h2*(v.ux-co*u.ux);
+        const fy2=g2*u.uy+h2*(v.uy-co*u.uy);
+        a.fx+=fx1+fx2;a.fy+=fy1+fy2;
+        this.molecules[v.j].fx-=fx1;this.molecules[v.j].fy-=fy1;
+        this.molecules[u.j].fx-=fx2;this.molecules[u.j].fy-=fy2;
+      }
+    }
+    return energy;
+  }
+
   totalEnergy(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
     let pair=0,network=0;
@@ -523,7 +620,7 @@ export class MonolayerWaterMD{
     for(let i=0;i<this.count;i++)network+=this.centerNetworkEnergy(i);
     this.networkEnergy=network;
     const frames=this.molecularFrames();
-    return pair+network+this.directionalEnergy(this.directedContacts(frames))+this.hhEnergy(false,frames);
+    return pair+network+this.directionalEnergy(this.directedContacts(frames))+this.hhEnergy(false,frames)+this.cooperativeNetworkEnergy();
   }
 
   computeForces(){
@@ -637,6 +734,7 @@ export class MonolayerWaterMD{
     const frames=this.molecularFrames();
     this.computeDirectionalForces(frames);
     this.hhEnergy(true,frames);
+    this.cooperativeNetworkEnergy(true);
     this.forceEvaluations+=this.neighborPairs.length;
   }
 
@@ -775,7 +873,7 @@ export class MonolayerWaterMD{
     }
   }
 
-  integrateStep(){
+  integrateStep(updateBonds=true){
     const half=.5*this.dt;
     for(const m of this.molecules){
       m.vx+=half*m.fx/this.mass;
@@ -816,7 +914,7 @@ export class MonolayerWaterMD{
 
     // Rebuild the rendered contact graph after every rotational MD step;
     // otherwise visually stale links can connect misoriented molecules.
-    this.updateBondNetwork();
+    if(updateBonds)this.updateBondNetwork();
     if(this.stepCount%72===0)this.updateOxygenRingStatistics();
     if(this.stepCount%this.rotationCorrelationLagSteps===0)this.updateRotationCorrelation();
     if(this.stepCount%18===0)this.potentialEnergy=this.totalEnergy();
@@ -958,7 +1056,11 @@ export class MonolayerWaterMD{
   }
 
   advance(substeps=3){
-    for(let i=0;i<substeps;i++)this.integrateStep();
+    // Rendering graph and ring diagnostics do not enter the Hamiltonian.
+    // Recompute H-bond display once after all frame substeps, so every
+    // rendered edge matches the most recent 3D molecular orientations.
+    for(let i=0;i<substeps;i++)this.integrateStep(false);
+    this.updateBondNetwork();
     if(this.boostFrames>0)this.boostFrames--;
   }
 
@@ -1038,6 +1140,7 @@ class MonolayerExplorer{
     this.status=this.host?.querySelector('[data-monolayer-status]');
     this.md=null;
     this.width=1;this.height=1;this.dpr=1;this.visible=true;this.frameCount=0;
+    this.averageMDStepMs=0;
     this.resize=this.resize.bind(this);this.frame=this.frame.bind(this);
     this.tempInput?.addEventListener('input',()=>this.updateControls());
     this.pressureInput?.addEventListener('input',()=>this.updateControls());
@@ -1047,7 +1150,7 @@ class MonolayerExplorer{
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='pseudo-2d-saturated-network-water-md-v6';
+    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v7';
     this.canvas.dataset.moleculeCount='250';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-flexible-cell';
@@ -1271,9 +1374,18 @@ class MonolayerExplorer{
     const active=this.visible&&this.host?.dataset.scene==='1'&&this.host?.dataset.paused!=='true';
     if(active){
       this.ensureSimulation();
-      const mobile=this.width<760;
-      const boosted=this.md.boostFrames>0;
-      this.md.advance(mobile?(boosted?2:1):(boosted?3:2));
+      // Adaptive physical steps per draw, based on the actual local cost.
+      // The Hamiltonian and time step are unchanged: never skip forces.
+      const fast=this.averageMDStepMs>0&&this.averageMDStepMs<7;
+      const moderate=this.averageMDStepMs>0&&this.averageMDStepMs<13;
+      const substeps=fast?3:(moderate?2:1);
+      const started=performance.now();
+      this.md.advance(substeps);
+      const measured=(performance.now()-started)/substeps;
+      this.averageMDStepMs=this.averageMDStepMs?
+        .85*this.averageMDStepMs+.15*measured:measured;
+      this.canvas.dataset.mdSubsteps=String(substeps);
+      this.canvas.dataset.mdStepMs=this.averageMDStepMs.toFixed(2);
       this.draw();this.frameCount++;
       if(this.frameCount%6===0)this.updateDiagnostics();
     }
