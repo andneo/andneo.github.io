@@ -183,12 +183,15 @@ export class MonolayerWaterMD{
     if(Math.abs(cell.shear)<1e-12){
       return{x:fx*cell.lx,y:fy*cell.ly};
     }
+    // For each of the three possible nearby y images, select the
+    // optimal integer x translation directly. This gives the same
+    // minimum-image distance as searching all nine neighbours for
+    // the permitted aspect-ratio and shear bounds.
     let bestX=0,bestY=0,bestR2=Infinity;
-    // The allowed cell shear/aspect bounds make the neighbouring 3x3
-    // lattice translations sufficient to find the closest image.
-    for(let sy=-1;sy<=1;sy++)for(let sx=-1;sx<=1;sx++){
-      const u=fx+sx,v=fy+sy;
-      const x=u*cell.lx+v*cell.shear,y=v*cell.ly;
+    for(let sy=-1;sy<=1;sy++){
+      const v=fy+sy,y=v*cell.ly;
+      const xx=fx*cell.lx+v*cell.shear;
+      const x=xx-Math.round(xx/cell.lx)*cell.lx;
       const r2=x*x+y*y;
       if(r2<bestR2){bestR2=r2;bestX=x;bestY=y;}
     }
