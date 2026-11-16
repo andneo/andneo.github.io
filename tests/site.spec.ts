@@ -569,7 +569,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-saturated-network-water-md-v5');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-saturated-network-water-md-v6');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-flexible-cell');
@@ -584,6 +584,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
+ await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-steps')||0),{timeout:15000}).toBeGreaterThan(monolayerInitialSteps+6);
@@ -599,6 +600,9 @@ test('water network story is contained, button-driven and replaces the old topol
  // Physical coordination diagnostics are measured independently of the
  // degree-capped graph; they must not be hard-coded to zero.
  const initialWeightedCoordination=Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination'));
+ const initialRingCounts=await Promise.all(['3','4','5','6','7'].map(async n=>
+  Number(await monolayerCanvas.getAttribute('data-oxygen-ring'+n))));
+ expect(initialRingCounts.every(Number.isFinite)).toBe(true);
  const initialQ3=Number(await monolayerCanvas.getAttribute('data-mean-local-q3'));
  const initialQ4=Number(await monolayerCanvas.getAttribute('data-mean-local-q4'));
  const initialOvercoordination=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
@@ -612,6 +616,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-force-evaluations')||0),{timeout:15000}).toBeGreaterThan(1000);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-barostat-updates')||0),{timeout:15000}).toBeGreaterThan(1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')||0),{timeout:15000}).toBeGreaterThan(.05);
+ await expect.poll(async()=>monolayerCanvas.getAttribute('data-orientational-c1'),{timeout:15000}).not.toBeNull();
  const initialMsd=Number(await monolayerCanvas.getAttribute('data-msd')||0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-msd')||0),{timeout:15000}).toBeGreaterThan(initialMsd+.002);
 
@@ -799,6 +804,66 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
  expect(result.meanOut).toBeGreaterThan(.1);
  expect(result.maxQuaternionError).toBeLessThan(1e-10);
  expect(result.allPlanar).toBe(true);
+});
+
+test('oxygen face counting distinguishes honeycomb and square periodic reference lattices',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser-served public module is not in the TypeScript module graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const honey=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:0});
+  const r=.30,root=Math.sqrt(3),nx=4,ny=5;
+  honey.cell={lx:nx*3*r,ly:ny*root*r,shear:0};
+  const basis=[[0,0],[1,0],[1.5,root/2],[2.5,root/2]];
+  let k=0;
+  for(let iy=0;iy<ny;iy++)for(let ix=0;ix<nx;ix++)for(const [x,y] of basis){
+   const m=honey.molecules[k++];
+   m.x=(3*ix+x)*r-honey.cell.lx/2;
+   m.y=(root*iy+y)*r-honey.cell.ly/2;
+  }
+  honey.neighborDirty=true;honey.rebuildNeighborList();honey.updateOxygenRingStatistics();
+  const square=new MonolayerWaterMD({count:64,temperatureKelvin:120,pressureGPa:0});
+  square.cell={lx:8*.30,ly:8*.30,shear:0};
+  for(let i=0;i<64;i++){
+   square.molecules[i].x=((i%8)+.5)*.30-square.cell.lx/2;
+   square.molecules[i].y=(Math.floor(i/8)+.5)*.30-square.cell.ly/2;
+  }
+  square.neighborDirty=true;square.rebuildNeighborList();square.updateOxygenRingStatistics();
+  return{honey:honey.ringCounts,square:square.ringCounts};
+ });
+ expect(result.honey.six).toBe(40);
+ expect(result.honey.four).toBe(0);
+ expect(result.honey.five).toBe(0);
+ expect(result.square.four).toBe(64);
+ expect(result.square.six).toBe(0);
+});
+
+test('reduced saturation improves low-temperature orientational memory without freezing hot rotations',async({page})=>{
+ test.setTimeout(60000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: public browser module is deliberately outside TypeScript imports
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function run(temp:number){
+   const md=new MonolayerWaterMD({count:64,temperatureKelvin:temp,pressureGPa:.03});
+   for(let i=0;i<500;i++)md.integrateStep();
+   const before=md.molecularFrames();
+   for(let i=0;i<160;i++)md.integrateStep();
+   const after=md.molecularFrames();
+   let sum=0;
+   for(let i=0;i<md.count;i++)for(let h=0;h<2;h++){
+    const a=before[i].donors[h],b=after[i].donors[h];
+    sum+=a.x*b.x+a.y*b.y+a.z*b.z;
+   }
+   const d=md.diagnostics();
+   return{c1:sum/(md.count*2),quaternionError:d.maxQuaternionNormError};
+  }
+  return{cold:run(120),hot:run(500)};
+ });
+ expect(result.cold.c1).toBeGreaterThan(.25);
+ expect(result.hot.c1).toBeLessThan(result.cold.c1-.2);
+ expect(result.cold.quaternionError).toBeLessThan(1e-10);
+ expect(result.hot.quaternionError).toBeLessThan(1e-10);
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
