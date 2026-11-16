@@ -28,7 +28,17 @@ export class MonolayerWaterMD{
     this.dt=.004;
     this.mass=18.015;
     this.gamma=1.15;
-
+    // The only rotational DOF is a planar molecular angle (not 3D TIP4P).
+    this.rotInertia=.012;
+    this.rotGamma=2;
+    this.ohLength=.0957;
+    this.hbDepth=13;
+    this.hbSaturation=2.4;
+    this.hbDonorSharpness=4;
+    this.hbAcceptorSharpness=1.6;
+    this.hbAcceptorPenalty=3;
+    this.hhCore=.155;
+    this.hhStiffness=480;
 
     this.ooSigma=.260;
     this.ooEpsilon=5.0;
@@ -129,7 +139,7 @@ export class MonolayerWaterMD{
       const nextKBT=KB_KJ_MOL_K*next;
       if(old>0){
         const scale=Math.sqrt(nextKBT/old);
-        for(const m of this.molecules){m.vx*=scale;m.vy*=scale;}
+        for(const m of this.molecules){m.vx*=scale;m.vy*=scale;m.omega*=scale;}
       }
       this.boostFrames=Math.max(this.boostFrames,180);
     }
@@ -207,10 +217,9 @@ export class MonolayerWaterMD{
           id,x:p.x,y:p.y,
           vx:this.gaussian()*sigma,vy:this.gaussian()*sigma,
           diffX:0,diffY:0,
-          fx:0,fy:0,
-          visualAngle:this.random()*Math.PI*2,
-          targetAngle:this.random()*Math.PI*2,
-          visualOmega:this.gaussian()*.5,
+          fx:0,fy:0,torque:0,
+          theta:this.random()*Math.PI*2,
+          omega:this.gaussian()*Math.sqrt(this.kBT/this.rotInertia),
         });
         placed=true;
       }
@@ -326,18 +335,114 @@ export class MonolayerWaterMD{
     return this.wcaPotential(this.distanceBetween(this.molecules[i],this.molecules[j]).r);
   }
 
+
+  // Directed donor-patch to broad acceptor-hemisphere interactions.
+  // The O-H geometry is literal; the acceptor is phenomenological,
+  // with capacity two and no fictitious TIP4P charge site.
+  directedContacts(){
+    const contacts=[],donorSums=new Float64Array(2*this.count);
+    const acceptSums=new Float64Array(this.count);
+    const kd=this.hbDonorSharpness,ka=this.hbAcceptorSharpness;
+    for(const[i,j]of this.neighborPairs){
+      const d=this.distanceBetween(this.molecules[i],this.molecules[j]);
+      if(d.r<1e-10)continue;
+      const w=this.switchWeight(d.r);
+      if(w<=0)continue;
+      const dw=this.switchDerivative(d.r);
+      const phi=Math.atan2(d.y,d.x);
+      for(const[donor,acceptor,dphi]of[[i,j,phi],[j,i,phi+Math.PI]]){
+        const ma=this.molecules[donor],mb=this.molecules[acceptor];
+        const da=dphi-mb.theta;
+        const fa=Math.exp(-ka*(1-Math.cos(da))),sinA=Math.sin(da);
+        for(let patch=0;patch<2;patch++){
+          const dd=dphi-ma.theta-(patch?1:-1)*HALF_WATER_ANGLE;
+          const fd=Math.exp(-kd*(1-Math.cos(dd)));
+          const score=w*fd*fa;
+          if(score<=1e-10)continue;
+          contacts.push({donor,acceptor,patch,score,r:d.r,
+            dx:donor===i?d.x:-d.x,dy:donor===i?d.y:-d.y,
+            dr:dw*fd*fa,
+            dphi:-score*(kd*Math.sin(dd)+ka*sinA),
+            dDonor:score*kd*Math.sin(dd),dAcceptor:score*ka*sinA});
+          donorSums[2*donor+patch]+=score;
+          acceptSums[acceptor]+=score;
+        }
+      }
+    }
+    return{contacts,donorSums,acceptSums};
+  }
+
+  directionalEnergy(data=this.directedContacts()){
+    let u=0;
+    const saturation=this.hbSaturation;
+    // A donor patch gains little additional energy from a second acceptor.
+    for(const value of data.donorSums)
+      u-=this.hbDepth*(-Math.expm1(-saturation*value))/saturation;
+    for(const value of data.acceptSums){
+      const excess=Math.max(0,value-2);
+      u+=this.hbAcceptorPenalty*excess*excess;
+    }
+    return u;
+  }
+
+  // Effective, finite H-H excluded-volume penalty; not a TIP4P LJ term.
+  // The H sites coincide with the displayed rigid O-H bonds.
+  hhEnergy(forces=false){
+    const l=this.ohLength,core=this.hhCore,k=this.hhStiffness;
+    const arms=this.molecules.map(m=>{
+      const u=m.theta-HALF_WATER_ANGLE,v=m.theta+HALF_WATER_ANGLE;
+      return[l*Math.cos(u),l*Math.sin(u),l*Math.cos(v),l*Math.sin(v)];
+    });
+    let energy=0;
+    for(const[i,j]of this.neighborPairs){
+      const a=this.molecules[i],b=this.molecules[j];
+      const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+      if(Math.hypot(d.x,d.y)>core+2*l)continue;
+      const ai=arms[i],bj=arms[j];
+      for(let p=0;p<2;p++)for(let q=0;q<2;q++){
+        const ax=ai[2*p],ay=ai[2*p+1],bx=bj[2*q],by=bj[2*q+1];
+        const x=d.x+bx-ax,y=d.y+by-ay,r=Math.hypot(x,y);
+        if(r>=core)continue;
+        const overlap=core-r;
+        energy+=.5*k*overlap*overlap;
+        if(!forces||r<1e-12)continue;
+        const f=k*overlap/r,fx=f*x,fy=f*y;
+        a.fx-=fx;a.fy-=fy;b.fx+=fx;b.fy+=fy;
+        a.torque+=-ax*fy+ay*fx;
+        b.torque+=bx*fy-by*fx;
+      }
+    }
+    return energy;
+  }
+
+  computeDirectionalForces(){
+    const d=this.directedContacts(),s=this.hbSaturation;
+    const dg=new Float64Array(2*this.count),ag=new Float64Array(this.count);
+    for(let i=0;i<dg.length;i++)dg[i]=-this.hbDepth*Math.exp(-s*d.donorSums[i]);
+    for(let i=0;i<ag.length;i++)ag[i]=2*this.hbAcceptorPenalty*Math.max(0,d.acceptSums[i]-2);
+    for(const c of d.contacts){
+      const factor=dg[2*c.donor+c.patch]+ag[c.acceptor];
+      const inv=1/c.r,inv2=inv*inv;
+      const fx=factor*(c.dr*c.dx*inv-c.dphi*c.dy*inv2);
+      const fy=factor*(c.dr*c.dy*inv+c.dphi*c.dx*inv2);
+      const a=this.molecules[c.donor],b=this.molecules[c.acceptor];
+      a.fx+=fx;a.fy+=fy;b.fx-=fx;b.fy-=fy;
+      a.torque-=factor*c.dDonor;b.torque-=factor*c.dAcceptor;
+    }
+  }
+
   totalEnergy(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
     let pair=0,network=0;
     for(const[ia,ib]of this.neighborPairs)pair+=this.pairRepulsionEnergy(ia,ib);
     for(let i=0;i<this.count;i++)network+=this.centerNetworkEnergy(i);
     this.networkEnergy=network;
-    return pair+network;
+    return pair+network+this.directionalEnergy()+this.hhEnergy();
   }
 
   computeForces(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    for(const m of this.molecules){m.fx=0;m.fy=0;}
+    for(const m of this.molecules){m.fx=0;m.fy=0;m.torque=0;}
 
     // Pairwise oxygen repulsion.
     for(const[ia,ib]of this.neighborPairs){
@@ -443,6 +548,8 @@ export class MonolayerWaterMD{
         this.molecules[n.j].fy-=fy;
       }
     }
+    this.computeDirectionalForces();
+    this.hhEnergy(true);
     this.forceEvaluations+=this.neighborPairs.length;
   }
 
@@ -575,6 +682,7 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       const dx=factor*m.vx,dy=factor*m.vy;
       m.x+=dx;m.y+=dy;
+      m.theta=wrapAngle(m.theta+factor*m.omega);
       m.diffX+=dx;m.diffY+=dy;
       this.wrapPoint(m);
     }
@@ -585,15 +693,18 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       m.vx+=half*m.fx/this.mass;
       m.vy+=half*m.fy/this.mass;
+      m.omega+=half*m.torque/this.rotInertia;
     }
 
     this.drift(half);
 
-    const c=Math.exp(-this.gamma*this.dt);
+    const c=Math.exp(-this.gamma*this.dt),cr=Math.exp(-this.rotGamma*this.dt);
     const sigma=Math.sqrt(this.kBT*(1-c*c)/this.mass);
+    const sigmaRot=Math.sqrt(this.kBT*(1-cr*cr)/this.rotInertia);
     for(const m of this.molecules){
       m.vx=c*m.vx+sigma*this.gaussian();
       m.vy=c*m.vy+sigma*this.gaussian();
+      m.omega=cr*m.omega+sigmaRot*this.gaussian();
     }
 
     this.drift(half);
@@ -607,6 +718,7 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       m.vx+=half*m.fx/this.mass;
       m.vy+=half*m.fy/this.mass;
+      m.omega+=half*m.torque/this.rotInertia;
     }
 
     if(this.stepCount%6===0)this.updateBondNetwork();
@@ -616,29 +728,27 @@ export class MonolayerWaterMD{
   updateBondNetwork(force=false){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
     const previous=this.bonds;
-    const candidates=[];
-    for(const[ia,ib]of this.neighborPairs){
-      const d=this.distanceBetween(this.molecules[ia],this.molecules[ib]);
-      const weight=this.switchWeight(d.r);
-      if(weight>.20)candidates.push({ia,ib,r:d.r,score:weight});
-    }
-    candidates.sort((a,b)=>b.score-a.score||a.r-b.r);
-
-    const degree=new Uint8Array(this.count);
-    const next=new Map();
+    // Only donor-to-acceptor aligned contacts can be displayed.
+    const candidates=this.directedContacts().contacts.filter(c=>c.score>.23);
+    candidates.sort((a,b)=>b.score-a.score);
+    const donated=new Uint8Array(2*this.count);
+    const accepted=new Uint8Array(this.count);
+    const degree=new Uint8Array(this.count),next=new Map();
     for(const c of candidates){
-      if(degree[c.ia]>=4||degree[c.ib]>=4)continue;
-      const key=c.ia+'-'+c.ib;
-      degree[c.ia]++;degree[c.ib]++;
-      next.set(key,{key,a:c.ia,b:c.ib,r:c.r,score:c.score,age:(previous.get(key)?.age??0)+1});
+      const slot=2*c.donor+c.patch;
+      const key=Math.min(c.donor,c.acceptor)+'-'+Math.max(c.donor,c.acceptor);
+      if(donated[slot]||accepted[c.acceptor]>=2||
+         degree[c.donor]>=4||degree[c.acceptor]>=4||next.has(key))continue;
+      donated[slot]=1;accepted[c.acceptor]++;
+      degree[c.donor]++;degree[c.acceptor]++;
+      next.set(key,{key,a:c.donor,b:c.acceptor,patch:c.patch,
+        r:c.r,score:c.score,age:(previous.get(key)?.age??0)+1});
     }
-
     if(force||this.stepCount%90===0){
       for(const key of next.keys())if(!previous.has(key))this.bondsFormed++;
       for(const key of previous.keys())if(!next.has(key))this.bondsBroken++;
     }
     this.bonds=next;
-
     let d3=0,d4=0,sum=0;
     for(const d of degree){
       sum+=d;if(d===3)d3++;if(d===4)d4++;
@@ -647,7 +757,6 @@ export class MonolayerWaterMD{
     this.degree3Fraction=d3/this.count;
     this.degree4Fraction=d4/this.count;
     this.updateStructuralDiagnostics();
-    this.updateVisualTargets();
   }
 
   updateStructuralDiagnostics(){
@@ -685,51 +794,8 @@ export class MonolayerWaterMD{
     this.meanLocalQ4=q4Sum/this.count;
   }
 
-  updateVisualTargets(){
-    const adj=Array.from({length:this.count},()=>[]);
-    for(const bond of this.bonds.values()){
-      const a=this.molecules[bond.a],b=this.molecules[bond.b];
-      const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
-      const angle=Math.atan2(d.y,d.x);
-      adj[bond.a].push(angle);
-      adj[bond.b].push(wrapAngle(angle+Math.PI));
-    }
-
-    for(let i=0;i<this.count;i++){
-      const m=this.molecules[i],angles=adj[i];
-      if(!angles.length)continue;
-      let target=angles[0]-HALF_WATER_ANGLE;
-      if(angles.length>=2){
-        let best=Infinity,bestTarget=target;
-        for(let a=0;a<angles.length;a++)for(let b=a+1;b<angles.length;b++){
-          const p1=circularMean(angles[a]-HALF_WATER_ANGLE,angles[b]+HALF_WATER_ANGLE);
-          const e1=Math.abs(wrapAngle(p1+HALF_WATER_ANGLE-angles[a]))+
-            Math.abs(wrapAngle(p1-HALF_WATER_ANGLE-angles[b]));
-          const p2=circularMean(angles[a]+HALF_WATER_ANGLE,angles[b]-HALF_WATER_ANGLE);
-          const e2=Math.abs(wrapAngle(p2-HALF_WATER_ANGLE-angles[a]))+
-            Math.abs(wrapAngle(p2+HALF_WATER_ANGLE-angles[b]));
-          if(e1<best){best=e1;bestTarget=p1;}
-          if(e2<best){best=e2;bestTarget=p2;}
-        }
-        target=bestTarget;
-      }
-      m.targetAngle=target;
-    }
-  }
-
-  advanceVisualOrientations(frameDt=.016){
-    const tempScale=Math.sqrt(this.temperatureKelvin/240);
-    for(const m of this.molecules){
-      const delta=wrapAngle(m.targetAngle-m.visualAngle);
-      const noise=this.gaussian()*.12*tempScale;
-      m.visualOmega+=frameDt*(10*delta-3.2*m.visualOmega+noise);
-      m.visualAngle=wrapAngle(m.visualAngle+frameDt*m.visualOmega);
-    }
-  }
-
   advance(substeps=3){
     for(let i=0;i<substeps;i++)this.integrateStep();
-    this.advanceVisualOrientations();
     if(this.boostFrames>0)this.boostFrames--;
   }
 
@@ -801,7 +867,7 @@ class MonolayerExplorer{
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='smooth-multiwell-network-water-md-v3';
+    this.canvas.dataset.model='saturated-directional-network-water-md-v4';
     this.canvas.dataset.moleculeCount='250';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-flexible-cell';
@@ -811,7 +877,8 @@ class MonolayerExplorer{
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
     this.canvas.dataset.temperatureCoupling='langevin-kbt';
     this.canvas.dataset.potential='smooth-coordination-multiwell-network';
-    this.canvas.dataset.dynamics='continuous-diffusive-md';
+    this.canvas.dataset.dynamics='continuous-translational-rotational-md';
+    this.canvas.dataset.bondCriterion='donor-acceptor-orientation';
     this.canvas.dataset.viewFill='full-height';
     requestAnimationFrame(this.frame);
   }
@@ -905,7 +972,9 @@ class MonolayerExplorer{
     for(const bond of this.md.bonds.values()){
       const a=this.md.molecules[bond.a],b=this.md.molecules[bond.b];
       const d=this.md.minimumImageVector(b.x-a.x,b.y-a.y);
-      const p=this.toCanvas(a.x,a.y,view);
+      const hAngle=a.theta+(bond.patch?1:-1)*HALF_WATER_ANGLE;
+      const p=this.toCanvas(a.x+this.md.ohLength*Math.cos(hAngle),
+                            a.y+this.md.ohLength*Math.sin(hAngle),view);
       const q=this.toCanvas(a.x+d.x,a.y+d.y,view);
       ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
     }
@@ -918,7 +987,7 @@ class MonolayerExplorer{
     for(const m of this.md.molecules){
       const o=this.toCanvas(m.x,m.y,view);
       for(const sign of[-1,1]){
-        const angle=m.visualAngle+sign*HALF_WATER_ANGLE;
+        const angle=m.theta+sign*HALF_WATER_ANGLE;
         const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
         ctx.moveTo(o.x,o.y);ctx.lineTo(h.x,h.y);
       }
@@ -929,7 +998,7 @@ class MonolayerExplorer{
     const oRadius=clamp(view.scale*.017,2.05,3.75);
     ctx.fillStyle=dark?'#f1eee7':'#fffdf7';ctx.beginPath();
     for(const m of this.md.molecules)for(const sign of[-1,1]){
-      const angle=m.visualAngle+sign*HALF_WATER_ANGLE;
+      const angle=m.theta+sign*HALF_WATER_ANGLE;
       const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
       ctx.moveTo(h.x+hRadius,h.y);ctx.arc(h.x,h.y,hRadius,0,Math.PI*2);
     }
