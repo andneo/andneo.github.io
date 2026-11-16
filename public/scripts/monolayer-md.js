@@ -721,7 +721,9 @@ export class MonolayerWaterMD{
       m.omega+=half*m.torque/this.rotInertia;
     }
 
-    if(this.stepCount%6===0)this.updateBondNetwork();
+    // Rebuild the rendered contact graph after every rotational MD step;
+    // otherwise visually stale links can connect misoriented molecules.
+    this.updateBondNetwork();
     if(this.stepCount%18===0)this.potentialEnergy=this.totalEnergy();
   }
 
@@ -756,7 +758,7 @@ export class MonolayerWaterMD{
     this.meanCoordination=sum/this.count;
     this.degree3Fraction=d3/this.count;
     this.degree4Fraction=d4/this.count;
-    this.updateStructuralDiagnostics();
+    if(force||this.stepCount%6===0)this.updateStructuralDiagnostics();
   }
 
   updateStructuralDiagnostics(){
