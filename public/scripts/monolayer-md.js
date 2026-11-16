@@ -1082,7 +1082,7 @@ class MonolayerExplorer{
     const p=Number(this.pressureInput?.value)||0;
     if(this.md){this.md.setTemperatureKelvin(t);this.md.setPressureGPa(p);}
     if(this.tempOutput)this.tempOutput.textContent=Math.round(t)+' K';
-    if(this.pressureOutput)this.pressureOutput.textContent=p.toFixed(1)+' GPa';
+    if(this.pressureOutput)this.pressureOutput.textContent=p.toFixed(2)+' GPa';
   }
 
   resize(){
@@ -1246,7 +1246,7 @@ class MonolayerExplorer{
     this.canvas.dataset.cellShear=d.cellShear.toFixed(4);
     this.canvas.dataset.temperatureK=String(Math.round(d.temperatureKelvin));
     this.canvas.dataset.kbt=d.kBT.toFixed(5);
-    this.canvas.dataset.pressureGpa=d.pressureGPa.toFixed(1);
+    this.canvas.dataset.pressureGpa=d.pressureGPa.toFixed(2);
     this.canvas.dataset.measuredPressureGpa=d.pressureEstimateGPa.toFixed(2);
     this.canvas.dataset.pressureWorkScale=d.pressureWorkScale.toFixed(6);
     this.canvas.dataset.confinementWidthNm=d.confinementWidthNm.toFixed(3);
@@ -1257,7 +1257,7 @@ class MonolayerExplorer{
     this.canvas.dataset.boostFrames=String(d.boostFrames);
 
     if(this.measuredPressureOutput){
-      this.measuredPressureOutput.textContent=d.pressureEstimateGPa.toFixed(1)+' GPa';
+      this.measuredPressureOutput.textContent=d.pressureEstimateGPa.toFixed(2)+' GPa';
     }
     if(this.densityOutput)this.densityOutput.textContent=d.arealDensity.toFixed(2);
     if(this.status){
