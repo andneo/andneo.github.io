@@ -569,7 +569,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-saturated-network-water-md-v6');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v7');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-flexible-cell');
@@ -585,6 +585,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
  await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-substeps')),{timeout:15000})
+  .toBeGreaterThanOrEqual(1);
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-steps')||0),{timeout:15000}).toBeGreaterThan(monolayerInitialSteps+6);
@@ -808,6 +810,93 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
  expect(result.meanOut).toBeGreaterThan(.1);
  expect(result.maxQuaternionError).toBeLessThan(1e-10);
  expect(result.allPlanar).toBe(true);
+});
+
+test('cooperative potential retains three candidate crystal topologies without templates',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser public module is outside the TS import graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const out:Record<string,{before:number,after:number,other:number,msd:number}>={};
+  for(const [kind,pressure] of [['hexagonal',.03],['pentagonal',.45],['square',3]] as const){
+   const md=new MonolayerWaterMD({count:144,randomSeed:123,temperatureKelvin:120,pressureGPa:pressure});
+   const points:{x:number,y:number}[]=[];
+   let cell:{lx:number,ly:number,shear:number};
+   if(kind==='hexagonal'){
+    const r=Math.sqrt(4/(3*Math.sqrt(3)*10.28)),nx=6,ny=6,rt=Math.sqrt(3);
+    cell={lx:3*nx*r,ly:ny*rt*r,shear:0};
+    const basis=[[0,0],[1,0],[1.5,rt/2],[2.5,rt/2]];
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)for(const [x,y] of basis)
+     points.push({x:(3*i+x)*r,y:(rt*j+y)*r});
+   }else if(kind==='pentagonal'){
+    // Periodic Cairo-style tiling: 4-fold sites at grid vertices,
+    // 3-fold sites on displaced edges. Every primitive cell has
+    // three oxygen sites and exactly two pentagonal faces.
+    const nx=6,ny=8,L=Math.sqrt(3/11.58),delta=(4-Math.sqrt(7))/6;
+    cell={lx:nx*L,ly:ny*L,shear:0};
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+     const even=(i+j)%2===0;
+     points.push({x:i*L,y:j*L});
+     points.push({x:(i+(even?delta:-delta))*L,y:(j+.5)*L});
+     points.push({x:(i+.5)*L,y:(j+(even?-delta:delta))*L});
+    }
+   }else{
+    const L=Math.sqrt(1/12.54),n=12;
+    cell={lx:n*L,ly:n*L,shear:0};
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++)
+     points.push({x:(i+.5)*L,y:(j+.5)*L});
+   }
+   if(points.length!==144)throw new Error('Invalid lattice site count');
+   md.cell=cell;
+   for(let i=0;i<144;i++){
+    md.molecules[i].x=points[i].x-cell.lx/2;
+    md.molecules[i].y=points[i].y-cell.ly/2;
+    md.molecules[i].vx=0;md.molecules[i].vy=0;
+   }
+   md.neighborDirty=true;md.rebuildNeighborList();
+   md.computeForces();md.updateBondNetwork(true);md.updateOxygenRingStatistics();
+   const key=kind==='hexagonal'?'ring6':kind==='pentagonal'?'ring5':'ring4';
+   const before=md.diagnostics()[key];
+   for(let k=0;k<280;k++)md.integrateStep();
+   md.updateOxygenRingStatistics();
+   const d=md.diagnostics();
+   const after=d[key];
+   const other=d.ring3+
+    (kind==='hexagonal'?d.ring4+d.ring5:
+     kind==='pentagonal'?d.ring4+d.ring6:d.ring5+d.ring6);
+   out[kind]={before,after,other,msd:d.msd};
+  }
+  return out;
+ });
+ expect(result.hexagonal.before).toBe(72);
+ expect(result.pentagonal.before).toBe(96);
+ expect(result.square.before).toBe(144);
+ for(const [kind,expected] of [['hexagonal',72],['pentagonal',96],['square',144]] as const){
+  expect(result[kind].after).toBeGreaterThanOrEqual(expected*.95);
+  expect(result[kind].other).toBeLessThanOrEqual(4);
+  expect(result[kind].msd).toBeLessThan(.05);
+ }
+});
+
+test('monolayer seeded trajectories are reproducible and independent',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser public module is outside TypeScript imports
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const a=new MonolayerWaterMD({count:24,randomSeed:27182});
+  const b=new MonolayerWaterMD({count:24,randomSeed:27182});
+  const c=new MonolayerWaterMD({count:24,randomSeed:31415});
+  for(let i=0;i<15;i++){a.integrateStep();b.integrateStep();}
+  return {
+   reproducible:a.molecules.every((m:any,i:number)=>
+    m.x===b.molecules[i].x&&m.y===b.molecules[i].y&&
+    m.q.w===b.molecules[i].q.w&&m.q.x===b.molecules[i].q.x),
+   independent:a.molecules.some((m:any,i:number)=>m.x!==c.molecules[i].x),
+  };
+ });
+ expect(result.reproducible).toBe(true);
+ expect(result.independent).toBe(true);
 });
 
 test('oxygen face counting distinguishes honeycomb and square periodic reference lattices',async({page})=>{
