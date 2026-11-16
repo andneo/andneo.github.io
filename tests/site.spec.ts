@@ -622,6 +622,10 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const temperature=story.locator('[data-monolayer-temperature]');
  const pressure=story.locator('[data-monolayer-pressure]');
+ expect(await pressure.getAttribute('step')).toBe('0.01');
+ await pressure.fill('0.03');
+ await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('0.03 GPa');
+ await pressure.fill('1');
 
  expect(Number(await monolayerCanvas.getAttribute('data-pressure-work-scale'))).toBeCloseTo(301.107038,3);
  expect(Number(await monolayerCanvas.getAttribute('data-confinement-width-nm'))).toBeCloseTo(.5,3);
@@ -645,7 +649,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:15000}).toBeLessThan(hotSpeed*.95);
 
  await pressure.fill('6');
- await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('6.0 GPa');
+ await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('6.00 GPa');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(6,1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+1);
  // Degree-four occupancy is a phase observable, not guaranteed during a
