@@ -689,6 +689,7 @@ test('water network story is contained, button-driven and replaces the old topol
 test('monolayer Hamiltonian forces and sheared periodic geometry are numerically consistent',async({page})=>{
  await page.goto('/research/topology-networked-matter/');
  const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser-served public module is not in the TypeScript module graph
   const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
   const md=new MonolayerWaterMD({count:32,temperatureKelvin:240,pressureGPa:1});
   const h=1e-6;
