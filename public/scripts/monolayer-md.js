@@ -878,7 +878,7 @@ class MonolayerExplorer{
     this.canvas.dataset.pressureCoupling='configurational-pressure-plus-ideal-term';
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
     this.canvas.dataset.temperatureCoupling='langevin-kbt';
-    this.canvas.dataset.potential='smooth-coordination-multiwell-network';
+    this.canvas.dataset.potential='multiwell-network-plus-saturated-directed-hbond';
     this.canvas.dataset.dynamics='continuous-translational-rotational-md';
     this.canvas.dataset.bondCriterion='donor-acceptor-orientation';
     this.canvas.dataset.viewFill='full-height';
