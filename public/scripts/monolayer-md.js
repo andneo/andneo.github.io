@@ -28,7 +28,7 @@ export class MonolayerWaterMD{
     this.dt=.004;
     this.mass=18.015;
     this.gamma=1.15;
-    this.maxForce=420;
+
 
     this.ooSigma=.260;
     this.ooEpsilon=5.0;
@@ -95,6 +95,10 @@ export class MonolayerWaterMD{
     this.degree3Fraction=0;
     this.degree4Fraction=0;
     this.overCoordinatedFraction=0;
+    this.closePackedFraction=0;
+    this.meanWeightedCoordination=0;
+    this.meanLocalQ3=0;
+    this.meanLocalQ4=0;
     this.meanCoordination=0;
     this.networkEnergy=0;
     this.potentialEnergy=0;
@@ -160,11 +164,25 @@ export class MonolayerWaterMD{
   }
 
   minimumImageVector(dx,dy,cell=this.cell){
+    // Component-wise rounding is exact for a rectangular cell, but is not
+    // generally the shortest image in a sheared periodic cell.
     let fy=dy/cell.ly;
     let fx=(dx-cell.shear*fy)/cell.lx;
     fx-=Math.round(fx);
     fy-=Math.round(fy);
-    return{x:fx*cell.lx+fy*cell.shear,y:fy*cell.ly};
+    if(Math.abs(cell.shear)<1e-12){
+      return{x:fx*cell.lx,y:fy*cell.ly};
+    }
+    let bestX=0,bestY=0,bestR2=Infinity;
+    // The allowed cell shear/aspect bounds make the neighbouring 3x3
+    // lattice translations sufficient to find the closest image.
+    for(let sy=-1;sy<=1;sy++)for(let sx=-1;sx<=1;sx++){
+      const u=fx+sx,v=fy+sy;
+      const x=u*cell.lx+v*cell.shear,y=v*cell.ly;
+      const r2=x*x+y*y;
+      if(r2<bestR2){bestR2=r2;bestX=x;bestY=y;}
+    }
+    return{x:bestX,y:bestY};
   }
 
   distanceBetween(a,b){
@@ -417,8 +435,9 @@ export class MonolayerWaterMD{
           p3*this.orient3Depth*dq3y-
           p4*this.orient4Depth*dq4y;
 
-        const fx=clamp(gx,-this.maxForce,this.maxForce);
-        const fy=clamp(gy,-this.maxForce,this.maxForce);
+        // Do not cap gradients: clipping would make the MD forces
+        // inconsistent with the Hamiltonian and the barostat energy.
+        const fx=gx,fy=gy;
         center.fx+=fx;center.fy+=fy;
         this.molecules[n.j].fx-=fx;
         this.molecules[n.j].fy-=fy;
@@ -533,8 +552,9 @@ export class MonolayerWaterMD{
 
     const aspect=lx/ly;
     if(aspect>this.maxAspect){
-      const target=Math.sqrt(this.maxAspect*lx*ly);
-      lx=target;ly=(lx*ly)/target;
+      const area=lx*ly;
+      lx=Math.sqrt(area*this.maxAspect);
+      ly=area/lx;
     }else if(aspect<1/this.maxAspect){
       const area=lx*ly;
       ly=Math.sqrt(area*this.maxAspect);
@@ -626,8 +646,43 @@ export class MonolayerWaterMD{
     this.meanCoordination=sum/this.count;
     this.degree3Fraction=d3/this.count;
     this.degree4Fraction=d4/this.count;
-    this.overCoordinatedFraction=0;
+    this.updateStructuralDiagnostics();
     this.updateVisualTargets();
+  }
+
+  updateStructuralDiagnostics(){
+    // Measure uncapped oxygen coordination independently of the graph
+    // used for display. The displayed graph has a four-edge limit and
+    // cannot itself diagnose overcoordination in the Hamiltonian.
+    let weightedSum=0,weightedOver=0,hardOver=0,q3Sum=0,q4Sum=0;
+    for(let i=0;i<this.count;i++){
+      const a=this.molecules[i];
+      let c=0,hard=0,x3=0,y3=0,x4=0,y4=0;
+      for(const j of this.neighborsOf[i]){
+        const b=this.molecules[j];
+        const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+        const r=Math.hypot(d.x,d.y);
+        if(r<this.networkOn)hard++;
+        const w=this.switchWeight(r);
+        if(w<=0)continue;
+        c+=w;
+        const angle=Math.atan2(d.y,d.x);
+        x3+=w*Math.cos(3*angle);y3+=w*Math.sin(3*angle);
+        x4+=w*Math.cos(4*angle);y4+=w*Math.sin(4*angle);
+      }
+      weightedSum+=c;
+      if(c>4.05)weightedOver++;
+      if(hard>=5)hardOver++;
+      if(c>=2.5){
+        q3Sum+=Math.hypot(x3,y3)/c;
+        q4Sum+=Math.hypot(x4,y4)/c;
+      }
+    }
+    this.meanWeightedCoordination=weightedSum/this.count;
+    this.overCoordinatedFraction=weightedOver/this.count;
+    this.closePackedFraction=hardOver/this.count;
+    this.meanLocalQ3=q3Sum/this.count;
+    this.meanLocalQ4=q4Sum/this.count;
   }
 
   updateVisualTargets(){
@@ -694,6 +749,10 @@ export class MonolayerWaterMD{
       degree3Fraction:this.degree3Fraction,
       degree4Fraction:this.degree4Fraction,
       overCoordinatedFraction:this.overCoordinatedFraction,
+      closePackedFraction:this.closePackedFraction,
+      meanWeightedCoordination:this.meanWeightedCoordination,
+      meanLocalQ3:this.meanLocalQ3,
+      meanLocalQ4:this.meanLocalQ4,
       meanSpeed:speed,msd,
       diffusionProxy:this.simTime>0?msd/(4*this.simTime):0,
       area,arealDensity:this.count/area,
@@ -901,6 +960,10 @@ class MonolayerExplorer{
     this.canvas.dataset.degree3Fraction=d.degree3Fraction.toFixed(3);
     this.canvas.dataset.degree4Fraction=d.degree4Fraction.toFixed(3);
     this.canvas.dataset.overcoordinatedFraction=d.overCoordinatedFraction.toFixed(3);
+    this.canvas.dataset.closePackedFraction=d.closePackedFraction.toFixed(3);
+    this.canvas.dataset.meanWeightedCoordination=d.meanWeightedCoordination.toFixed(3);
+    this.canvas.dataset.meanLocalQ3=d.meanLocalQ3.toFixed(3);
+    this.canvas.dataset.meanLocalQ4=d.meanLocalQ4.toFixed(3);
     this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(5);
     this.canvas.dataset.msd=d.msd.toFixed(6);
     this.canvas.dataset.diffusionProxy=d.diffusionProxy.toFixed(6);
