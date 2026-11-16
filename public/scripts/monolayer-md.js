@@ -1159,7 +1159,7 @@ class MonolayerExplorer{
     this.canvas.dataset.pressureCoupling='configurational-pressure-plus-ideal-term';
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
     this.canvas.dataset.temperatureCoupling='langevin-kbt';
-    this.canvas.dataset.potential='multiwell-network-plus-saturated-directed-hbond';
+    this.canvas.dataset.potential='directional-hbond-plus-cooperative-oxygen-network';
     this.canvas.dataset.dynamics='planar-translation-3d-rigid-rotation';
     this.canvas.dataset.translation='planar-xy';
     this.canvas.dataset.orientation='quaternion-3d';
@@ -1366,7 +1366,7 @@ class MonolayerExplorer{
     if(this.status){
       this.status.textContent=
         d.bonds+' H-bonds · degree '+d.meanDegree.toFixed(2)+
-        ' · O-rings: 5='+d.ring5+' 6='+d.ring6;
+        ' · oxygen rings: 4='+d.ring4+' 5='+d.ring5+' 6='+d.ring6;
     }
   }
 
