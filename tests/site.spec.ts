@@ -578,7 +578,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','configurational-pressure-plus-ideal-term');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
  await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
- await expect(monolayerCanvas).toHaveAttribute('data-potential','smooth-coordination-multiwell-network');
+ await expect(monolayerCanvas).toHaveAttribute('data-potential','multiwell-network-plus-saturated-directed-hbond');
  await expect(monolayerCanvas).toHaveAttribute('data-dynamics','continuous-translational-rotational-md');
  await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
  await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
@@ -751,14 +751,32 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
    .filter((c:any)=>c.donor===0&&c.acceptor===1)
    .reduce((v:number,c:any)=>Math.max(v,c.score),0);
   md.updateBondNetwork(true);
+  const opposedBonds=md.bonds.size;
+  // A separate finite-temperature MD run must never retain a stale,
+  // orientation-incompatible edge after the molecular rotations evolve.
+  const evolving=new MonolayerWaterMD({count:32,temperatureKelvin:320,pressureGPa:1});
+  for(let step=0;step<45;step++)evolving.integrateStep();
+  const physicalContacts=evolving.directedContacts().contacts;
+  const donated=new Set<string>(),accepted=new Uint8Array(32);
+  let invalidBonds=0,duplicateDonor=0;
+  for(const b of evolving.bonds.values() as Iterable<any>){
+   const key=b.a+'-'+b.patch;
+   if(donated.has(key))duplicateDonor++;
+   donated.add(key);accepted[b.b]++;
+   const score=physicalContacts.find((c:any)=>c.donor===b.a&&c.acceptor===b.b&&c.patch===b.patch)?.score??0;
+   if(score<=.23-1e-8)invalidBonds++;
+  }
   return {aligned,opposed,alignedBond,alignedDonor:alignedDonor?.a,
-   opposedBonds:md.bonds.size};
+   opposedBonds,invalidBonds,duplicateDonor,maxAccepted:Math.max(...accepted)};
  });
  expect(result.aligned).toBeGreaterThan(.5);
  expect(result.opposed).toBeLessThan(.08);
  expect(result.alignedBond).toBe(1);
  expect(result.alignedDonor).toBe(0);
  expect(result.opposedBonds).toBe(0);
+ expect(result.invalidBonds).toBe(0);
+ expect(result.duplicateDonor).toBe(0);
+ expect(result.maxAccepted).toBeLessThanOrEqual(2);
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
