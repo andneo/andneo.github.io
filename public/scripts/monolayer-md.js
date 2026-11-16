@@ -9,8 +9,17 @@ function wrapAngle(a){
   while(a<=-Math.PI)a+=Math.PI*2;
   return a;
 }
-function circularMean(a,b){
-  return Math.atan2(Math.sin(a)+Math.sin(b),Math.cos(a)+Math.cos(b));
+// Quaternion rotates molecule-frame vectors into the lab frame.
+function rotateVector(q,x,y,z){
+  const tx=2*(q.y*z-q.z*y),ty=2*(q.z*x-q.x*z),tz=2*(q.x*y-q.y*x);
+  return {
+    x:x+q.w*tx+q.y*tz-q.z*ty,
+    y:y+q.w*ty+q.z*tx-q.x*tz,
+    z:z+q.w*tz+q.x*ty-q.y*tx,
+  };
+}
+function cross(a,b){
+  return{x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x};
 }
 
 export class MonolayerWaterMD{
@@ -28,7 +37,8 @@ export class MonolayerWaterMD{
     this.dt=.004;
     this.mass=18.015;
     this.gamma=1.15;
-    // The only rotational DOF is a planar molecular angle (not 3D TIP4P).
+    // 2D centre-of-mass translations, but full SO(3) rigid rotations.
+    // Isotropic effective inertia is phenomenological, not a water tensor.
     this.rotInertia=.012;
     this.rotGamma=2;
     this.ohLength=.0957;
@@ -139,7 +149,10 @@ export class MonolayerWaterMD{
       const nextKBT=KB_KJ_MOL_K*next;
       if(old>0){
         const scale=Math.sqrt(nextKBT/old);
-        for(const m of this.molecules){m.vx*=scale;m.vy*=scale;m.omega*=scale;}
+        for(const m of this.molecules){
+          m.vx*=scale;m.vy*=scale;
+          m.wx*=scale;m.wy*=scale;m.wz*=scale;
+        }
       }
       this.boostFrames=Math.max(this.boostFrames,180);
     }
@@ -147,6 +160,38 @@ export class MonolayerWaterMD{
     this.kBT=KB_KJ_MOL_K*next;
   }
 
+  randomQuaternion(){
+    // Shoemake's Haar-uniform SO(3) distribution.
+    const u=this.random(),v=2*Math.PI*this.random(),w=2*Math.PI*this.random();
+    return{
+      x:Math.sqrt(1-u)*Math.sin(v),
+      y:Math.sqrt(1-u)*Math.cos(v),
+      z:Math.sqrt(u)*Math.sin(w),
+      w:Math.sqrt(u)*Math.cos(w),
+    };
+  }
+  // Exact constant-world-angular-velocity rotation, left multiplying q
+  // by a unit axis-angle quaternion. No out-of-plane centre translation.
+  rotateOrientation(m,wx,wy,wz,dt){
+    const norm=Math.hypot(wx,wy,wz);
+    if(norm<1e-15||dt===0)return;
+    const a=.5*norm*dt,scale=Math.sin(a)/norm;
+    const pw=Math.cos(a),px=wx*scale,py=wy*scale,pz=wz*scale;
+    const q=m.q;
+    const rw=pw*q.w-px*q.x-py*q.y-pz*q.z;
+    const rx=pw*q.x+px*q.w+py*q.z-pz*q.y;
+    const ry=pw*q.y-px*q.z+py*q.w+pz*q.x;
+    const rz=pw*q.z+px*q.y-py*q.x+pz*q.w;
+    const inv=1/Math.hypot(rw,rx,ry,rz);
+    q.w=rw*inv;q.x=rx*inv;q.y=ry*inv;q.z=rz*inv;
+  }
+  molecularFrames(){
+    const co=Math.cos(HALF_WATER_ANGLE),si=Math.sin(HALF_WATER_ANGLE);
+    return this.molecules.map(m=>({
+      bisector:rotateVector(m.q,1,0,0),
+      donors:[rotateVector(m.q,co,-si,0),rotateVector(m.q,co,si,0)],
+    }));
+  }
   setPressureGPa(value){
     const next=clamp(Number(value)||0,0,6);
     if(Math.abs(next-this.pressureGPa)>.02)this.boostFrames=Math.max(this.boostFrames,220);
@@ -220,9 +265,11 @@ export class MonolayerWaterMD{
           id,x:p.x,y:p.y,
           vx:this.gaussian()*sigma,vy:this.gaussian()*sigma,
           diffX:0,diffY:0,
-          fx:0,fy:0,torque:0,
-          theta:this.random()*Math.PI*2,
-          omega:this.gaussian()*Math.sqrt(this.kBT/this.rotInertia),
+          fx:0,fy:0,tx:0,ty:0,tz:0,
+          q:this.randomQuaternion(),
+          wx:this.gaussian()*Math.sqrt(this.kBT/this.rotInertia),
+          wy:this.gaussian()*Math.sqrt(this.kBT/this.rotInertia),
+          wz:this.gaussian()*Math.sqrt(this.kBT/this.rotInertia),
         });
         placed=true;
       }
@@ -342,7 +389,7 @@ export class MonolayerWaterMD{
   // Directed donor-patch to broad acceptor-hemisphere interactions.
   // The O-H geometry is literal; the acceptor is phenomenological,
   // with capacity two and no fictitious TIP4P charge site.
-  directedContacts(){
+  directedContacts(frames=this.molecularFrames()){
     const contacts=[],donorSums=new Float64Array(2*this.count);
     const acceptSums=new Float64Array(this.count);
     const kd=this.hbDonorSharpness,ka=this.hbAcceptorSharpness;
@@ -351,22 +398,36 @@ export class MonolayerWaterMD{
       if(d.r<1e-10)continue;
       const w=this.switchWeight(d.r);
       if(w<=0)continue;
-      const dw=this.switchDerivative(d.r);
-      const phi=Math.atan2(d.y,d.x);
-      for(const[donor,acceptor,dphi]of[[i,j,phi],[j,i,phi+Math.PI]]){
-        const ma=this.molecules[donor],mb=this.molecules[acceptor];
-        const da=dphi-mb.theta;
-        const fa=Math.exp(-ka*(1-Math.cos(da))),sinA=Math.sin(da);
+      const radialDeriv=this.switchDerivative(d.r);
+      // Oxygen centres lie in z=0; O-H vectors are fully 3D.
+      for(const [donor,acceptor,nx,ny] of [
+        [i,j,d.x/d.r,d.y/d.r],[j,i,-d.x/d.r,-d.y/d.r]
+      ]){
+        const bisector=frames[acceptor].bisector;
+        const cosA=bisector.x*nx+bisector.y*ny;
+        const fa=Math.exp(-ka*(1-cosA));
         for(let patch=0;patch<2;patch++){
-          const dd=dphi-ma.theta-(patch?1:-1)*HALF_WATER_ANGLE;
-          const fd=Math.exp(-kd*(1-Math.cos(dd)));
+          const arm=frames[donor].donors[patch];
+          const cosD=arm.x*nx+arm.y*ny;
+          const fd=Math.exp(-kd*(1-cosD));
           const score=w*fd*fa;
           if(score<=1e-10)continue;
-          contacts.push({donor,acceptor,patch,score,r:d.r,
-            dx:donor===i?d.x:-d.x,dy:donor===i?d.y:-d.y,
-            dr:dw*fd*fa,
-            dphi:-score*(kd*Math.sin(dd)+ka*sinA),
-            dDonor:score*kd*Math.sin(dd),dAcceptor:score*ka*sinA});
+          const inv=1/d.r,dr=radialDeriv*fd*fa;
+          const gradX=dr*nx+score*inv*(
+            kd*(arm.x-cosD*nx)+ka*(bisector.x-cosA*nx));
+          const gradY=dr*ny+score*inv*(
+            kd*(arm.y-cosD*ny)+ka*(bisector.y-cosA*ny));
+          const dir={x:nx,y:ny,z:0};
+          const donorCross=cross(arm,dir),acceptCross=cross(bisector,dir);
+          contacts.push({
+            donor,acceptor,patch,score,r:d.r,gradX,gradY,
+            donorTX:score*kd*donorCross.x,
+            donorTY:score*kd*donorCross.y,
+            donorTZ:score*kd*donorCross.z,
+            acceptTX:score*ka*acceptCross.x,
+            acceptTY:score*ka*acceptCross.y,
+            acceptTZ:score*ka*acceptCross.z,
+          });
           donorSums[2*donor+patch]+=score;
           acceptSums[acceptor]+=score;
         }
@@ -390,47 +451,49 @@ export class MonolayerWaterMD{
 
   // Effective, finite H-H excluded-volume penalty; not a TIP4P LJ term.
   // The H sites coincide with the displayed rigid O-H bonds.
-  hhEnergy(forces=false){
+  hhEnergy(forces=false,frames=this.molecularFrames()){
     const l=this.ohLength,core=this.hhCore,k=this.hhStiffness;
-    const arms=this.molecules.map(m=>{
-      const u=m.theta-HALF_WATER_ANGLE,v=m.theta+HALF_WATER_ANGLE;
-      return[l*Math.cos(u),l*Math.sin(u),l*Math.cos(v),l*Math.sin(v)];
-    });
     let energy=0;
     for(const[i,j]of this.neighborPairs){
       const a=this.molecules[i],b=this.molecules[j];
       const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
       if(Math.hypot(d.x,d.y)>core+2*l)continue;
-      const ai=arms[i],bj=arms[j];
       for(let p=0;p<2;p++)for(let q=0;q<2;q++){
-        const ax=ai[2*p],ay=ai[2*p+1],bx=bj[2*q],by=bj[2*q+1];
-        const x=d.x+bx-ax,y=d.y+by-ay,r=Math.hypot(x,y);
+        const au=frames[i].donors[p],bu=frames[j].donors[q];
+        const aa={x:l*au.x,y:l*au.y,z:l*au.z};
+        const bb={x:l*bu.x,y:l*bu.y,z:l*bu.z};
+        const v={x:d.x+bb.x-aa.x,y:d.y+bb.y-aa.y,z:bb.z-aa.z};
+        const r=Math.hypot(v.x,v.y,v.z);
         if(r>=core)continue;
         const overlap=core-r;
         energy+=.5*k*overlap*overlap;
         if(!forces||r<1e-12)continue;
-        const f=k*overlap/r,fx=f*x,fy=f*y;
-        a.fx-=fx;a.fy-=fy;b.fx+=fx;b.fy+=fy;
-        a.torque+=-ax*fy+ay*fx;
-        b.torque+=bx*fy-by*fx;
+        const f=k*overlap/r;
+        // Holonomic constraint: discard centre-of-mass z forces,
+        // while retaining all three components of rotational torque.
+        const FB={x:f*v.x,y:f*v.y,z:f*v.z};
+        a.fx-=FB.x;a.fy-=FB.y;b.fx+=FB.x;b.fy+=FB.y;
+        const TA=cross(aa,{x:-FB.x,y:-FB.y,z:-FB.z});
+        const TB=cross(bb,FB);
+        a.tx+=TA.x;a.ty+=TA.y;a.tz+=TA.z;
+        b.tx+=TB.x;b.ty+=TB.y;b.tz+=TB.z;
       }
     }
     return energy;
   }
 
-  computeDirectionalForces(){
-    const d=this.directedContacts(),s=this.hbSaturation;
+  computeDirectionalForces(frames=this.molecularFrames()){
+    const d=this.directedContacts(frames),s=this.hbSaturation;
     const dg=new Float64Array(2*this.count),ag=new Float64Array(this.count);
     for(let i=0;i<dg.length;i++)dg[i]=-this.hbDepth*Math.exp(-s*d.donorSums[i]);
     for(let i=0;i<ag.length;i++)ag[i]=2*this.hbAcceptorPenalty*Math.max(0,d.acceptSums[i]-2);
     for(const c of d.contacts){
       const factor=dg[2*c.donor+c.patch]+ag[c.acceptor];
-      const inv=1/c.r,inv2=inv*inv;
-      const fx=factor*(c.dr*c.dx*inv-c.dphi*c.dy*inv2);
-      const fy=factor*(c.dr*c.dy*inv+c.dphi*c.dx*inv2);
       const a=this.molecules[c.donor],b=this.molecules[c.acceptor];
+      const fx=factor*c.gradX,fy=factor*c.gradY;
       a.fx+=fx;a.fy+=fy;b.fx-=fx;b.fy-=fy;
-      a.torque-=factor*c.dDonor;b.torque-=factor*c.dAcceptor;
+      a.tx-=factor*c.donorTX;a.ty-=factor*c.donorTY;a.tz-=factor*c.donorTZ;
+      b.tx-=factor*c.acceptTX;b.ty-=factor*c.acceptTY;b.tz-=factor*c.acceptTZ;
     }
   }
 
@@ -440,12 +503,13 @@ export class MonolayerWaterMD{
     for(const[ia,ib]of this.neighborPairs)pair+=this.pairRepulsionEnergy(ia,ib);
     for(let i=0;i<this.count;i++)network+=this.centerNetworkEnergy(i);
     this.networkEnergy=network;
-    return pair+network+this.directionalEnergy()+this.hhEnergy();
+    const frames=this.molecularFrames();
+    return pair+network+this.directionalEnergy(this.directedContacts(frames))+this.hhEnergy(false,frames);
   }
 
   computeForces(){
     if(this.needsNeighborRebuild())this.rebuildNeighborList();
-    for(const m of this.molecules){m.fx=0;m.fy=0;m.torque=0;}
+    for(const m of this.molecules){m.fx=0;m.fy=0;m.tx=0;m.ty=0;m.tz=0;}
 
     // Pairwise oxygen repulsion.
     for(const[ia,ib]of this.neighborPairs){
@@ -551,8 +615,9 @@ export class MonolayerWaterMD{
         this.molecules[n.j].fy-=fy;
       }
     }
-    this.computeDirectionalForces();
-    this.hhEnergy(true);
+    const frames=this.molecularFrames();
+    this.computeDirectionalForces(frames);
+    this.hhEnergy(true,frames);
     this.forceEvaluations+=this.neighborPairs.length;
   }
 
@@ -685,7 +750,7 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       const dx=factor*m.vx,dy=factor*m.vy;
       m.x+=dx;m.y+=dy;
-      m.theta=wrapAngle(m.theta+factor*m.omega);
+      this.rotateOrientation(m,m.wx,m.wy,m.wz,factor);
       m.diffX+=dx;m.diffY+=dy;
       this.wrapPoint(m);
     }
@@ -696,7 +761,9 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       m.vx+=half*m.fx/this.mass;
       m.vy+=half*m.fy/this.mass;
-      m.omega+=half*m.torque/this.rotInertia;
+      m.wx+=half*m.tx/this.rotInertia;
+      m.wy+=half*m.ty/this.rotInertia;
+      m.wz+=half*m.tz/this.rotInertia;
     }
 
     this.drift(half);
@@ -707,7 +774,9 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       m.vx=c*m.vx+sigma*this.gaussian();
       m.vy=c*m.vy+sigma*this.gaussian();
-      m.omega=cr*m.omega+sigmaRot*this.gaussian();
+      m.wx=cr*m.wx+sigmaRot*this.gaussian();
+      m.wy=cr*m.wy+sigmaRot*this.gaussian();
+      m.wz=cr*m.wz+sigmaRot*this.gaussian();
     }
 
     this.drift(half);
@@ -721,7 +790,9 @@ export class MonolayerWaterMD{
     for(const m of this.molecules){
       m.vx+=half*m.fx/this.mass;
       m.vy+=half*m.fy/this.mass;
-      m.omega+=half*m.torque/this.rotInertia;
+      m.wx+=half*m.tx/this.rotInertia;
+      m.wy+=half*m.ty/this.rotInertia;
+      m.wz+=half*m.tz/this.rotInertia;
     }
 
     // Rebuild the rendered contact graph after every rotational MD step;
@@ -806,12 +877,18 @@ export class MonolayerWaterMD{
 
   diagnostics(){
     const area=this.area();
-    let speed=0,msd=0;
+    let speed=0,angularSpeed=0,outOfPlane=0,quatError=0,msd=0;
+    const frames=this.molecularFrames();
     for(const m of this.molecules){
       speed+=Math.hypot(m.vx,m.vy);
+      angularSpeed+=Math.hypot(m.wx,m.wy,m.wz);
+      const h=frames[m.id].donors;
+      outOfPlane+=(Math.abs(h[0].z)+Math.abs(h[1].z))*.5;
+      quatError=Math.max(quatError,Math.abs(Math.hypot(m.q.w,m.q.x,m.q.y,m.q.z)-1));
       msd+=m.diffX*m.diffX+m.diffY*m.diffY;
     }
-    speed/=this.count;msd/=this.count;
+    speed/=this.count;angularSpeed/=this.count;
+    outOfPlane/=this.count;msd/=this.count;
     return{
       steps:this.stepCount,simTime:this.simTime,
       bonds:this.bonds.size,
@@ -824,7 +901,8 @@ export class MonolayerWaterMD{
       meanWeightedCoordination:this.meanWeightedCoordination,
       meanLocalQ3:this.meanLocalQ3,
       meanLocalQ4:this.meanLocalQ4,
-      meanSpeed:speed,msd,
+      meanSpeed:speed,meanAngularSpeed:angularSpeed,
+      meanOutOfPlane:outOfPlane,maxQuaternionNormError:quatError,msd,
       diffusionProxy:this.simTime>0?msd/(4*this.simTime):0,
       area,arealDensity:this.count/area,
       cellLx:this.cell.lx,cellLy:this.cell.ly,cellShear:this.cell.shear,
@@ -872,7 +950,7 @@ class MonolayerExplorer{
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='saturated-directional-network-water-md-v4';
+    this.canvas.dataset.model='pseudo-2d-saturated-network-water-md-v5';
     this.canvas.dataset.moleculeCount='250';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-flexible-cell';
@@ -882,7 +960,9 @@ class MonolayerExplorer{
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
     this.canvas.dataset.temperatureCoupling='langevin-kbt';
     this.canvas.dataset.potential='multiwell-network-plus-saturated-directed-hbond';
-    this.canvas.dataset.dynamics='continuous-translational-rotational-md';
+    this.canvas.dataset.dynamics='planar-translation-3d-rigid-rotation';
+    this.canvas.dataset.translation='planar-xy';
+    this.canvas.dataset.orientation='quaternion-3d';
     this.canvas.dataset.bondCriterion='donor-acceptor-orientation';
     this.canvas.dataset.viewFill='full-height';
     requestAnimationFrame(this.frame);
@@ -972,49 +1052,56 @@ class MonolayerExplorer{
     ctx.fillStyle=dark?'rgba(12,24,30,.82)':'rgba(225,238,241,.91)';
     ctx.fillRect(0,0,this.width,this.height);
 
+    const frames=this.md.molecularFrames(),oh=this.md.ohLength;
     ctx.lineWidth=1;ctx.setLineDash([4,3]);
     ctx.strokeStyle=dark?'rgba(167,211,224,.40)':'rgba(42,103,123,.35)';
     for(const bond of this.md.bonds.values()){
       const a=this.md.molecules[bond.a],b=this.md.molecules[bond.b];
       const d=this.md.minimumImageVector(b.x-a.x,b.y-a.y);
-      const hAngle=a.theta+(bond.patch?1:-1)*HALF_WATER_ANGLE;
-      const p=this.toCanvas(a.x+this.md.ohLength*Math.cos(hAngle),
-                            a.y+this.md.ohLength*Math.sin(hAngle),view);
+      const arm=frames[bond.a].donors[bond.patch];
+      const p=this.toCanvas(a.x+oh*arm.x,a.y+oh*arm.y,view);
       const q=this.toCanvas(a.x+d.x,a.y+d.y,view);
       ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
     }
     ctx.setLineDash([]);
 
-    const oh=.0957;
-    ctx.strokeStyle=dark?'rgba(236,241,240,.68)':'rgba(80,92,94,.58)';
-    ctx.lineWidth=1;
-    ctx.beginPath();
-    for(const m of this.md.molecules){
-      const o=this.toCanvas(m.x,m.y,view);
-      for(const sign of[-1,1]){
-        const angle=m.theta+sign*HALF_WATER_ANGLE;
-        const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
-        ctx.moveTo(o.x,o.y);ctx.lineTo(h.x,h.y);
-      }
-    }
-    ctx.stroke();
-
+    // Top-down projection of rigid 3D O-H bonds. Positive and negative
+    // z are encoded by contrasting H opacity/size, never by moving oxygens.
     const hRadius=clamp(view.scale*.009,1.05,2.05);
     const oRadius=clamp(view.scale*.017,2.05,3.75);
-    ctx.fillStyle=dark?'#f1eee7':'#fffdf7';ctx.beginPath();
-    for(const m of this.md.molecules)for(const sign of[-1,1]){
-      const angle=m.theta+sign*HALF_WATER_ANGLE;
-      const h=this.toCanvas(m.x+Math.cos(angle)*oh,m.y+Math.sin(angle)*oh,view);
-      ctx.moveTo(h.x+hRadius,h.y);ctx.arc(h.x,h.y,hRadius,0,Math.PI*2);
+    ctx.strokeStyle=dark?'rgba(236,241,240,.68)':'rgba(80,92,94,.58)';
+    ctx.lineWidth=1;
+    for(let i=0;i<this.md.count;i++){
+      const m=this.md.molecules[i],o=this.toCanvas(m.x,m.y,view);
+      for(const arm of frames[i].donors){
+        const h=this.toCanvas(m.x+oh*arm.x,m.y+oh*arm.y,view);
+        ctx.globalAlpha=.45+.45*(arm.z+1)*.5;
+        ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(h.x,h.y);ctx.stroke();
+      }
     }
-    ctx.fill();
-
+    const drawHydrogenLayer=(above)=>{
+      for(let i=0;i<this.md.count;i++){
+        const m=this.md.molecules[i];
+        for(const arm of frames[i].donors){
+          if((arm.z>=0)!==above)continue;
+          const h=this.toCanvas(m.x+oh*arm.x,m.y+oh*arm.y,view);
+          ctx.globalAlpha=above?.95:.48;
+          ctx.fillStyle=dark?'#f1eee7':'#fffdf7';
+          const radius=hRadius*(above?1.1:.8);
+          ctx.beginPath();ctx.arc(h.x,h.y,radius,0,Math.PI*2);ctx.fill();
+        }
+      }
+    };
+    drawHydrogenLayer(false);
+    ctx.globalAlpha=1;
     ctx.fillStyle='#d94b43';ctx.beginPath();
     for(const m of this.md.molecules){
       const p=this.toCanvas(m.x,m.y,view);
       ctx.moveTo(p.x+oRadius,p.y);ctx.arc(p.x,p.y,oRadius,0,Math.PI*2);
     }
     ctx.fill();
+    drawHydrogenLayer(true);
+    ctx.globalAlpha=1;
     ctx.restore();
 
     ctx.strokeStyle=dark?'rgba(197,220,226,.17)':'rgba(50,94,108,.18)';
@@ -1039,6 +1126,9 @@ class MonolayerExplorer{
     this.canvas.dataset.meanLocalQ3=d.meanLocalQ3.toFixed(3);
     this.canvas.dataset.meanLocalQ4=d.meanLocalQ4.toFixed(3);
     this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(5);
+    this.canvas.dataset.meanAngularSpeed=d.meanAngularSpeed.toFixed(5);
+    this.canvas.dataset.meanOutOfPlane=d.meanOutOfPlane.toFixed(5);
+    this.canvas.dataset.quaternionError=d.maxQuaternionNormError.toExponential(2);
     this.canvas.dataset.msd=d.msd.toFixed(6);
     this.canvas.dataset.diffusionProxy=d.diffusionProxy.toFixed(6);
     this.canvas.dataset.neighborPairs=String(d.neighborPairs);
