@@ -40,26 +40,43 @@ export class MonolayerWaterMD{
     // 2D centre-of-mass translations, but full SO(3) rigid rotations.
     // Isotropic effective inertia is phenomenological, not a water tensor.
     this.rotInertia=.012;
-    this.rotGamma=2;
+    // Rotational Langevin friction (ps^-1 in the effective units).
+    // Reduces unbound rotational diffusion without artificially cooling
+    // the rotational kinetic degrees of freedom.
+    this.rotGamma=8;
     this.ohLength=.0957;
     this.hbDepth=13;
-    this.hbSaturation=2.4;
+    // s=2.4 suppresses the restoring torque at a formed donor contact
+    // by exp(-2.4); s=0.6 retains valence saturation without making
+    // the low-temperature bonds nearly free rotors.
+    this.hbSaturation=.6;
     this.hbDonorSharpness=4;
     this.hbAcceptorSharpness=1.6;
     this.hbAcceptorPenalty=3;
     this.hhCore=.155;
     this.hhStiffness=480;
 
-    this.ooSigma=.260;
+    // Reduced O-O repulsion calibrated to preserve the *geometric*
+    // low-pressure reference lattice, not a transferable TIP4P sigma.
+    this.ooSigma=.252;
     this.ooEpsilon=5.0;
     this.ooCutoff=Math.pow(2,1/6)*this.ooSigma;
     this.networkOn=.300;
     this.networkOff=.360;
     this.networkBondDepth=1.0;
+    this.oxygenRingCutoff=.35;
+    this.ringCounts={three:0,four:0,five:0,six:0,seven:0,other:0};
+    this.geometricRingCount=0;
+    this.meanGeometricDegree=0;
+    this.rotationCorrelationLagSteps=160;
+    this.rotationCorrelation=1;
+    this.rotationReference=null;
     this.coordK3=3.2;
     this.coordK4=3.2;
     this.coord4Offset=3.0;
-    this.overCoordK=24.0;
+    // Quadratic valence penalty, replacing the almost-flat quartic
+    // immediately above coordination four.
+    this.overCoordK=80.0;
     this.orient3Depth=2.2;
     this.orient4Depth=2.0;
     this.softMinWidth=.55;
@@ -124,10 +141,12 @@ export class MonolayerWaterMD{
     this.potentialEnergy=0;
 
     this.seed();
+    this.rotationReference=this.molecularFrames().map(f=>f.donors.map(v=>({...v})));
     this.rebuildNeighborList();
     this.computeForces();
     this.potentialEnergy=this.totalEnergy();
     this.updateBondNetwork(true);
+    this.updateOxygenRingStatistics();
   }
 
   random(){
@@ -376,8 +395,8 @@ export class MonolayerWaterMD{
       this.orient4Depth*q4;
 
     let energy=this.smoothMin(e3,e4)-.5*this.networkBondDepth*coordination;
-    const excess=Math.max(0,coordination-4.05);
-    energy+=this.overCoordK*Math.pow(excess,4);
+    const excess=Math.max(0,coordination-4);
+    energy+=this.overCoordK*excess*excess;
     return energy;
   }
 
@@ -566,7 +585,7 @@ export class MonolayerWaterMD{
         p3*2*this.coordK3*(c-3)+
         p4*2*this.coordK4*(c-4)-
         .5*this.networkBondDepth+
-        (c>4.05?4*this.overCoordK*Math.pow(c-4.05,3):0);
+        (c>4?2*this.overCoordK*(c-4):0);
 
       for(const n of local){
         const ux=n.dx/n.r,uy=n.dy/n.r;
@@ -798,6 +817,8 @@ export class MonolayerWaterMD{
     // Rebuild the rendered contact graph after every rotational MD step;
     // otherwise visually stale links can connect misoriented molecules.
     this.updateBondNetwork();
+    if(this.stepCount%72===0)this.updateOxygenRingStatistics();
+    if(this.stepCount%this.rotationCorrelationLagSteps===0)this.updateRotationCorrelation();
     if(this.stepCount%18===0)this.potentialEnergy=this.totalEnergy();
   }
 
@@ -833,6 +854,72 @@ export class MonolayerWaterMD{
     this.degree3Fraction=d3/this.count;
     this.degree4Fraction=d4/this.count;
     if(force||this.stepCount%6===0)this.updateStructuralDiagnostics();
+  }
+
+  updateRotationCorrelation(){
+    // C1(t) = average OH-vector autocorrelation over a fixed lag.
+    // Measures orientational memory, not instantaneous angular velocity.
+    const frames=this.molecularFrames();
+    if(this.rotationReference){
+      let sum=0;
+      for(let i=0;i<this.count;i++)for(let h=0;h<2;h++){
+        const a=this.rotationReference[i][h],b=frames[i].donors[h];
+        sum+=a.x*b.x+a.y*b.y+a.z*b.z;
+      }
+      this.rotationCorrelation=sum/(2*this.count);
+    }
+    this.rotationReference=frames.map(f=>f.donors.map(v=>({...v})));
+  }
+
+  updateOxygenRingStatistics(){
+    // Geometric oxygen-neighbour topology, independent of the
+    // directed H-bond graph and its donor/acceptor saturation.
+    // The 0.35 nm shell cut distinguishes the published hexagonal,
+    // pentagonal and square reference networks; it is not an
+    // atomistic hydrogen-bond criterion or a phase classifier.
+    const adj=Array.from({length:this.count},()=>[]);
+    for(const[i,j]of this.neighborPairs){
+      const a=this.molecules[i],b=this.molecules[j];
+      const d=this.minimumImageVector(b.x-a.x,b.y-a.y);
+      const r=Math.hypot(d.x,d.y);
+      if(r>=this.oxygenRingCutoff||r<1e-10)continue;
+      adj[i].push({j,dx:d.x,dy:d.y,angle:Math.atan2(d.y,d.x)});
+      adj[j].push({j:i,dx:-d.x,dy:-d.y,angle:Math.atan2(-d.y,-d.x)});
+    }
+    for(const edges of adj)edges.sort((a,b)=>a.angle-b.angle);
+    const edgeCount=adj.reduce((sum,edges)=>sum+edges.length,0)/2;
+    this.meanGeometricDegree=2*edgeCount/this.count;
+    const visited=new Set(),counts=new Uint16Array(13);
+    const maxIterations=Math.max(2,2*edgeCount+1);
+    for(let i=0;i<this.count;i++)for(const first of adj[i]){
+      const startKey=i+'-'+first.j;
+      if(visited.has(startKey))continue;
+      let a=i,b=first.j,x=0,y=0,area2=0,length=0,closed=false;
+      const vertices=[i];
+      for(let step=0;step<maxIterations;step++){
+        const e=adj[a].find(v=>v.j===b);
+        if(!e)break;
+        visited.add(a+'-'+b);
+        area2+=x*e.dy-y*e.dx;
+        x+=e.dx;y+=e.dy;length++;vertices.push(b);
+        const out=adj[b],back=out.findIndex(v=>v.j===a);
+        if(back<0)break;
+        const next=out[(back-1+out.length)%out.length].j;
+        if(b===i&&next===first.j){closed=true;break;}
+        a=b;b=next;
+        if(visited.has(a+'-'+b))break;
+      }
+      if(!closed||length<3||length>12||
+         Math.hypot(x,y)>1e-5||area2<=1e-8||
+         new Set(vertices.slice(0,-1)).size!==length)continue;
+      counts[length]++;
+    }
+    this.ringCounts={
+      three:counts[3],four:counts[4],five:counts[5],
+      six:counts[6],seven:counts[7],
+      other:counts[8]+counts[9]+counts[10]+counts[11]+counts[12],
+    };
+    this.geometricRingCount=Object.values(this.ringCounts).reduce((a,b)=>a+b,0);
   }
 
   updateStructuralDiagnostics(){
@@ -901,6 +988,16 @@ export class MonolayerWaterMD{
       meanWeightedCoordination:this.meanWeightedCoordination,
       meanLocalQ3:this.meanLocalQ3,
       meanLocalQ4:this.meanLocalQ4,
+      ring3:this.ringCounts.three,
+      ring4:this.ringCounts.four,
+      ring5:this.ringCounts.five,
+      ring6:this.ringCounts.six,
+      ring7:this.ringCounts.seven,
+      geometricRingCount:this.geometricRingCount,
+      meanGeometricDegree:this.meanGeometricDegree,
+      oxygenRingCutoff:this.oxygenRingCutoff,
+      orientationalC1:this.rotationCorrelation,
+      orientationLagTime:this.rotationCorrelationLagSteps*this.dt,
       meanSpeed:speed,meanAngularSpeed:angularSpeed,
       meanOutOfPlane:outOfPlane,maxQuaternionNormError:quatError,msd,
       diffusionProxy:this.simTime>0?msd/(4*this.simTime):0,
@@ -950,7 +1047,7 @@ class MonolayerExplorer{
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='pseudo-2d-saturated-network-water-md-v5';
+    this.canvas.dataset.model='pseudo-2d-saturated-network-water-md-v6';
     this.canvas.dataset.moleculeCount='250';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-flexible-cell';
@@ -1125,6 +1222,15 @@ class MonolayerExplorer{
     this.canvas.dataset.meanWeightedCoordination=d.meanWeightedCoordination.toFixed(3);
     this.canvas.dataset.meanLocalQ3=d.meanLocalQ3.toFixed(3);
     this.canvas.dataset.meanLocalQ4=d.meanLocalQ4.toFixed(3);
+    this.canvas.dataset.oxygenRing3=String(d.ring3);
+    this.canvas.dataset.oxygenRing4=String(d.ring4);
+    this.canvas.dataset.oxygenRing5=String(d.ring5);
+    this.canvas.dataset.oxygenRing6=String(d.ring6);
+    this.canvas.dataset.oxygenRing7=String(d.ring7);
+    this.canvas.dataset.oxygenRingCutoff=d.oxygenRingCutoff.toFixed(3);
+    this.canvas.dataset.meanGeometricDegree=d.meanGeometricDegree.toFixed(3);
+    this.canvas.dataset.orientationalC1=d.orientationalC1.toFixed(4);
+    this.canvas.dataset.orientationalLagTime=d.orientationLagTime.toFixed(3);
     this.canvas.dataset.meanSpeed=d.meanSpeed.toFixed(5);
     this.canvas.dataset.meanAngularSpeed=d.meanAngularSpeed.toFixed(5);
     this.canvas.dataset.meanOutOfPlane=d.meanOutOfPlane.toFixed(5);
@@ -1157,7 +1263,7 @@ class MonolayerExplorer{
     if(this.status){
       this.status.textContent=
         d.bonds+' H-bonds · degree '+d.meanDegree.toFixed(2)+
-        ' · D* '+d.diffusionProxy.toFixed(3);
+        ' · O-rings: 5='+d.ring5+' 6='+d.ring6;
     }
   }
 
