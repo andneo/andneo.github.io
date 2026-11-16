@@ -590,7 +590,19 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(monolayerNeighborPairs).toBeLessThan(250*249/2);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:15000}).toBeGreaterThan(0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(2.5);
- expect(Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction')||0)).toBe(0);
+ // Physical coordination diagnostics are measured independently of the
+ // degree-capped graph; they must not be hard-coded to zero.
+ const initialWeightedCoordination=Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination'));
+ const initialQ3=Number(await monolayerCanvas.getAttribute('data-mean-local-q3'));
+ const initialQ4=Number(await monolayerCanvas.getAttribute('data-mean-local-q4'));
+ const initialOvercoordination=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
+ const initialClosePacking=Number(await monolayerCanvas.getAttribute('data-close-packed-fraction'));
+ expect(initialWeightedCoordination).toBeGreaterThan(1.5);
+ for(const value of [initialQ3,initialQ4,initialOvercoordination,initialClosePacking]){
+  expect(Number.isFinite(value)).toBe(true);
+  expect(value).toBeGreaterThanOrEqual(0);
+  expect(value).toBeLessThanOrEqual(1);
+ }
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-force-evaluations')||0),{timeout:15000}).toBeGreaterThan(1000);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-barostat-updates')||0),{timeout:15000}).toBeGreaterThan(1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')||0),{timeout:15000}).toBeGreaterThan(.05);
@@ -625,6 +637,16 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(6,1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+1);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-degree4-fraction')),{timeout:25000}).toBeGreaterThan(initialDegree4+.15);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination')),{timeout:25000}).toBeGreaterThan(initialWeightedCoordination+.25);
+ // A capped displayed graph cannot establish physical valence saturation.
+ const highPressureOver=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
+ const highPressureClosePacking=Number(await monolayerCanvas.getAttribute('data-close-packed-fraction'));
+ expect(highPressureOver).toBeGreaterThanOrEqual(0);
+ expect(highPressureOver).toBeLessThanOrEqual(1);
+ expect(highPressureClosePacking).toBeLessThan(.3);
+ const finalCellAspect=Number(await monolayerCanvas.getAttribute('data-cell-aspect'));
+ expect(finalCellAspect).toBeGreaterThanOrEqual(1/1.62-.005);
+ expect(finalCellAspect).toBeLessThanOrEqual(1.62+.005);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-measured-pressure-gpa')),{timeout:25000}).toBeGreaterThan(4);
  await expect(story.locator('[data-monolayer-measured-pressure]')).toContainText('GPa');
  await expect(story.locator('[data-monolayer-density]')).not.toHaveText('—');
@@ -664,6 +686,43 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(pause).toHaveText('Resume motion');
 });
 
+test('monolayer Hamiltonian forces and sheared periodic geometry are numerically consistent',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const md=new MonolayerWaterMD({count:32,temperatureKelvin:240,pressureGPa:1});
+  const h=1e-6;
+  let maxRelativeError=0;
+  for(let i=0;i<8;i++)for(const axis of ['x','y'] as const){
+   md.computeForces();
+   const particle=md.molecules[i];
+   const force=axis==='x'?particle.fx:particle.fy;
+   const old=particle[axis];
+   particle[axis]=old+h;
+   const plus=md.totalEnergy();
+   particle[axis]=old-h;
+   const minus=md.totalEnergy();
+   particle[axis]=old;
+   const numerical=-(plus-minus)/(2*h);
+   maxRelativeError=Math.max(maxRelativeError,Math.abs(force-numerical)/Math.max(1,Math.abs(force),Math.abs(numerical)));
+  }
+  const cell={lx:2.05,ly:1.51,shear:.61};
+  let maxImageError=0;
+  for(let ix=-5;ix<=5;ix++)for(let iy=-5;iy<=5;iy++){
+   const dx=ix*.33+.11,dy=iy*.27+.05;
+   const actual=md.minimumImageVector(dx,dy,cell);
+   let best=Infinity;
+   for(let a=-3;a<=3;a++)for(let b=-3;b<=3;b++){
+    const x=dx-a*cell.lx-b*cell.shear,y=dy-b*cell.ly;
+    best=Math.min(best,x*x+y*y);
+   }
+   maxImageError=Math.max(maxImageError,Math.abs(actual.x*actual.x+actual.y*actual.y-best));
+  }
+  return{maxRelativeError,maxImageError};
+ });
+ expect(result.maxRelativeError).toBeLessThan(1e-4);
+ expect(result.maxImageError).toBeLessThan(1e-9);
+});
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});
  await page.goto('/posts/');
