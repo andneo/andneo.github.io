@@ -569,7 +569,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','saturated-directional-network-water-md-v4');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-saturated-network-water-md-v5');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-flexible-cell');
@@ -579,9 +579,11 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
  await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
  await expect(monolayerCanvas).toHaveAttribute('data-potential','multiwell-network-plus-saturated-directed-hbond');
- await expect(monolayerCanvas).toHaveAttribute('data-dynamics','continuous-translational-rotational-md');
+ await expect(monolayerCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rigid-rotation');
  await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
  await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
+ await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
+ await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
 
  const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-steps')||0),{timeout:15000}).toBeGreaterThan(monolayerInitialSteps+6);
@@ -590,7 +592,10 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(monolayerNeighborPairs).toBeLessThan(10000);
  expect(monolayerNeighborPairs).toBeLessThan(250*249/2);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:15000}).toBeGreaterThan(0);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(1.2);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(.4);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-out-of-plane')||0),{timeout:15000}).toBeGreaterThan(.1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-angular-speed')||0),{timeout:15000}).toBeGreaterThan(.1);
+ expect(Number(await monolayerCanvas.getAttribute('data-quaternion-error')||1)).toBeLessThan(1e-10);
  // Physical coordination diagnostics are measured independently of the
  // degree-capped graph; they must not be hard-coded to zero.
  const initialWeightedCoordination=Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination'));
@@ -640,7 +645,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+1);
  // Degree-four occupancy is a phase observable, not guaranteed during a
  // short, stochastic parameter sweep. Check the underlying uncapped structure.
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')),{timeout:25000}).toBeGreaterThan(1.3);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')),{timeout:25000}).toBeGreaterThan(.4);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination')),{timeout:25000}).toBeGreaterThan(initialWeightedCoordination+.25);
  // A capped displayed graph cannot establish physical valence saturation.
  const highPressureOver=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
@@ -698,16 +703,23 @@ test('monolayer Hamiltonian forces and sheared periodic geometry are numerically
   const md=new MonolayerWaterMD({count:32,temperatureKelvin:240,pressureGPa:1});
   const h=1e-6;
   let maxRelativeError=0;
-  for(let i=0;i<8;i++)for(const axis of ['x','y','theta'] as const){
+  for(let i=0;i<8;i++)for(const axis of ['x','y','rx','ry','rz'] as const){
    md.computeForces();
    const particle=md.molecules[i];
-   const force=axis==='x'?particle.fx:axis==='y'?particle.fy:particle.torque;
-   const old=particle[axis];
-   particle[axis]=old+h;
+   const q0={...particle.q};
+   const rotational=axis[0]==='r';
+   const force=axis==='x'?particle.fx:axis==='y'?particle.fy:
+     axis==='rx'?particle.tx:axis==='ry'?particle.ty:particle.tz;
+   if(rotational)md.rotateOrientation(particle,axis==='rx'?1:0,axis==='ry'?1:0,axis==='rz'?1:0,h);
+   else particle[axis]+=h;
    const plus=md.totalEnergy();
-   particle[axis]=old-h;
+   if(rotational){
+    particle.q={...q0};
+    md.rotateOrientation(particle,axis==='rx'?1:0,axis==='ry'?1:0,axis==='rz'?1:0,-h);
+   }else particle[axis]-=2*h;
    const minus=md.totalEnergy();
-   particle[axis]=old;
+   if(rotational)particle.q=q0;
+   else particle[axis]+=h;
    const numerical=-(plus-minus)/(2*h);
    maxRelativeError=Math.max(maxRelativeError,Math.abs(force-numerical)/Math.max(1,Math.abs(force),Math.abs(numerical)));
   }
@@ -737,8 +749,9 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
   md.cell={lx:2,ly:2,shear:0};
   md.molecules[0].x=-.155;md.molecules[0].y=0;
   md.molecules[1].x=.155;md.molecules[1].y=0;
-  md.molecules[0].theta=-104.5*Math.PI/360;
-  md.molecules[1].theta=0;
+  const fromAngle=(a:number)=>({w:Math.cos(a/2),x:0,y:0,z:Math.sin(a/2)});
+  md.molecules[0].q=fromAngle(-104.5*Math.PI/360);
+  md.molecules[1].q=fromAngle(0);
   md.neighborDirty=true;md.rebuildNeighborList();
   const aligned=md.directedContacts().contacts
    .filter((c:any)=>c.donor===0&&c.acceptor===1)
@@ -746,7 +759,7 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
   md.updateBondNetwork(true);
   const alignedBond=md.bonds.size;
   const alignedDonor=Array.from(md.bonds.values())[0] as any;
-  md.molecules[1].theta=Math.PI; // its hydrogens now face the donor
+  md.molecules[1].q=fromAngle(Math.PI); // its hydrogens now face the donor
   const opposed=md.directedContacts().contacts
    .filter((c:any)=>c.donor===0&&c.acceptor===1)
    .reduce((v:number,c:any)=>Math.max(v,c.score),0);
@@ -757,6 +770,10 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
   const evolving=new MonolayerWaterMD({count:32,temperatureKelvin:320,pressureGPa:1});
   for(let step=0;step<45;step++)evolving.integrateStep();
   const physicalContacts=evolving.directedContacts().contacts;
+  const diagnostics=evolving.diagnostics();
+  const quaternionNorms=evolving.molecules.map((m:any)=>Math.hypot(m.q.w,m.q.x,m.q.y,m.q.z));
+  const allPlanar=evolving.molecules.every((m:any)=>m.z===undefined&&m.vz===undefined);
+  const meanOut=diagnostics.meanOutOfPlane;
   const donated=new Set<string>(),accepted=new Uint8Array(32);
   let invalidBonds=0,duplicateDonor=0;
   for(const b of evolving.bonds.values() as Iterable<any>){
@@ -767,7 +784,9 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
    if(score<=.23-1e-8)invalidBonds++;
   }
   return {aligned,opposed,alignedBond,alignedDonor:alignedDonor?.a,
-   opposedBonds,invalidBonds,duplicateDonor,maxAccepted:Math.max(...accepted)};
+   opposedBonds,invalidBonds,duplicateDonor,maxAccepted:Math.max(...accepted),
+   meanOut,maxQuaternionError:Math.max(...quaternionNorms.map((n:number)=>Math.abs(n-1))),
+   allPlanar};
  });
  expect(result.aligned).toBeGreaterThan(.5);
  expect(result.opposed).toBeLessThan(.08);
@@ -777,6 +796,9 @@ test('monolayer donor-acceptor bonds follow actual molecular orientation',async(
  expect(result.invalidBonds).toBe(0);
  expect(result.duplicateDonor).toBe(0);
  expect(result.maxAccepted).toBeLessThanOrEqual(2);
+ expect(result.meanOut).toBeGreaterThan(.1);
+ expect(result.maxQuaternionError).toBeLessThan(1e-10);
+ expect(result.allPlanar).toBe(true);
 });
 
 test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
