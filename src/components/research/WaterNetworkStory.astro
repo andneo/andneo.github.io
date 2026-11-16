@@ -8,7 +8,7 @@ const scenes = [
   {
     kicker:'02 · monolayer',
     title:'Confine the network.',
-    copy:'A browser-scale coarse-grained molecular-dynamics experiment with 250 water molecules in a periodic monolayer. Molecules translate and rotate continuously under a Langevin thermostat while a flexible cell responds to lateral pressure. Hydrogen-bond links now require orientational donor–acceptor alignment, with short-range H–H repulsion and reduced many-body network interactions. Oxygen centres remain in a flexible two-dimensional periodic cell while rigid H₂O molecules rotate freely in three dimensions, including out-of-plane O–H excursions. This phenomenological quasi-2D model is not TIP4P, MB-pol, or the published first-principles potential.',
+    copy:'A browser-scale model of 250 confined water molecules: oxygen centres diffuse in a periodic 2D cell while rigid H₂O molecules rotate in 3D. Directional donor–acceptor bonds and a reduced many-body potential produce competing network geometries. Cooling improves molecular orientational persistence, while increasing pressure changes oxygen coordination. This is a phenomenological model, not TIP4P, MB-pol, or a reproduction of the published phase diagram; crystalline polymorphs are not yet reliably obtained by spontaneous assembly.',
   },
   {
     kicker:'03 · molecules',
@@ -108,9 +108,9 @@ const scenes = [
         <input id="monolayer-temperature" data-monolayer-temperature type="range" min="120" max="500" step="10" value="240" />
         <div class="water-story__thermo-row water-story__thermo-row--pressure">
           <label for="monolayer-pressure">lateral pressure</label>
-          <output data-monolayer-pressure-output for="monolayer-pressure">1.0 GPa</output>
+          <output data-monolayer-pressure-output for="monolayer-pressure">1.00 GPa</output>
         </div>
-        <input id="monolayer-pressure" data-monolayer-pressure type="range" min="0" max="6" step="0.1" value="1" />
+        <input id="monolayer-pressure" data-monolayer-pressure type="range" min="0" max="6" step="0.01" value="1" />
         <div class="water-story__thermo-metrics" aria-live="polite">
           <span>estimated pressure <strong data-monolayer-measured-pressure>1.0 GPa</strong></span>
           <span>areal density <strong data-monolayer-density>—</strong></span>
