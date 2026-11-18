@@ -101,3 +101,20 @@ These are short, correlated measurements, not independent uncertainty estimates 
 The camera now uses the **actual current bounding rectangles** of the thermo panel and chapter-navigation controls to choose an unobstructed region within the responsive stage. It takes the largest allowed physical box area, uses one uniform pixels-per-nm scale, and adjusts only camera translation/scale when the browser window changes. Molecular coordinates, number density, cell shape, barostat state and Hamiltonian are not modified on window resize. A mobile Scene 02 stage minimum height of 700 CSS px prevents the panel from squeezing the simulation into a very narrow area. Geometry spot-checks with synthetic stage/control rectangles from 375 to 1440 CSS px width found no overlap or box clipping in the tested cases.
 
 **Limitations:** These checks were performed using source-level JavaScript and simulated viewport geometry; the complete browser Playwright suite and Astro production build have not been run. The friction ramp is a transient equilibration aid, not exact NPT/NVT sampling, and a dynamic resizing camera does not resize the *physical* simulation cell.
+
+## Translational mobility and equal outer margins
+
+The earlier staged-thermostat correction brought measured kinetic temperatures close to the target, but its sustained translational drag of `8` coupled with a `0.004` simulation-time step made oxygen-centre motion appear nearly arrested at 500 K compared with free rigid-molecule rotation. The revised display model uses a `0.008` step, translational friction `2.5` following the same initial thermalization ramp from `32`, and rotational friction `32`. The stochastic Ornstein–Uhlenbeck noise is still computed with each corresponding friction and `kBT`. These changes affect kinetics, not the potential energy function. The model still has solid-like cages and does **not** claim quantitative self-diffusion comparable to TIP4P or MB-pol.
+
+For three independent 80-molecule seeds at target pressure 1 GPa, after 540 warmup steps and over a 450-step observation interval:
+ 
+| Target | Previous mean window MSD (nm²) | Revised mean window MSD (nm²) | Previous `MSD/(4 Δt)` | Revised `MSD/(4 Δt)` |
+| --- | ---: | ---: | ---: | ---: |
+| 120 K | 0.00285 | 0.00561 | 0.000396 | 0.000390 |
+| 500 K | 0.01983 | 0.05369 | 0.00275 | 0.00373 |
+
+The fixed-step observation window corresponds to twice as much physical model time under the revised integrator; this is explicitly reflected by the reported lag-normalized mobility estimate, rather than calling the raw MSD increase a diffusion-coefficient increase. The post-warmup translational and rotational kinetic temperatures remained near the targets, within the variations of these brief finite-size samples. At 120 K the prepared honeycomb, Cairo pentagonal and square topologies retained all their characteristic rings in 400-step trials under both integrator settings. A finite-difference force test is unchanged because the Hamiltonian is unchanged.
+
+Scene 02 now groups the navigation rail and Pause button to the **left**. The camera reserves their measured rectangular footprints and the slider panel. The physical cell's displayed rectangle is vertically centred in the available region and shifted so its **right, top and bottom** clearances are equal. The camera scale is sized against the **largest allowed physical area** and held constant between stage resizes; pressure continues to shrink or grow the displayed box. On a narrow screen the cell can be placed *below* the controls, where equal margins are relative to that safe region rather than the overall stage border. Changes to window size affect the camera only—not the simulated area, molecules or pressure. Synthetic geometry tests covering 375–1440 CSS-pixel stage widths checked margin equality and obstruction clearance; browser integration remains to be verified.
+
+The full Astro build and browser Playwright suite have not been executed as part of this change. These short dynamical benchmarks do not establish true diffusive long-time MSD scaling or equilibrium crystallization.
