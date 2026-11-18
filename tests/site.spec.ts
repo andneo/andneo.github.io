@@ -786,7 +786,8 @@ test('monolayer pressure changes area isotropically, preserves shape, and revers
    responses.push(snapshots);
   }
   const probe=new MonolayerWaterMD({count:32,randomSeed:23});
-  probe.cell={lx:5.2,ly:3.1,shear:.65};
+  // A physically admissible, initially sheared reference cell.
+  probe.cell={lx:2.1,ly:1.5,shear:.25};
   const fractions=probe.fractionalSnapshot();
   probe.applyCell(probe.cell,fractions);
   const original={...probe.cell},initialAspect=probe.cell.lx/probe.cell.ly;
