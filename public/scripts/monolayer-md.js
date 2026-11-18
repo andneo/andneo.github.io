@@ -34,12 +34,14 @@ export class MonolayerWaterMD{
     // The potential has competing 3-fold and 4-fold coordination basins:
     // pressure can therefore favour denser square/rhombic-like local order
     // without rewarding 5-6 fold close packing.
-    this.dt=.004;
+    // An 8 fs step advances visible physical time faster while remaining
+    // stable for the tested soft coarse-grained potential.
+    this.dt=.008;
     this.mass=18.015;
     // The noisy Langevin bath remains fluctuation-dissipation consistent.
     // Higher temporary friction dissipates the large strain energy
     // present in randomly seeded initial configurations.
-    this.gamma=8.0;
+    this.gamma=2.5;
     this.thermalizationGamma=32.0;
     this.thermalizationLength=160;
     this.thermalizationRemaining=this.thermalizationLength;
@@ -49,7 +51,9 @@ export class MonolayerWaterMD{
     // Rotational Langevin friction (ps^-1 in the effective units).
     // Reduces unbound rotational diffusion without artificially cooling
     // the rotational kinetic degrees of freedom.
-    this.rotGamma=8;
+    // Rotational decorrelation is otherwise visually much faster than
+    // oxygen-centre diffusion; this drag keeps equipartition intact.
+    this.rotGamma=32;
     this.ohLength=.0957;
     this.hbDepth=13;
     // s=2.4 suppresses the restoring torque at a formed donor contact
@@ -1126,6 +1130,8 @@ class MonolayerExplorer{
     this.thermalStateOutput=this.host?.querySelector('[data-monolayer-thermal-state]');
     this.thermoPanel=this.host?.querySelector('[data-monolayer-controls]');
     this.stageControls=this.host?.querySelector('.water-story__controls');
+    this.navRail=this.host?.querySelector('.water-story__rail');
+    this.pauseButton=this.host?.querySelector('[data-water-pause]');
     this.cachedSimulationFrame=null;
     this.status=this.host?.querySelector('[data-monolayer-status]');
     this.md=null;
@@ -1138,18 +1144,20 @@ class MonolayerExplorer{
     if(this.stage)this.ro.observe(this.stage);
     if(this.thermoPanel)this.ro.observe(this.thermoPanel);
     if(this.stageControls)this.ro.observe(this.stageControls);
+    if(this.navRail)this.ro.observe(this.navRail);
+    if(this.pauseButton)this.ro.observe(this.pauseButton);
     this.io=new IntersectionObserver(entries=>{this.visible=entries[0]?.isIntersecting??true;},{threshold:.01});
     this.io.observe(this.canvas);
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v9';
+    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v10';
     this.canvas.dataset.moleculeCount='400';
     this.canvas.dataset.initialAspectMode='viewport-fit-at-initialization';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-fixed-shape-cell';
     this.canvas.dataset.cellShapeMode='fixed-shape-isotropic';
-    this.canvas.dataset.renderScale='container-fit-uniform';
+    this.canvas.dataset.renderScale='equal-outer-margins-fixed-physical-zoom';
     this.canvas.dataset.ensemble='langevin-md-weak-pressure-control';
     this.canvas.dataset.barostat='isotropic-area-weak-coupling';
     this.canvas.dataset.pressureCoupling='configurational-pressure-plus-ideal-term';
@@ -1175,6 +1183,7 @@ class MonolayerExplorer{
       temperatureKelvin:Number(this.tempInput?.value)||240,
       pressureGPa:Number(this.pressureInput?.value)||1,
     });
+    this.cachedSimulationFrame=this.calculateSimulationFrame();
     this.updateControls();
     this.updateDiagnostics();
     if(this.host)this.host.dataset.monolayerReady='true';
@@ -1202,33 +1211,52 @@ class MonolayerExplorer{
   }
 
   calculateSimulationFrame(){
-    // Reserve the measured slider panel and bottom navigation, not
-    // approximate fractions of the stage, when finding free canvas space.
+    // Measure the ACTUAL occupied regions rather than approximate
+    // percentages. On Scene 02, navigation and pause controls are
+    // grouped left, leaving the right-hand border unobstructed.
     const width=this.width,height=this.height;
-    const margin=clamp(Math.min(width,height)*.027,12,22);
+    const margin=clamp(Math.min(width,height)*.026,12,22);
     const gap=Math.max(12,margin);
     const stageRect=this.stage?.getBoundingClientRect();
     const panel=this.thermoPanel?.getBoundingClientRect();
-    const controls=this.stageControls?.getBoundingClientRect();
-    const panelRight=stageRect&&panel?panel.right-stageRect.left:width*.30;
-    const panelBottom=stageRect&&panel?panel.bottom-stageRect.top:height*.40;
-    const navTop=stageRect&&controls?controls.top-stageRect.top:height*.94;
-    const bottom=Math.min(height-margin,navTop-gap);
-    const candidates=[
-      {left:Math.max(margin,panelRight+gap),right:width-margin,
-       top:margin,bottom},
-      {left:margin,right:width-margin,
-       top:Math.max(margin,panelBottom+gap),bottom},
-    ].filter(r=>r.right-r.left>=90&&r.bottom-r.top>=80);
+    const nav=this.stageControls?.getBoundingClientRect();
+    const rail=this.navRail?.getBoundingClientRect();
+    const pause=this.pauseButton?.getBoundingClientRect();
+    const relativeRight=r=>stageRect&&r?r.right-stageRect.left:0;
+    const relativeBottom=r=>stageRect&&r?r.bottom-stageRect.top:0;
+    const panelRight=panel?relativeRight(panel):width*.30;
+    const panelBottom=panel?relativeBottom(panel):height*.42;
+    const controlsRight=Math.max(relativeRight(rail),relativeRight(pause));
+    const controlsTop=stageRect&&nav?nav.top-stageRect.top:height*.93;
+    const side={
+      kind:'side',
+      left:Math.max(panelRight,controlsRight)+gap,
+      right:width-margin,top:margin,bottom:height-margin,
+    };
+    const below={
+      kind:'below',
+      left:margin,right:width-margin,
+      top:panelBottom+gap,
+      bottom:Math.min(controlsTop-gap,height-margin),
+    };
+    const candidates=[side,below].filter(r=>
+      r.right-r.left>=90&&r.bottom-r.top>=80);
     if(!candidates.length){
-      const top=Math.min(height-margin,panelBottom+gap);
-      return{left:margin,right:width-margin,top,bottom:Math.max(top,bottom)};
+      return{kind:'fallback',left:margin,right:width-margin,
+        top:panelBottom+gap,
+        bottom:Math.max(panelBottom+gap,height-margin)};
     }
+    // Fit must account for equal top/bottom/right gaps of the CURRENT
+    // cell: if g=(height - Ly*s)/2, the rightmost x is right-g. Merely
+    // fitting to width/height then shifting right would clip the box.
     const maxArea=this.md?.maxArea??400/8.5;
-    const aspect=this.md?.initialAspect??1;
-    const maxLx=Math.sqrt(maxArea*aspect),maxLy=Math.sqrt(maxArea/aspect);
-    const fit=r=>Math.min((r.right-r.left)/maxLx,(r.bottom-r.top)/maxLy);
-    return candidates.reduce((best,r)=>fit(r)>fit(best)?r:best);
+    const availableScale=r=>{
+      const W=r.right-r.left,H=r.bottom-r.top;
+      const aspect=this.md?.initialAspect??clamp(W/H,.65,1.6);
+      const lx=Math.sqrt(maxArea*aspect),ly=Math.sqrt(maxArea/aspect);
+      return Math.max(0,Math.min(H/ly,(W-H/2)/(lx-ly/2)));
+    };
+    return candidates.reduce((best,r)=>availableScale(r)>availableScale(best)?r:best);
   }
 
   simulationFrame(){
@@ -1236,18 +1264,26 @@ class MonolayerExplorer{
   }
 
   view(){
-    // A resize changes only pixels per nm and camera position; neither
-    // physical area nor molecular geometry or target pressure is changed.
-    const region=this.simulationFrame();
+    // A browser resize may change pixels/nm, never the physical area.
+    // The zoom is set for the LARGEST possible cell and held constant
+    // during pressure changes. Camera translation alone preserves
+    // equal gaps at the top, bottom and right of its allocated region.
+    const r=this.simulationFrame();
     const maxArea=this.md?.maxArea??400/8.5;
     const aspect=this.md?.initialAspect??1;
     const maxLx=Math.sqrt(maxArea*aspect);
     const maxLy=Math.sqrt(maxArea/aspect);
+    const W=r.right-r.left,H=r.bottom-r.top;
     const scale=Math.max(0,Math.min(
-      (region.right-region.left)/maxLx,
-      (region.bottom-region.top)/maxLy));
-    return{cx:(region.left+region.right)/2,
-      cy:(region.top+region.bottom)/2,scale};
+      H/maxLy,(W-H/2)/(maxLx-maxLy/2)));
+    const cell=this.md?.cell??{lx:Math.sqrt(400/10.28*aspect),
+      ly:Math.sqrt(400/10.28/aspect)};
+    const freeMargin=(H-cell.ly*scale)/2;
+    return{
+      cx:r.right-freeMargin-.5*cell.lx*scale,
+      cy:(r.top+r.bottom)/2,
+      scale,
+    };
   }
 
   toCanvas(x,y,view){return{x:view.cx+x*view.scale,y:view.cy-y*view.scale};}
@@ -1384,7 +1420,11 @@ class MonolayerExplorer{
     this.canvas.dataset.initialAspect=this.md.initialAspect.toFixed(4);
     this.canvas.dataset.cellLx=d.cellLx.toFixed(4);
     this.canvas.dataset.cellLy=d.cellLy.toFixed(4);
-    this.canvas.dataset.displayPixelsPerNm=this.view().scale.toFixed(3);
+    const view=this.view(),region=this.simulationFrame();
+    this.canvas.dataset.displayPixelsPerNm=view.scale.toFixed(3);
+    this.canvas.dataset.cameraRegion=region.kind;
+    this.canvas.dataset.equalMarginPx=((region.bottom-region.top-
+      d.cellLy*view.scale)/2).toFixed(2);
     this.canvas.dataset.arealDensity=d.arealDensity.toFixed(4);
     this.canvas.dataset.cellAspect=d.cellAspect.toFixed(4);
     this.canvas.dataset.cellShear=d.cellShear.toFixed(4);
