@@ -569,7 +569,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v9');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v10');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','400');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-fixed-shape-cell');
@@ -585,7 +585,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
  await expect(monolayerCanvas).toHaveAttribute('data-cell-shape-mode','fixed-shape-isotropic');
- await expect(monolayerCanvas).toHaveAttribute('data-render-scale','container-fit-uniform');
+ await expect(monolayerCanvas).toHaveAttribute('data-render-scale','equal-outer-margins-fixed-physical-zoom');
  await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
  await expect(story.locator('[data-monolayer-kinetic-translation]')).toContainText('K');
  await expect(story.locator('[data-monolayer-kinetic-rotation]')).toContainText('K');
@@ -773,7 +773,7 @@ test('monolayer Hamiltonian forces and sheared periodic geometry are numerically
  expect(result.maxRelativeError).toBeLessThan(1e-4);
  expect(result.maxImageError).toBeLessThan(1e-9);
 });
-test('resizing Scene 02 fits the physical box beside the measured controls without changing MD state',async({page})=>{
+test('Scene 02 retains equal top/bottom/right margins without overlapping controls on resize',async({page})=>{
  test.setTimeout(120000);
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/research/topology-networked-matter/');
@@ -782,47 +782,101 @@ test('resizing Scene 02 fits the physical box beside the measured controls witho
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await story.locator('[data-water-pause]').click();
  const samples=[];
- for(const [width,height] of [[1440,900],[980,800],[740,820],[390,820]]){
+ for(const [width,height] of [[1440,900],[980,800],[820,760],[740,820],[390,820]]){
   await page.setViewportSize({width,height});
-  await page.waitForTimeout(140);
+  await page.waitForTimeout(180);
   const sample=await page.evaluate(()=>{
    const canvas=document.querySelector('[data-monolayer-canvas]') as any;
    const explorer=canvas?.__monolayerExplorer;
    if(!explorer?.md)throw new Error('Scene 02 simulation not ready');
-   const md=explorer.md,view=explorer.view(),frame=explorer.simulationFrame();
-   const stage=explorer.stage.getBoundingClientRect();
-   const panel=explorer.thermoPanel.getBoundingClientRect();
-   const nav=explorer.stageControls.getBoundingClientRect();
-   const Lx=Math.sqrt(md.maxArea*md.initialAspect)*view.scale;
-   const Ly=Math.sqrt(md.maxArea/md.initialAspect)*view.scale;
-   const box={left:view.cx-Lx/2,right:view.cx+Lx/2,
-    top:view.cy-Ly/2,bottom:view.cy+Ly/2};
-   const control={left:panel.left-stage.left,right:panel.right-stage.left,
-    top:panel.top-stage.top,bottom:panel.bottom-stage.top};
-   const navTop=nav.top-stage.top;
-   const overlap=box.left<control.right&&box.right>control.left&&
-     box.top<control.bottom&&box.bottom>control.top;
+   const md=explorer.md,v=explorer.view(),f=explorer.simulationFrame();
+   const rect=explorer.stage.getBoundingClientRect();
+   const local=(r:DOMRect)=>({
+    left:r.left-rect.left,right:r.right-rect.left,
+    top:r.top-rect.top,bottom:r.bottom-rect.top,
+   });
+   const p=local(explorer.thermoPanel.getBoundingClientRect());
+   const rail=local(explorer.navRail.getBoundingClientRect());
+   const pause=local(explorer.pauseButton.getBoundingClientRect());
+   const width=md.cell.lx*v.scale,height=md.cell.ly*v.scale;
+   const box={left:v.cx-width/2,right:v.cx+width/2,
+    top:v.cy-height/2,bottom:v.cy+height/2};
+   // The camera repositions as the physical box expands. Check the
+   // maximum box at its own equal-margin centre, not today's centre.
+   const maxW=Math.sqrt(md.maxArea*md.initialAspect)*v.scale;
+   const maxH=Math.sqrt(md.maxArea/md.initialAspect)*v.scale;
+   const maxGap=(f.bottom-f.top-maxH)/2;
+   const maxCx=f.right-maxGap-maxW/2;
+   const maximum={left:maxCx-maxW/2,right:maxCx+maxW/2,
+    top:v.cy-maxH/2,bottom:v.cy+maxH/2};
+   const overlap=(a:typeof box,b:typeof box)=>a.left<b.right&&a.right>b.left&&
+     a.top<b.bottom&&a.bottom>b.top;
+   const top=box.top-f.top,bottom=f.bottom-box.bottom,right=f.right-box.right;
+   const outerTop=box.top,outerBottom=explorer.height-box.bottom;
+   const outerRight=explorer.width-box.right;
    return{
     area:md.area(),density:md.count/md.area(),aspect:md.cell.lx/md.cell.ly,
-    scale:view.scale,stageHeight:explorer.height,overlap,
-    boxInside:box.left>=frame.left-.5&&box.right<=frame.right+.5&&
-     box.top>=frame.top-.5&&box.bottom<=frame.bottom+.5,
-    aboveNavigation:box.bottom<navTop-.5,
+    scale:v.scale,region:f.kind,stageHeight:explorer.height,
+    marginError:Math.max(Math.abs(top-bottom),Math.abs(top-right)),
+    outerMarginError:Math.max(Math.abs(outerTop-outerBottom),
+      Math.abs(outerTop-outerRight)),
+    overlaps:[p,rail,pause].some(r=>overlap(box,r)||overlap(maximum,r)),
+    fits:[box,maximum].every(r=>r.left>=f.left-1&&r.right<=f.right+1&&
+      r.top>=f.top-1&&r.bottom<=f.bottom+1),
    };
   });
   samples.push(sample);
  }
  for(const sample of samples){
-  expect(sample.overlap).toBe(false);
-  expect(sample.boxInside).toBe(true);
-  expect(sample.aboveNavigation).toBe(true);
+  expect(sample.overlaps).toBe(false);
+  expect(sample.fits).toBe(true);
+  expect(sample.marginError).toBeLessThan(2);
+  if(sample.region==='side')expect(sample.outerMarginError).toBeLessThan(2);
   expect(sample.scale).toBeGreaterThan(0);
   expect(sample.area).toBeCloseTo(samples[0].area,8);
   expect(sample.density).toBeCloseTo(samples[0].density,8);
   expect(sample.aspect).toBeCloseTo(samples[0].aspect,8);
  }
- expect(samples[3].stageHeight).toBeGreaterThanOrEqual(700);
- expect(samples[3].scale).toBeLessThan(samples[0].scale);
+ expect(samples[4].stageHeight).toBeGreaterThanOrEqual(700);
+ expect(samples[4].scale).toBeLessThan(samples[0].scale);
+});
+
+test('higher-temperature model has greater oxygen displacement without loss of kinetic equipartition',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: runtime public module, outside the TypeScript module graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function sample(T:number){
+   const m=new MonolayerWaterMD({
+    count:80,temperatureKelvin:T,pressureGPa:1,randomSeed:4242});
+   for(let i=0;i<540;i++)m.integrateStep(false);
+   const start=m.molecules.map((p:any)=>({dx:p.diffX,dy:p.diffY}));
+   let kinetic=0,rotational=0,n=0;
+   for(let i=0;i<450;i++){
+    m.integrateStep(false);
+    if(i%15===0){
+     const kt=m.kineticTemperatures();
+     kinetic+=kt.translationKelvin;rotational+=kt.rotationKelvin;n++;
+    }
+   }
+   let msd=0;
+   for(let i=0;i<m.count;i++){
+    const p=m.molecules[i],b=start[i];
+    msd+=(p.diffX-b.dx)**2+(p.diffY-b.dy)**2;
+   }
+   return{msd:msd/m.count,
+     translationalT:kinetic/n,rotationalT:rotational/n};
+  }
+  return{cold:sample(120),hot:sample(500)};
+ });
+ expect(result.hot.msd).toBeGreaterThan(result.cold.msd*3);
+ for(const [T,sample] of [[120,result.cold],[500,result.hot]] as const){
+  expect(sample.translationalT).toBeGreaterThan(T*.70);
+  expect(sample.translationalT).toBeLessThan(T*1.30);
+  expect(sample.rotationalT).toBeGreaterThan(T*.70);
+  expect(sample.rotationalT).toBeLessThan(T*1.30);
+ }
 });
 
 test('staged Langevin thermostat approaches equipartition at 120 and 500 K',async({page})=>{
