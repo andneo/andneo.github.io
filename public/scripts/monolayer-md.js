@@ -99,10 +99,18 @@ export class MonolayerWaterMD{
     this.neighborDirty=true;
 
     const initialArea=this.count/10.2800643033;
-    const side=Math.sqrt(initialArea);
-    this.cell={lx:side,ly:side,shear:0};
+    // A rectangular initial cell can fill a wide visualization without
+    // distorting the rendered molecules. Its shape remains fixed under P.
+    this.initialAspect=clamp(Number(options.initialAspect??1),.65,1.6);
+    this.cell={
+      lx:Math.sqrt(initialArea*this.initialAspect),
+      ly:Math.sqrt(initialArea/this.initialAspect),
+      shear:0,
+    };
     this.minArea=this.count/20;
-    this.maxArea=this.count/6.5;
+    // Allow modest low-pressure dilation while keeping the largest
+    // displayed physical box inside the stage with a visible margin.
+    this.maxArea=this.count/(options.minArealDensity??6.5);
     // The live demonstrator starts square. Published/reference crystals
     // may use other initial cell shapes, which scale isotropically too.
     this.cellShapeMode='fixed-shape-isotropic';
@@ -1091,7 +1099,8 @@ class MonolayerExplorer{
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
     this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v8';
-    this.canvas.dataset.moleculeCount='250';
+    this.canvas.dataset.moleculeCount='400';
+    this.canvas.dataset.initialAspectMode='viewport-fit-at-initialization';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-fixed-shape-cell';
     this.canvas.dataset.cellShapeMode='fixed-shape-isotropic';
@@ -1106,14 +1115,18 @@ class MonolayerExplorer{
     this.canvas.dataset.translation='planar-xy';
     this.canvas.dataset.orientation='quaternion-3d';
     this.canvas.dataset.bondCriterion='donor-acceptor-orientation';
-    this.canvas.dataset.viewFill='full-height';
+    this.canvas.dataset.viewFill='stage-margin';
     requestAnimationFrame(this.frame);
   }
 
   ensureSimulation(){
     if(this.md)return;
+    const frame=this.simulationFrame();
+    const aspect=clamp((frame.right-frame.left)/(frame.bottom-frame.top),.65,1.6);
     this.md=new MonolayerWaterMD({
-      count:250,
+      count:400,
+      initialAspect:aspect,
+      minArealDensity:8.5,
       temperatureKelvin:Number(this.tempInput?.value)||240,
       pressureGPa:Number(this.pressureInput?.value)||1,
     });
@@ -1142,17 +1155,34 @@ class MonolayerExplorer{
     if(this.md)this.draw();else this.paintIdle();
   }
 
-  view(){
+  simulationFrame(){
+    // On desktop the controls use the upper-left part of the stage;
+    // reserve that region. On mobile place the box beneath the controls.
+    // Coordinates are stage-local CSS pixels, with explicit outer margins.
     const mobile=this.width<760;
-    // Constant pixels per nanometre: autoscaling by the current box
-    // would hide pressure-driven densification as the box contracted.
-    // Reserve enough space for the *largest* allowed cell area.
-    const referenceSpan=Math.sqrt(this.md?.maxArea??(250/6.5));
-    const maxWidth=this.width*(mobile?.92:.62);
-    const maxHeight=this.height*(mobile?.62:.90);
-    const scale=Math.min(maxWidth/referenceSpan,maxHeight/referenceSpan);
-    const cx=mobile?this.width*.5:this.width*.70;
-    const cy=mobile?this.height*.62:this.height*.50;
+    return mobile?{
+      left:this.width*.04,right:this.width*.96,
+      top:this.height*.43,bottom:this.height*.95,
+    }:{
+      left:this.width*.32,right:this.width*.975,
+      top:this.height*.045,bottom:this.height*.955,
+    };
+  }
+
+  view(){
+    // A fixed physical scale, chosen from the LARGEST allowed cell size,
+    // makes pressure-induced compression visually apparent. We use the
+    // initial aspect ratio, never stretch x and y independently.
+    const region=this.simulationFrame();
+    const maxArea=this.md?.maxArea??400/8.5;
+    const aspect=this.md?.initialAspect??1.2;
+    const maxLx=Math.sqrt(maxArea*aspect);
+    const maxLy=Math.sqrt(maxArea/aspect);
+    const availableWidth=region.right-region.left;
+    const availableHeight=region.bottom-region.top;
+    const scale=Math.min(availableWidth/maxLx,availableHeight/maxLy);
+    const cx=region.right-.5*maxLx*scale;
+    const cy=(region.top+region.bottom)/2;
     return{cx,cy,scale};
   }
 
@@ -1287,6 +1317,10 @@ class MonolayerExplorer{
     this.canvas.dataset.neighborRebuilds=String(d.neighborRebuilds);
     this.canvas.dataset.averageNeighbors=d.averageNeighbors.toFixed(2);
     this.canvas.dataset.boxArea=d.area.toFixed(4);
+    this.canvas.dataset.initialAspect=this.md.initialAspect.toFixed(4);
+    this.canvas.dataset.cellLx=d.cellLx.toFixed(4);
+    this.canvas.dataset.cellLy=d.cellLy.toFixed(4);
+    this.canvas.dataset.displayPixelsPerNm=this.view().scale.toFixed(3);
     this.canvas.dataset.arealDensity=d.arealDensity.toFixed(4);
     this.canvas.dataset.cellAspect=d.cellAspect.toFixed(4);
     this.canvas.dataset.cellShear=d.cellShear.toFixed(4);
