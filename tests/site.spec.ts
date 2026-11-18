@@ -569,7 +569,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v8');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v9');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','400');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-fixed-shape-cell');
@@ -577,7 +577,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-barostat','isotropic-area-weak-coupling');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','configurational-pressure-plus-ideal-term');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
- await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
+ await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-staged-friction-kbt');
  await expect(monolayerCanvas).toHaveAttribute('data-potential','directional-hbond-plus-cooperative-oxygen-network');
  await expect(monolayerCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rigid-rotation');
  await expect(monolayerCanvas).toHaveAttribute('data-view-fill','stage-margin');
@@ -585,8 +585,12 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
  await expect(monolayerCanvas).toHaveAttribute('data-cell-shape-mode','fixed-shape-isotropic');
- await expect(monolayerCanvas).toHaveAttribute('data-render-scale','fixed-physical-scale');
+ await expect(monolayerCanvas).toHaveAttribute('data-render-scale','container-fit-uniform');
  await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
+ await expect(story.locator('[data-monolayer-kinetic-translation]')).toContainText('K');
+ await expect(story.locator('[data-monolayer-kinetic-rotation]')).toContainText('K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kinetic-translation-k')),{timeout:15000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kinetic-rotation-k')),{timeout:15000}).toBeGreaterThan(0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-substeps')),{timeout:15000})
   .toBeGreaterThanOrEqual(1);
 
@@ -769,48 +773,93 @@ test('monolayer Hamiltonian forces and sheared periodic geometry are numerically
  expect(result.maxRelativeError).toBeLessThan(1e-4);
  expect(result.maxImageError).toBeLessThan(1e-9);
 });
-test('monolayer camera fills stage margins without scaling away pressure compression',async({page})=>{
- await page.setViewportSize({width:1440,height:950});
+test('resizing Scene 02 fits the physical box beside the measured controls without changing MD state',async({page})=>{
+ test.setTimeout(120000);
+ await page.setViewportSize({width:1440,height:900});
  await page.goto('/research/topology-networked-matter/');
- const geometry=await page.evaluate(async()=>{
-  // @ts-ignore: browser-only module
-  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
-  const stageSizes=[[1200,700],[1000,700],[390,550],[375,520]];
-  const output=[];
-  for(const [width,height] of stageSizes){
-   const mobile=width<760;
-   const region=mobile?{
-    left:width*.04,right:width*.96,
-    top:height*.43,bottom:height*.95,
-   }:{left:width*.32,right:width*.975,
-    top:height*.045,bottom:height*.955};
-   const aspect=Math.max(.65,Math.min(1.6,
-    (region.right-region.left)/(region.bottom-region.top)));
-   const md=new MonolayerWaterMD({
-    count:400,initialAspect:aspect,minArealDensity:8.5,randomSeed:12});
-   const maxLx=Math.sqrt(md.maxArea*aspect),maxLy=Math.sqrt(md.maxArea/aspect);
-   const scale=Math.min((region.right-region.left)/maxLx,(region.bottom-region.top)/maxLy);
-   const cx=region.right-.5*maxLx*scale,cy=(region.top+region.bottom)/2;
-   const maximum={left:cx-maxLx*scale/2,right:cx+maxLx*scale/2,
-    top:cy-maxLy*scale/2,bottom:cy+maxLy*scale/2};
-   const initialLengthX=md.cell.lx*scale,initialLengthY=md.cell.ly*scale;
-   const fill=Math.max(initialLengthX/(region.right-region.left),
-    initialLengthY/(region.bottom-region.top));
-   output.push({within:maximum.left>=region.left-1e-8&&maximum.right<=region.right+1e-8&&
-     maximum.top>=region.top-1e-8&&maximum.bottom<=region.bottom+1e-8,
-    count:md.count,fill,aspect:md.cell.lx/md.cell.ly,
-    density:md.count/md.area()});
-  }
-  return output;
- });
- for(const sample of geometry){
-  expect(sample.within).toBe(true);
-  expect(sample.count).toBe(400);
-  expect(sample.fill).toBeGreaterThan(.8);
-  expect(sample.aspect).toBeGreaterThanOrEqual(.65);
-  expect(sample.aspect).toBeLessThanOrEqual(1.6);
-  expect(sample.density).toBeCloseTo(10.2800643033,4);
+ const story=page.locator('water-network-story');
+ await story.locator('[data-water-jump="1"]').evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-monolayer-ready','true');
+ await story.locator('[data-water-pause]').click();
+ const samples=[];
+ for(const [width,height] of [[1440,900],[980,800],[740,820],[390,820]]){
+  await page.setViewportSize({width,height});
+  await page.waitForTimeout(140);
+  const sample=await page.evaluate(()=>{
+   const canvas=document.querySelector('[data-monolayer-canvas]') as any;
+   const explorer=canvas?.__monolayerExplorer;
+   if(!explorer?.md)throw new Error('Scene 02 simulation not ready');
+   const md=explorer.md,view=explorer.view(),frame=explorer.simulationFrame();
+   const stage=explorer.stage.getBoundingClientRect();
+   const panel=explorer.thermoPanel.getBoundingClientRect();
+   const nav=explorer.stageControls.getBoundingClientRect();
+   const Lx=Math.sqrt(md.maxArea*md.initialAspect)*view.scale;
+   const Ly=Math.sqrt(md.maxArea/md.initialAspect)*view.scale;
+   const box={left:view.cx-Lx/2,right:view.cx+Lx/2,
+    top:view.cy-Ly/2,bottom:view.cy+Ly/2};
+   const control={left:panel.left-stage.left,right:panel.right-stage.left,
+    top:panel.top-stage.top,bottom:panel.bottom-stage.top};
+   const navTop=nav.top-stage.top;
+   const overlap=box.left<control.right&&box.right>control.left&&
+     box.top<control.bottom&&box.bottom>control.top;
+   return{
+    area:md.area(),density:md.count/md.area(),aspect:md.cell.lx/md.cell.ly,
+    scale:view.scale,stageHeight:explorer.height,overlap,
+    boxInside:box.left>=frame.left-.5&&box.right<=frame.right+.5&&
+     box.top>=frame.top-.5&&box.bottom<=frame.bottom+.5,
+    aboveNavigation:box.bottom<navTop-.5,
+   };
+  });
+  samples.push(sample);
  }
+ for(const sample of samples){
+  expect(sample.overlap).toBe(false);
+  expect(sample.boxInside).toBe(true);
+  expect(sample.aboveNavigation).toBe(true);
+  expect(sample.scale).toBeGreaterThan(0);
+  expect(sample.area).toBeCloseTo(samples[0].area,8);
+  expect(sample.density).toBeCloseTo(samples[0].density,8);
+  expect(sample.aspect).toBeCloseTo(samples[0].aspect,8);
+ }
+ expect(samples[3].stageHeight).toBeGreaterThanOrEqual(700);
+ expect(samples[3].scale).toBeLessThan(samples[0].scale);
+});
+
+test('staged Langevin thermostat approaches equipartition at 120 and 500 K',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: runtime public module is served directly in the browser
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function sample(temperature:number){
+   const md=new MonolayerWaterMD({count:80,randomSeed:1717,
+    temperatureKelvin:temperature,pressureGPa:1});
+   let tSum=0,rSum=0,n=0;
+   for(let step=0;step<480;step++){
+    md.integrateStep(false);
+    if(step>240&&step%8===0){
+     const k=md.kineticTemperatures();
+     tSum+=k.translationKelvin;rSum+=k.rotationKelvin;n++;
+    }
+   }
+   return{translation:tSum/n,rotation:rSum/n,remaining:md.thermalizationRemaining};
+  }
+  const cold=sample(120),hot=sample(500);
+  const changed=new MonolayerWaterMD({count:24,temperatureKelvin:120,randomSeed:13});
+  const old=changed.molecules.map((m:any)=>[m.vx,m.vy,m.wx,m.wy,m.wz]);
+  changed.setTemperatureKelvin(500);
+  const velocitiesUnchanged=changed.molecules.every((m:any,i:number)=>
+   [m.vx,m.vy,m.wx,m.wy,m.wz].every((v:number,k:number)=>v===old[i][k]));
+  return{cold,hot,velocitiesUnchanged};
+ });
+ for(const [target,observed] of [[120,result.cold],[500,result.hot]] as const){
+  expect(observed.translation).toBeGreaterThan(target*.72);
+  expect(observed.translation).toBeLessThan(target*1.28);
+  expect(observed.rotation).toBeGreaterThan(target*.72);
+  expect(observed.rotation).toBeLessThan(target*1.28);
+  expect(observed.remaining).toBe(0);
+ }
+ expect(result.velocitiesUnchanged).toBe(true);
 });
 
 test('monolayer pressure changes area isotropically, preserves shape, and reverses on decompression',async({page})=>{
