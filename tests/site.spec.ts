@@ -561,7 +561,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await story.getByRole('button',{name:/scene 2: Confine the network/i}).evaluate((button:HTMLButtonElement)=>button.click());
  await expect(story).toHaveAttribute('data-scene','1');
  await expect(story.locator('[data-water-title]')).toHaveText('Confine the network.');
- await expect(story.locator('[data-water-copy]')).toContainText('250 water molecules');
+ await expect(story.locator('[data-water-copy]')).toContainText('400 water molecules');
  await expect(story.locator('.water-story__copy')).toBeHidden();
  await expect(monolayerCanvas).toBeVisible();
  await expect(monolayerControls).toBeVisible();
@@ -570,7 +570,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
  await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v8');
- await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
+ await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','400');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
  await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-fixed-shape-cell');
  await expect(monolayerCanvas).toHaveAttribute('data-ensemble','langevin-md-weak-pressure-control');
@@ -580,7 +580,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
  await expect(monolayerCanvas).toHaveAttribute('data-potential','directional-hbond-plus-cooperative-oxygen-network');
  await expect(monolayerCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rigid-rotation');
- await expect(monolayerCanvas).toHaveAttribute('data-view-fill','full-height');
+ await expect(monolayerCanvas).toHaveAttribute('data-view-fill','stage-margin');
  await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
@@ -595,7 +595,7 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-neighbor-pairs')||0),{timeout:10000}).toBeGreaterThan(0);
  const monolayerNeighborPairs=Number(await monolayerCanvas.getAttribute('data-neighbor-pairs')||0);
  expect(monolayerNeighborPairs).toBeLessThan(10000);
- expect(monolayerNeighborPairs).toBeLessThan(250*249/2);
+ expect(monolayerNeighborPairs).toBeLessThan(400*399/2);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:15000}).toBeGreaterThan(0);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(.4);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-out-of-plane')||0),{timeout:15000}).toBeGreaterThan(.1);
@@ -636,7 +636,7 @@ test('water network story is contained, button-driven and replaces the old topol
 
  const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
  const initialArea=Number(await monolayerCanvas.getAttribute('data-box-area'));
- expect(initialArea*initialDensity).toBeCloseTo(250,1);
+ expect(initialArea*initialDensity).toBeCloseTo(400,1);
  await expect(story.locator('[data-monolayer-density]')).toContainText('nm⁻²');
  await expect(story.locator('[data-monolayer-area]')).toContainText('nm²');
  await expect(story.locator('[data-monolayer-density-change]')).toContainText('%');
@@ -664,7 +664,10 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+.25);
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-box-area')),{timeout:25000}).toBeLessThan(initialArea);
  expect(Number(await monolayerCanvas.getAttribute('data-cell-shear'))).toBe(0);
- expect(Number(await monolayerCanvas.getAttribute('data-cell-aspect'))).toBeCloseTo(1,3);
+ const initialAspect=Number(await monolayerCanvas.getAttribute('data-initial-aspect'));
+ expect(initialAspect).toBeGreaterThan(.65);
+ expect(initialAspect).toBeLessThanOrEqual(1.6);
+ expect(Number(await monolayerCanvas.getAttribute('data-cell-aspect'))).toBeCloseTo(initialAspect,3);
  // Degree-four occupancy is a phase observable, not guaranteed during a
  // short, stochastic parameter sweep. Check the underlying uncapped structure.
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')),{timeout:25000}).toBeGreaterThan(.4);
@@ -681,7 +684,7 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(finalCellAspect).toBeGreaterThanOrEqual(1/1.62-.005);
  expect(finalCellAspect).toBeLessThanOrEqual(1.62+.005);
  // Full pressure convergence is tested with direct MD trajectories,
- // not on a fixed wall-clock window in the 250-particle browser UI.
+ // not on a fixed wall-clock window in the 400-particle browser UI.
  expect(Number.isFinite(Number(await monolayerCanvas.getAttribute('data-measured-pressure-gpa')))).toBe(true);
  await expect(story.locator('[data-monolayer-measured-pressure]')).toContainText('GPa');
  await expect(story.locator('[data-monolayer-density]')).not.toHaveText('—');
@@ -766,6 +769,50 @@ test('monolayer Hamiltonian forces and sheared periodic geometry are numerically
  expect(result.maxRelativeError).toBeLessThan(1e-4);
  expect(result.maxImageError).toBeLessThan(1e-9);
 });
+test('monolayer camera fills stage margins without scaling away pressure compression',async({page})=>{
+ await page.setViewportSize({width:1440,height:950});
+ await page.goto('/research/topology-networked-matter/');
+ const geometry=await page.evaluate(async()=>{
+  // @ts-ignore: browser-only module
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const stageSizes=[[1200,700],[1000,700],[390,550],[375,520]];
+  const output=[];
+  for(const [width,height] of stageSizes){
+   const mobile=width<760;
+   const region=mobile?{
+    left:width*.04,right:width*.96,
+    top:height*.43,bottom:height*.95,
+   }:{left:width*.32,right:width*.975,
+    top:height*.045,bottom:height*.955};
+   const aspect=Math.max(.65,Math.min(1.6,
+    (region.right-region.left)/(region.bottom-region.top)));
+   const md=new MonolayerWaterMD({
+    count:400,initialAspect:aspect,minArealDensity:8.5,randomSeed:12});
+   const maxLx=Math.sqrt(md.maxArea*aspect),maxLy=Math.sqrt(md.maxArea/aspect);
+   const scale=Math.min((region.right-region.left)/maxLx,(region.bottom-region.top)/maxLy);
+   const cx=region.right-.5*maxLx*scale,cy=(region.top+region.bottom)/2;
+   const maximum={left:cx-maxLx*scale/2,right:cx+maxLx*scale/2,
+    top:cy-maxLy*scale/2,bottom:cy+maxLy*scale/2};
+   const initialLengthX=md.cell.lx*scale,initialLengthY=md.cell.ly*scale;
+   const fill=Math.max(initialLengthX/(region.right-region.left),
+    initialLengthY/(region.bottom-region.top));
+   output.push({within:maximum.left>=region.left-1e-8&&maximum.right<=region.right+1e-8&&
+     maximum.top>=region.top-1e-8&&maximum.bottom<=region.bottom+1e-8,
+    count:md.count,fill,aspect:md.cell.lx/md.cell.ly,
+    density:md.count/md.area()});
+  }
+  return output;
+ });
+ for(const sample of geometry){
+  expect(sample.within).toBe(true);
+  expect(sample.count).toBe(400);
+  expect(sample.fill).toBeGreaterThan(.8);
+  expect(sample.aspect).toBeGreaterThanOrEqual(.65);
+  expect(sample.aspect).toBeLessThanOrEqual(1.6);
+  expect(sample.density).toBeCloseTo(10.2800643033,4);
+ }
+});
+
 test('monolayer pressure changes area isotropically, preserves shape, and reverses on decompression',async({page})=>{
  test.setTimeout(120000);
  await page.goto('/research/topology-networked-matter/');
