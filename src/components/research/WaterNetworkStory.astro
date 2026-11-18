@@ -177,6 +177,9 @@ const scenes = [
   .water-story__scale span{height:1px;background:currentColor}
   .water-story__selection{margin:.9rem 0 0;color:var(--signal);font:500 .66rem/1.3 var(--font-sans)}
   .water-story__controls{position:absolute;z-index:5;left:clamp(1rem,2vw,1.6rem);right:clamp(1rem,2vw,1.6rem);bottom:clamp(.8rem,2vw,1.3rem);display:flex;align-items:end;justify-content:space-between;gap:1rem}
+  /* Scene 02 reserves the right-hand border for its molecular cell.
+     Both the chapter rail and Pause stay on the unobstructed left. */
+  .water-story[data-scene="1"] .water-story__controls{justify-content:flex-start;gap:clamp(.4rem,1vw,.8rem)}
   .water-story__rail{display:flex;gap:.35rem;padding:.32rem;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:blur(10px)}
   .water-story__rail button{display:grid;place-items:center;width:2.15rem;height:2.15rem;padding:0;border:0;border-radius:50%;background:transparent;color:var(--text-3);font:500 .58rem/1 var(--font-sans);cursor:pointer}
   .water-story__rail button[aria-current=step]{background:var(--cool-soft);color:var(--cool)}
