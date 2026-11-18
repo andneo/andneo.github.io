@@ -50,7 +50,9 @@ The 144-oxygen reference structures have approximate areal densities of 10.28 (h
 ## Remaining limitations
 
 - The 250-molecule simulation is still computationally heavy for interactive frame rates. The renderer adaptively chooses 1–3 full-force MD substeps from observed cost; it does not alter the potential or prescribe structures. As a result physical simulation time may advance slowly on mobile hardware.
-- The weak-coupling area/shape barostat is not a rigorous Gibbs NPT sampler, and the pressure units rely on the assumed 0.5 nm confinement width.
+- The pressure controller is a weak-coupling **isotropic-area** barostat, not a rigorous Gibbs NPT sampler. It estimates the pressure from `NkBT/A - dU/dA` at fixed fractional coordinates, using finite differences of the **same Hamiltonian** that supplies forces. The pressure unit conversion assumes a 0.5 nm confinement width.
+- The cell **shape is fixed**, preserving the initial aspect ratio and shear fraction. The default 250-molecule box therefore remains square while its area changes. Prepared reference boxes retain their initial geometry under isotropic scaling. This removes unstable parallelogram drift but deliberately excludes spontaneous lattice-angle and anisotropic strain relaxation, which may affect polymorph stability and phase boundaries.
+- The canvas renders on a fixed physical scale (pixels per nanometre), rather than re-zooming with the changing box. The UI reports areal density (nm⁻²), cell area (nm²), and percentage density change relative to the initial box. All these reflect the actual evolving simulation cell, not a pressure-to-density lookup.
 - The oxygen-ring cutoff (0.35 nm) is a geometric diagnostic and can classify defects or transient contacts as rings; corroborate with persistent bonds, ring lifetimes, coordination, radial distributions and correlations.
 - The high-pressure states still overcompress relative to the published square reference and are not free of short-angle defects.
 - A clean crystalline phase in a **prepared** lattice is not evidence of spontaneous nucleation or equilibrium. To map phase boundaries, use multiple seeds, long equilibrated runs, independent crystalline and liquid starts, hysteresis/coexistence tests and, ideally, free-energy methods.
@@ -62,3 +64,11 @@ The 144-oxygen reference structures have approximate areal densities of 10.28 (h
 - `src/components/research/WaterNetworkStory.astro`: user-facing explanation and controls.
 
 No changes to Scene 01, `water-lens.js`, `water-md.js` or `main`.
+
+## Fixed-shape pressure-coupling validation (subsequent correction)
+
+An 80-molecule, 120 K pressure cycle starting at 1 GPa, moving to 6 GPa, then down to 0.03 GPa yielded areal densities of 10.845 → 13.514 → 10.498 nm⁻² (seed 27182) and 10.838 → 13.825 → 10.627 nm⁻² (seed 31415). Measurements were taken after 300, 550 and 900 MD steps at the respective settings; the final low-pressure states had not fully equilibrated. In both runs the default cell maintained aspect ratio 1 and shear 0. Density rose through molecular dynamics and pressure relaxation, not by directly mapping the pressure slider to density.
+
+With independently generated 144-oxygen periodic lattices, 400-step trials retained 72/72 honeycomb six-rings, 95/96 Cairo five-rings and 144/144 square four-rings under isotropic pressure coupling. Unlike the earlier fixed-cell benchmarks, these runs allowed **area**, but not **shape**, to respond. These are local-stability diagnostics, not equilibrium phase calculations.
+
+The fixed-shape controller requires validation against a rigorous constant-pressure ensemble if quantitative fluctuations, phase boundaries, anisotropic solid stresses, or shear deformation become important. The full Astro build and Playwright suite have not been executed as part of this correction.
