@@ -115,8 +115,18 @@ const scenes = [
           <span>estimated pressure <strong data-monolayer-measured-pressure>1.0 GPa</strong></span>
           <span>areal density <strong data-monolayer-density>—</strong></span>
         </div>
+        <div class="water-story__density-feedback" aria-live="off">
+          <div class="water-story__density-feedback-row">
+            <span>cell area <strong data-monolayer-area>—</strong></span>
+            <span>density vs initial <strong data-monolayer-density-change>+0.0%</strong></span>
+          </div>
+          <div class="water-story__density-track" role="progressbar" aria-label="Areal density" aria-valuemin="6.5" aria-valuemax="20" aria-valuenow="10.28">
+            <span data-monolayer-density-meter></span>
+          </div>
+          <small>Higher pressure compresses the cell if internal pressure is lower than the target.</small>
+        </div>
         <p data-monolayer-status>250 molecules · periodic monolayer</p>
-        <small>Quasi-2D reduced MD · 3D rigid rotations · 5 Å pressure convention</small>
+        <small>Isotropic area coupling · fixed physical zoom · 3D rigid rotations</small>
       </div>
 
     </div>
@@ -178,6 +188,13 @@ const scenes = [
   .water-story__thermo-metrics span{display:grid;gap:.18rem;color:var(--text-3);font:500 .52rem/1.2 var(--font-sans);letter-spacing:.04em;text-transform:uppercase}
   .water-story__thermo-metrics strong{color:var(--text-1);font:600 .67rem/1.2 var(--font-mono);letter-spacing:0;text-transform:none}
   .water-story__thermo p{margin:.58rem 0 .2rem;color:var(--text-2);font:500 .58rem/1.35 var(--font-sans)}
+  .water-story__density-feedback{margin-top:.65rem;padding-top:.55rem;border-top:1px solid var(--border)}
+  .water-story__density-feedback-row{display:flex;align-items:center;justify-content:space-between;gap:.45rem;flex-wrap:wrap}
+  .water-story__density-feedback-row span{display:grid;gap:.16rem;color:var(--text-3);font:500 .51rem/1.2 var(--font-sans);text-transform:uppercase;letter-spacing:.035em}
+  .water-story__density-feedback-row strong{color:var(--text-1);font:600 .65rem/1.2 var(--font-mono);text-transform:none;letter-spacing:0}
+  .water-story__density-track{height:.29rem;margin:.52rem 0 .35rem;overflow:hidden;border-radius:999px;background:var(--border)}
+  .water-story__density-track span{display:block;height:100%;width:28%;background:var(--cool);border-radius:inherit;transition:width 240ms ease}
+  .water-story__density-feedback small{font-size:.53rem;line-height:1.35}
   .water-story__thermo small{display:block;color:var(--text-3);font:400 .54rem/1.4 var(--font-sans)}
 
   :global(:root[data-theme=dark]) .water-story__stage{background:#111a20}
@@ -193,7 +210,8 @@ const scenes = [
     .water-story__representation{right:.8rem;top:.8rem;width:min(14rem,62vw)}
     .water-story__thermo{left:.8rem;right:.8rem;top:.75rem;width:auto}
     .water-story__thermo-metrics{grid-template-columns:1fr 1fr}
-    .water-story__thermo p,.water-story__thermo small{display:none}
+    .water-story__thermo p,.water-story__thermo>small{display:none}
+    .water-story__density-feedback small{display:block}
     .water-story__lens{left:auto;right:-.2rem;top:31%;width:min(124.8vw,592px)}
     .water-story__pause{font-size:.58rem}
   }
