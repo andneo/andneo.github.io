@@ -1,0 +1,5 @@
+---
+interface Props { id: string; href?: string; }
+const { id, href } = Astro.props;
+---
+<p id={`ref-${id}`} class="reference"><slot />{href && <> <a href={href}>Source</a></>}</p>

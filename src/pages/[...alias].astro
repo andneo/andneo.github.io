@@ -1,0 +1,7 @@
+---
+import Redirect from '../components/navigation/Redirect.astro';
+import { publicEntries } from '../lib/content';
+export async function getStaticPaths(){return (await publicEntries()).flatMap(({entry,href})=>entry.data.aliases.map(alias=>({params:{alias:alias.slice(1,-1)},props:{to:href}})));}
+const {to}=Astro.props;
+---
+<Redirect to={to}/>

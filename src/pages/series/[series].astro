@@ -1,0 +1,7 @@
+---
+import Base from '../../layouts/Base.astro';
+import {published,url} from '../../lib/content';
+export async function getStaticPaths(){const posts=await published('post');return [...new Set(posts.flatMap(p=>p.data.series?[p.data.series]:[]))].map(series=>({params:{series},props:{series,posts:posts.filter(p=>p.data.series===series).sort((a,b)=>a.data.seriesOrder!-b.data.seriesOrder!)}}));}
+const {series,posts}=Astro.props;
+---
+<Base title={series.replaceAll('-',' ')}><div class="container page"><p class="eyebrow">Article series</p><h1>{series.replaceAll('-',' ')}</h1><ol>{posts.map(p=><li><a href={url('post',p.id)}>{p.data.title}</a></li>)}</ol></div></Base>

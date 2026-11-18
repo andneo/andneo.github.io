@@ -1,0 +1,479 @@
+---
+import reference from '../../data/topology-one-swap-template.json';
+const referenceJSON=JSON.stringify(reference);
+---
+<section class="topology-lab" aria-labelledby="topology-lab-title">
+  <div class="topology-lab__heading">
+    <div>
+      <p class="eyebrow">Interactive model</p>
+      <h2 id="topology-lab-title">Same graph. Different embedding.</h2>
+      <p>The coarse graph stays unchanged. Choose a four-member ring as the path-swap site, then inspect the relaxed three-ring motif measured from the one-swap reference simulation.</p>
+    </div>
+    <dl class="topology-lab__stats" aria-label="Network statistics">
+      <div><dt>nodes</dt><dd>216</dd></div>
+      <div><dt>edges</dt><dd>432</dd></div>
+      <div><dt>visible rings</dt><dd>96</dd></div>
+      <div><dt>linked pairs</dt><dd data-stat-entanglements>0</dd></div>
+    </dl>
+  </div>
+
+  <topology-network-lab
+    class="topology-lab__instrument"
+    data-mode="network"
+    data-periodic="xy"
+    data-engine="reference-relaxed-one-swap"
+    data-renderer="fixed-camera-layered-svg"
+    data-draggable="false"
+    data-nodes="216"
+    data-edges="432"
+    data-rings="96"    data-relaxed="true"
+    data-entanglements="0"
+    data-selected-ring="7,5"
+    data-linked-rings=""
+    data-gauss-linking="0"
+    data-reference-source="finalconf_1_swaps.data"
+  >
+    <script type="application/json" data-topology-reference set:html={referenceJSON}></script>
+    <div class="topology-lab__toolbar">
+      <div class="topology-lab__modes" role="group" aria-label="Network view">
+        <button type="button" data-mode-button="network" aria-pressed="true">Network</button>
+        <button type="button" data-mode-button="rings" aria-pressed="false">Rings</button>
+        <button type="button" data-mode-button="entangle" aria-pressed="false">Entangle</button>
+        <button type="button" data-mode-button="entanglement" aria-pressed="false">Entanglement</button>
+      </div>
+      <div class="topology-lab__actions">
+        <button type="button" data-entangle-action>Entangle selected ring</button>
+        <button type="button" data-reset-action>Reset</button>
+      </div>
+    </div>
+
+    <div class="topology-lab__stage" data-stage>
+      <svg
+        class="topology-lab__svg"
+        role="img"
+        aria-label="Fixed oblique view of a periodic bead–spring network. Click a visible ring to select the square where the bead-path swap is introduced."
+        preserveAspectRatio="xMidYMid slice"
+      ></svg>
+      <div class="topology-lab__hint" aria-hidden="true">click a ring to select the swap site</div>
+    </div>
+
+    <div class="topology-lab__readout" aria-live="polite">
+      <span data-readout-title>Relaxed periodic network</span>
+      <span data-readout-copy>The visible window is an interior patch of a periodic square network. Select any ring to choose where the path swap is introduced.</span>
+    </div>
+  </topology-network-lab>
+</section>
+
+<style>
+  .topology-lab{margin:clamp(2rem,4vw,4rem) 0 clamp(3rem,6vw,5.5rem)}
+  .topology-lab__heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(2rem,5vw,5rem);align-items:end;margin-bottom:1.25rem}
+  .topology-lab__heading h2{margin:.4rem 0 .75rem;font:600 clamp(1.8rem,3vw,3rem)/1.03 var(--font-display);letter-spacing:-.045em}
+  .topology-lab__heading>div>p:last-child{max-width:88ch;margin:0;color:var(--text-2);line-height:1.7}
+  .topology-lab__stats{display:grid;grid-template-columns:repeat(2,minmax(5rem,auto));gap:.55rem 1.2rem;margin:0}
+  .topology-lab__stats div{display:grid;grid-template-columns:auto auto;gap:.65rem;align-items:baseline}
+  .topology-lab__stats dt{color:var(--text-3);font:400 .65rem/1.2 var(--font-sans);text-transform:lowercase}
+  .topology-lab__stats dd{margin:0;color:var(--cool);font:600 .85rem/1 var(--font-sans);font-variant-numeric:tabular-nums}
+
+  .topology-lab__instrument{display:block;overflow:hidden;border:1px solid var(--panel-border);border-radius:var(--r-lg);background:var(--panel-bg);box-shadow:var(--shadow-card)}
+  .topology-lab__toolbar{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.7rem .8rem;border-bottom:1px solid var(--border);background:var(--surface)}
+  .topology-lab__modes,.topology-lab__actions{display:flex;flex-wrap:wrap;gap:.4rem}
+  .topology-lab button{min-height:2rem;padding:.38rem .68rem;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--text-2);font:500 .7rem/1 var(--font-sans);cursor:pointer;transition:background var(--t),border-color var(--t),color var(--t)}
+  .topology-lab button:hover{border-color:var(--cool-border);color:var(--text)}
+  .topology-lab button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .topology-lab [data-mode-button][aria-pressed=true]{border-color:var(--cool-border);background:var(--cool-soft);color:var(--cool)}
+  .topology-lab [data-entangle-action]{border-color:var(--signal-border);color:var(--signal)}
+
+  .topology-lab__stage{
+    position:relative;
+    aspect-ratio:16/7;
+    min-height:360px;
+    overflow:hidden;
+    background:radial-gradient(ellipse at 50% 44%,var(--surface) 0%,var(--bg-off) 74%);
+  }
+  .topology-lab__svg{position:relative;z-index:1;display:block;width:100%;height:100%;overflow:hidden;transition:opacity 150ms ease,transform 220ms cubic-bezier(.22,.61,.36,1)}
+  .topology-lab__stage.is-switching .topology-lab__svg{opacity:.42;transform:scale(.998)}
+  .topology-lab__hint{position:absolute;z-index:2;right:.8rem;bottom:.65rem;padding:.32rem .5rem;border-radius:999px;background:var(--control-bg);color:var(--text-3);font:400 .61rem/1 var(--font-sans);pointer-events:none;backdrop-filter:blur(5px)}
+
+  :global(.network-shadow){fill:none;stroke:rgba(0,0,0,.20);stroke-width:8.8;stroke-linecap:round;stroke-linejoin:round;opacity:.24;transform:translate(2.4px,4px)}
+  :global(:root[data-theme=dark]) :global(.network-shadow){stroke:rgba(0,0,0,.62);opacity:.34}
+  :global(.network-rim){fill:none;stroke:color-mix(in srgb,var(--cool) 72%,var(--text));stroke-width:7.6;stroke-linecap:round;stroke-linejoin:round}
+  :global(.network-tube){fill:none;stroke:var(--cool);stroke-width:5.8;stroke-linecap:round;stroke-linejoin:round}
+  :global(.network-highlight){fill:none;stroke:rgba(255,255,255,.45);stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round;opacity:.72;pointer-events:none}
+  :global(:root[data-theme=dark]) :global(.network-highlight){stroke:rgba(255,255,255,.32)}
+  :global(.network-signal){stroke:var(--signal)}
+  :global(.network-cool){stroke:var(--cool)}
+  :global(.network-muted){opacity:.17}
+  :global(.network-highlight.network-muted){opacity:.05}
+  :global(.network-shadow.network-muted){opacity:.035}
+
+  :global(.network-node-shadow){fill:rgba(0,0,0,.22);opacity:.24;transform:translate(2px,3.5px)}
+  :global(:root[data-theme=dark]) :global(.network-node-shadow){fill:rgba(0,0,0,.70);opacity:.42}
+  :global(.network-node-body){fill:var(--cool);stroke:color-mix(in srgb,var(--surface) 68%,transparent);stroke-width:.7}
+  :global(.network-node-body.network-signal){fill:var(--signal)}
+  :global(.network-node-body.network-cool){fill:var(--cool)}
+  :global(.network-node-highlight){fill:rgba(255,255,255,.72);pointer-events:none}
+  :global(:root[data-theme=dark]) :global(.network-node-highlight){fill:rgba(255,255,255,.48)}
+  :global(.network-node-muted){opacity:.24}
+  :global(.network-bead){stroke:var(--surface);stroke-width:.45}
+  :global(.network-bead.network-signal){fill:var(--signal)}
+  :global(.network-bead.network-cool){fill:var(--cool)}
+  :global(.network-bead.network-base){fill:color-mix(in srgb,var(--cool) 72%,var(--surface))}
+
+  :global(.ring-face){fill:var(--cool-soft);stroke:var(--cool-border);stroke-width:1;opacity:.11;pointer-events:none}
+  :global(.ring-face--selected){fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.8;opacity:.80}
+  :global(.ring-face--left){fill:var(--signal-soft);stroke:var(--signal);stroke-width:1.7;opacity:.66}
+  :global(.ring-face--right){fill:var(--cool-soft);stroke:var(--cool);stroke-width:1.7;opacity:.66}
+  :global(.ring-face--swap){fill:transparent;stroke:var(--text-3);stroke-width:1.2;stroke-dasharray:4 4;opacity:.72}
+  :global(.ring-hit){fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
+  :global(.ring-hit:hover){stroke:var(--signal);stroke-width:1.35;fill:var(--signal-soft)}
+  :global(.ring-hit:focus){outline:none}
+  :global(.ring-hit:focus-visible){stroke:var(--signal);stroke-width:2;fill:var(--signal-soft)}
+
+  .topology-lab__readout{display:grid;grid-template-columns:minmax(10rem,auto) 1fr;gap:1rem;padding:.8rem 1rem;border-top:1px solid var(--border);background:var(--surface)}
+  .topology-lab__readout [data-readout-title]{color:var(--signal);font:600 .7rem/1.35 var(--font-sans)}
+  .topology-lab__readout [data-readout-copy]{color:var(--text-2);font:400 .72rem/1.45 var(--font-sans)}
+
+  @media(max-width:900px){
+    .topology-lab__heading{grid-template-columns:1fr}
+    .topology-lab__stats{grid-template-columns:repeat(4,auto);justify-content:start}
+    .topology-lab__stats div{display:block}.topology-lab__stats dt{display:block;margin-bottom:.2rem}
+    .topology-lab__toolbar{align-items:flex-start;flex-direction:column}
+  }
+  @media(max-width:620px){
+    .topology-lab__stage{aspect-ratio:4/3;min-height:380px}
+    .topology-lab__stats{grid-template-columns:repeat(2,auto)}
+    .topology-lab__readout{grid-template-columns:1fr;gap:.25rem}
+    .topology-lab__hint{display:none}
+  }
+</style>
+
+<script>
+  type Vec3={x:number;y:number;z:number};
+  type Cell={i:number;j:number};
+  type Edge={a:number;b:number};
+  type ReferenceData={source:string;swapCell:number[];linkedCells:number[][];gaussLinking:number;minClearance:number;paths:Record<string,number[][]>};
+
+  class TopologyNetworkLab extends HTMLElement{
+    private svg!:SVGSVGElement;
+    private stage!:HTMLElement;
+    private reference!:ReferenceData;
+    private nx=18;
+    private ny=12;
+    private baseZ=.10;
+    private tilt=.43;
+    private nodes:Vec3[]=[];
+    private edges:Edge[]=[];
+    private selected:Cell={i:7,j:5};
+    private active=false;
+    private mode='network';
+    private ro?:ResizeObserver;
+    private io?:IntersectionObserver;
+    private mo?:MutationObserver;
+    private visible=true;
+    private width=1200;
+    private height=520;
+    private scale=100;
+
+    connectedCallback(){
+      this.svg=this.querySelector('svg')!;
+      this.stage=this.querySelector('[data-stage]')!;
+      const source=this.querySelector<HTMLScriptElement>('[data-topology-reference]');
+      this.reference=JSON.parse(source?.textContent||'{}');
+      this.buildGraph();
+      this.bind();
+      this.syncData();
+
+      this.ro=new ResizeObserver(entries=>{
+        const box=entries[0]?.contentRect;
+        if(box){this.width=Math.max(1,box.width);this.height=Math.max(1,box.height);this.render();}
+      });
+      this.ro.observe(this.stage);
+
+      this.io=new IntersectionObserver(entries=>{
+        this.visible=entries[0]?.isIntersecting??true;
+        if(this.visible)this.render();
+      });
+      this.io.observe(this);
+
+      this.mo=new MutationObserver(()=>this.render());
+      this.mo.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+      this.render();
+      this.updateReadout();
+    }
+
+    disconnectedCallback(){this.ro?.disconnect();this.io?.disconnect();this.mo?.disconnect();}
+
+    private nodeId(i:number,j:number){return ((j%this.ny+this.ny)%this.ny)*this.nx+((i%this.nx+this.nx)%this.nx);}
+    private nodeGrid(id:number){return{i:id%this.nx,j:Math.floor(id/this.nx)};}
+    private cellKey(cell:Cell){return `${cell.i},${cell.j}`;}
+
+    private buildGraph(){
+      const cx=(this.nx-1)/2,cy=(this.ny-1)/2;
+      this.nodes=[];this.edges=[];
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++)this.nodes.push({x:i-cx,y:j-cy,z:this.baseZ});
+      for(let j=0;j<this.ny;j++)for(let i=0;i<this.nx;i++){
+        const a=this.nodeId(i,j);
+        this.edges.push({a,b:this.nodeId(i+1,j)});
+        this.edges.push({a,b:this.nodeId(i,j+1)});
+      }
+    }
+
+    private ringNodes(cell:Cell){
+      return[this.nodeId(cell.i,cell.j),this.nodeId(cell.i+1,cell.j),this.nodeId(cell.i+1,cell.j+1),this.nodeId(cell.i,cell.j+1)];
+    }
+
+    private bind(){
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>button.addEventListener('click',()=>{
+        this.mode=button.dataset.modeButton||'network';
+        this.syncModeButtons();this.updateReadout();this.render();
+      }));
+
+      this.querySelector<HTMLButtonElement>('[data-entangle-action]')?.addEventListener('click',()=>this.transition(()=>{
+        this.active=true;
+        this.mode='entanglement';
+        this.syncModeButtons();this.syncData();this.updateReadout();
+      }));
+
+      this.querySelector<HTMLButtonElement>('[data-reset-action]')?.addEventListener('click',()=>this.transition(()=>{
+        this.active=false;
+        this.mode='network';
+        this.syncModeButtons();this.syncData();
+        this.updateReadout('Relaxed periodic network','The entanglement has been removed. Select any visible ring to choose a new swap site.');
+      }));
+
+      this.svg.addEventListener('click',e=>{
+        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
+        if(!hit)return;
+        this.selectRing({i:Number(hit.dataset.i),j:Number(hit.dataset.j)});
+      });
+      this.svg.addEventListener('keydown',e=>{
+        if(!(e instanceof KeyboardEvent)||(e.key!=='Enter'&&e.key!==' '))return;
+        const hit=(e.target as Element).closest<SVGElement>('[data-ring]');
+        if(!hit)return;
+        e.preventDefault();
+        this.selectRing({i:Number(hit.dataset.i),j:Number(hit.dataset.j)});
+      });
+    }
+
+    private selectRing(next:Cell){
+      const changed=next.i!==this.selected.i||next.j!==this.selected.j;
+      this.selected=next;
+      if(changed)this.active=false;
+      this.mode='rings';
+      this.syncModeButtons();this.syncData();this.updateReadout();this.render();
+    }
+
+    private transition(change:()=>void){
+      this.stage.classList.add('is-switching');
+      window.setTimeout(()=>{
+        change();this.render();
+        requestAnimationFrame(()=>this.stage.classList.remove('is-switching'));
+      },95);
+    }
+
+    private syncModeButtons(){
+      this.dataset.mode=this.mode;
+      this.querySelectorAll<HTMLButtonElement>('[data-mode-button]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.modeButton===this.mode)));
+    }
+
+    private linkedCells(){
+      return[{i:this.selected.i-1,j:this.selected.j},{i:this.selected.i+1,j:this.selected.j}];
+    }
+
+    private syncData(){
+      this.dataset.selectedRing=this.cellKey(this.selected);
+      this.dataset.entanglements=this.active?'1':'0';
+      this.dataset.linkedRings=this.active?this.linkedCells().map(cell=>this.cellKey(cell)).join(';'):'';
+      this.dataset.gaussLinking=this.active?String(this.reference.gaussLinking):'0';
+      const stat=this.closest('.topology-lab')?.querySelector('[data-stat-entanglements]');
+      if(stat)stat.textContent=this.active?'1':'0';
+    }
+
+    private projectFactory(){
+      const viewW=this.width<700?8.6:11.8;
+      const viewH=this.width<700?7.3:6.1;
+      this.scale=Math.min(this.width/viewW,this.height/viewH);
+      const ct=Math.cos(this.tilt),st=Math.sin(this.tilt);
+      return(p:Vec3)=>{
+        const sy=p.y*ct-p.z*st;
+        const depth=p.y*st+p.z*ct;
+        return{x:this.width/2+p.x*this.scale,y:this.height/2-sy*this.scale,depth};
+      };
+    }
+
+    private unwrapEdge(edge:Edge){
+      const a={...this.nodes[edge.a]},b={...this.nodes[edge.b]};
+      const ga=this.nodeGrid(edge.a),gb=this.nodeGrid(edge.b);
+      if(Math.abs(gb.i-ga.i)>1)b.x+=gb.i>ga.i?-this.nx:this.nx;
+      if(Math.abs(gb.j-ga.j)>1)b.y+=gb.j>ga.j?-this.ny:this.ny;
+      return{a,b};
+    }
+
+    private templateKey(edge:Edge){
+      if(!this.active)return null;
+      const ga=this.nodeGrid(edge.a),gb=this.nodeGrid(edge.b);
+      if(Math.abs(ga.i-gb.i)>1||Math.abs(ga.j-gb.j)>1)return null;
+      if(ga.j===gb.j){
+        const i=Math.min(ga.i,gb.i),j=ga.j;
+        return `h:${i-this.selected.i}:${j-this.selected.j}`;
+      }
+      if(ga.i===gb.i){
+        const i=ga.i,j=Math.min(ga.j,gb.j);
+        return `v:${i-this.selected.i}:${j-this.selected.j}`;
+      }
+      return null;
+    }
+
+    private templateRole(key:string|null):0|1|2{
+      if(!key)return 0;
+      if(['h:-1:0','h:-1:1','v:-1:0','v:0:0'].includes(key))return 1;
+      if(['h:1:0','h:1:1','v:1:0','v:2:0'].includes(key))return 2;
+      return 0;
+    }
+
+    private edgePoints(edge:Edge){
+      const key=this.templateKey(edge);
+      const raw=key?this.reference.paths[key]:undefined;
+      if(raw){
+        const cx=(this.nx-1)/2,cy=(this.ny-1)/2;
+        const ox=this.selected.i-cx,oy=this.selected.j-cy;
+        return raw.map(p=>({x:ox+p[0],y:oy+p[1],z:this.baseZ+p[2]}));
+      }
+      const {a,b}=this.unwrapEdge(edge);
+      return[a,b];
+    }
+
+    private smoothPath(points:Vec3[],project:(p:Vec3)=>{x:number;y:number;depth:number}){
+      const pts=points.map(project);
+      if(pts.length<2)return'';
+      if(pts.length===2)return `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)} L${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
+      let d=`M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+      for(let i=1;i<pts.length-1;i++){
+        const mid={x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2};
+        d+=` Q${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)} ${mid.x.toFixed(2)},${mid.y.toFixed(2)}`;
+      }
+      const pen=pts[pts.length-2],last=pts[pts.length-1];
+      return d+` Q${pen.x.toFixed(2)},${pen.y.toFixed(2)} ${last.x.toFixed(2)},${last.y.toFixed(2)}`;
+    }
+
+    private chunks(points:Vec3[],split:boolean){
+      if(!split||points.length<=4)return[points];
+      const out:Vec3[][]=[];
+      for(let i=0;i<points.length-1;i+=2){
+        const chunk=points.slice(i,Math.min(points.length,i+3));
+        if(chunk.length>=2)out.push(chunk);
+      }
+      return out;
+    }
+
+    private cellCenter(cell:Cell){
+      const p=this.ringNodes(cell).map(id=>this.nodes[id]);
+      return{x:p.reduce((sum,q)=>sum+q.x,0)/4,y:p.reduce((sum,q)=>sum+q.y,0)/4,z:this.baseZ};
+    }
+
+    private visibleCells(project:(p:Vec3)=>{x:number;y:number;depth:number}){
+      const cells:Cell[]=[];
+      for(let j=2;j<=9;j++)for(let i=3;i<=14;i++){
+        const q=project(this.cellCenter({i,j}));
+        if(q.x>-60&&q.x<this.width+60&&q.y>-60&&q.y<this.height+60)cells.push({i,j});
+      }
+      return cells;
+    }
+
+    private ringPolygon(cell:Cell,project:(p:Vec3)=>{x:number;y:number;depth:number}){
+      return this.ringNodes(cell).map(id=>{
+        const q=project(this.nodes[id]);
+        return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+      }).join(' ');
+    }
+
+    private render(){
+      if(!this.svg||!this.visible)return;
+      const project=this.projectFactory();
+      this.svg.setAttribute('viewBox',`0 0 ${this.width} ${this.height}`);
+
+      type Primitive=
+        |{type:'tube';d:string;depth:number;role:0|1|2;muted:boolean;key:string|null}
+        |{type:'node';x:number;y:number;depth:number;role:0|1|2;muted:boolean}
+        |{type:'bead';x:number;y:number;depth:number;role:0|1|2};
+
+      const primitives:Primitive[]=[];
+      for(const edge of this.edges){
+        const key=this.templateKey(edge);
+        const role=this.templateRole(key);
+        const points=this.edgePoints(edge);
+        const projected=points.map(project);
+        if(Math.max(...projected.map(p=>p.x))<-90||Math.min(...projected.map(p=>p.x))>this.width+90||Math.max(...projected.map(p=>p.y))<-90||Math.min(...projected.map(p=>p.y))>this.height+90)continue;
+
+        const isTemplate=Boolean(key&&this.reference.paths[key]);
+        const muted=this.active&&this.mode==='entanglement'&&!isTemplate;
+        for(const piece of this.chunks(points,isTemplate)){
+          const q=piece.map(project);
+          primitives.push({type:'tube',d:this.smoothPath(piece,project),depth:q.reduce((sum,p)=>sum+p.depth,0)/q.length,role,muted,key:isTemplate?key:null});
+        }
+        if(isTemplate)points.slice(1,-1).forEach(p=>{
+          const q=project(p);
+          primitives.push({type:'bead',x:q.x,y:q.y,depth:q.depth+.004,role});
+        });
+      }
+
+      const linked=this.active?this.linkedCells():[];
+      const leftNodes=new Set(this.active?this.ringNodes(linked[0]):[]);
+      const rightNodes=new Set(this.active?this.ringNodes(linked[1]):[]);
+      for(let id=0;id<this.nodes.length;id++){
+        const q=project(this.nodes[id]);
+        if(q.x<-40||q.x>this.width+40||q.y<-40||q.y>this.height+40)continue;
+        const role=leftNodes.has(id)?1:rightNodes.has(id)?2:0;
+        const muted=this.active&&this.mode==='entanglement'&&role===0;
+        primitives.push({type:'node',x:q.x,y:q.y,depth:q.depth+.01,role,muted});
+      }
+
+      primitives.sort((a,b)=>a.depth-b.depth);
+      const scene=primitives.map(item=>{
+        const roleClass=item.role===1?' network-signal':item.role===2?' network-cool':'';
+        if(item.type==='tube'){
+          const muted=item.muted?' network-muted':'';
+          const refKey=item.key?` data-reference-key="${item.key}"`:'';
+          return `<path class="network-shadow${muted}" d="${item.d}"/><path class="network-rim${roleClass}${muted}" d="${item.d}"/><path class="network-tube${roleClass}${muted}" data-ring-role="${item.role}"${refKey} d="${item.d}"/><path class="network-highlight${muted}" d="${item.d}"/>`;
+        }
+        if(item.type==='bead')return `<circle class="network-bead${roleClass||' network-base'}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="2.3"/>`;
+        const muted=item.muted?' network-node-muted':'';
+        const r=item.role?6.1:4.8;
+        return `<circle class="network-node-shadow${muted}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${(r*1.02).toFixed(1)}"/><circle class="network-node-body${roleClass}${muted}" cx="${item.x.toFixed(2)}" cy="${item.y.toFixed(2)}" r="${r}"/><circle class="network-node-highlight${muted}" cx="${(item.x-r*.28).toFixed(2)}" cy="${(item.y-r*.30).toFixed(2)}" r="${(r*.24).toFixed(2)}"/>`;
+      }).join('');
+
+      const cells=this.visibleCells(project);
+      const selectedKey=this.cellKey(this.selected);
+      const linkedKeys=new Set(linked.map(cell=>this.cellKey(cell)));
+      const faces=(this.mode==='rings'||this.mode==='entangle'||this.mode==='entanglement')?cells.map(cell=>{
+        const key=this.cellKey(cell);
+        let cls='ring-face';
+        if(this.active&&linked.length&&key===this.cellKey(linked[0]))cls='ring-face ring-face--left';
+        else if(this.active&&linked.length&&key===this.cellKey(linked[1]))cls='ring-face ring-face--right';
+        else if(this.active&&key===selectedKey)cls='ring-face ring-face--swap';
+        else if(key===selectedKey)cls='ring-face ring-face--selected';
+        else if(this.mode==='entanglement'&&!linkedKeys.has(key))return'';
+        return `<polygon class="${cls}" points="${this.ringPolygon(cell,project)}"/>`;
+      }).join(''):'';
+
+      const hits=cells.map(cell=>`<polygon class="ring-hit" tabindex="0" role="button" aria-label="Select ring ${cell.i}, ${cell.j}" data-ring data-i="${cell.i}" data-j="${cell.j}" points="${this.ringPolygon(cell,project)}"/>`).join('');
+      this.svg.innerHTML=`<g aria-hidden="true">${scene}${faces}</g><g>${hits}</g>`;
+    }
+
+    private updateReadout(title?:string,copy?:string){
+      const titleNode=this.querySelector('[data-readout-title]'),body=this.querySelector('[data-readout-copy]');
+      if(title&&copy){if(titleNode)titleNode.textContent=title;if(body)body.textContent=copy;return;}
+      const messages:Record<string,[string,string]>={
+        network:['Relaxed periodic network','The visible window is an interior patch of a periodic square network. Select any ring to choose where the path swap is introduced.'],
+        rings:['Choose the swap site',`Ring (${this.selected.i}, ${this.selected.j}) is selected. The two opposite vertical edge chains of this square define the one-swap reference motif.`],
+        entangle:['What the swap creates','The selected square is the path-swap site. After relaxation, the two rings immediately to its left and right are the linked pair.'],
+        entanglement:['Reference relaxed entanglement',this.active?`Coral and blue mark the linked neighboring rings. In the measured one-swap state their Gauss linking number is ${this.reference.gaussLinking.toFixed(2)}; the dashed central square is the swap site, not a member of the linked pair.`:'No entanglement is active. Select a ring, then introduce the path swap.'],
+      };
+      const [a,b]=messages[this.mode]||messages.network;
+      if(titleNode)titleNode.textContent=a;if(body)body.textContent=b;
+    }
+  }
+
+  if(!customElements.get('topology-network-lab'))customElements.define('topology-network-lab',TopologyNetworkLab);
+</script>

@@ -1,0 +1,6 @@
+---
+import Base from '../../layouts/Base.astro';
+import { published,url } from '../../lib/content';
+const courses=await published('courses');
+---
+<Base title="Courses" description="Structured lecture notes and course materials."><div class="container page"><p class="eyebrow">Lecture notes</p><h1>Courses</h1><ul class="content-list">{courses.map(c=><li><h2><a href={url('courses',c.id)}>{c.data.title}</a></h2><p>{c.data.description}</p><p class="meta">{c.data.status}</p></li>)}</ul></div></Base>

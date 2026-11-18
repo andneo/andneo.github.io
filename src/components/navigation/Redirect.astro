@@ -1,0 +1,6 @@
+---
+import { SITE_URL } from '../../config';
+interface Props { to: string; }
+const { to } = Astro.props;
+---
+<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Page moved</title><link rel="canonical" href={new URL(to,SITE_URL)} /><meta name="robots" content="noindex" /><meta http-equiv="refresh" content={`0;url=${to}`} /></head><body><main><h1>Page moved</h1><p><a href={to}>Continue to the current page</a></p></main><script is:inline>if(location.hash){const target=document.querySelector('link[rel=canonical]').href;location.replace(target+location.hash);}</script></body></html>

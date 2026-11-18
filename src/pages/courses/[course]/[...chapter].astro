@@ -1,0 +1,9 @@
+---
+import {render,type CollectionEntry} from 'astro:content';
+import {published,courseChapters} from '../../../lib/content';
+import CourseLayout from '../../../layouts/CourseLayout.astro';
+export async function getStaticPaths(){const courses=await published('courses');return (await Promise.all(courses.map(async course=>(await courseChapters(course.id)).map(page=>({params:{course:course.id,chapter:page.id.slice(course.id.length+1)},props:{course,page}}))))).flat();}
+interface Props{course:CollectionEntry<'courses'>;page:CollectionEntry<'chapters'>;}
+const {course,page}=Astro.props;const {Content,headings}=await render(page);
+---
+<CourseLayout course={course} page={page} headings={headings}><Content/></CourseLayout>

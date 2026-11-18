@@ -1,340 +1,224 @@
 ---
 import Base from '../layouts/Base.astro';
-import HeroSim from '../components/HeroSim.astro';
-import { AUTHOR, SOCIAL, CONTACT, HOME_POST_COUNT, HOME_PUBLICATION_COUNT, HOME_RESEARCH_COUNT } from '../config';
-import { getCollection } from 'astro:content';
+import HomepageBackground from '../components/HomepageBackground.astro';
+import CardGlyph from '../components/CardGlyph.astro';
+import ResearchThemeCard from '../components/ResearchThemeCard.astro';
+import { AUTHOR, HERO, HOME_POST_COUNT, HOME_RESEARCH_COUNT } from '../config';
+import { published, byId, url } from '../lib/content';
 
-const allPosts = (await getCollection('post').catch(() => []))
-  .filter((p: any) => !p.data.draft)
-  .sort((a: any, b: any) => b.data.date.valueOf() - a.data.date.valueOf());
-
-const allPubs = (await getCollection('publications').catch(() => []))
-  .filter((p: any) => !p.data.draft)
-  .sort((a: any, b: any) => b.data.year - a.data.year);
-
-const allProjects = (await getCollection('project').catch(() => []))
-  .filter((p: any) => !p.data.draft)
-  .sort((a: any, b: any) => (a.data.order ?? 99) - (b.data.order ?? 99));
-
-const recentPosts   = allPosts.slice(0, HOME_POST_COUNT);
-const recentPubs    = allPubs.slice(0, HOME_PUBLICATION_COUNT);
-const featuredProjs = allProjects.slice(0, HOME_RESEARCH_COUNT);
-
-function fmtDate(d: Date) {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-function readTime(body: string) {
-  return Math.max(1, Math.ceil((body?.split(/\s+/).length ?? 0) / 200));
-}
+const projects = (await published('project')).sort((a,b) => a.data.order - b.data.order || byId(a,b)).slice(0, HOME_RESEARCH_COUNT);
+const allPublications = await published('publications');
+const publicationById = new Map(allPublications.map(pub => [pub.id,pub]));
+const publicationsFor = (project: typeof projects[number]) => project.data.publications.map(id=>publicationById.get(id)).filter((pub): pub is NonNullable<typeof pub> => Boolean(pub));
+const posts = (await published('post')).sort((a,b) => b.data.date.valueOf() - a.data.date.valueOf() || byId(a,b)).slice(0, HOME_POST_COUNT);
+const courses = await published('courses');
 ---
-
 <Base>
-
-<!-- ══════════════════════════════════════════════════
-     HERO — simulation + identity overlay
-══════════════════════════════════════════════════ -->
-<section id="about" class="hero-section">
-  <HeroSim />
-
-  <section class="hero-content">
-    <h1>{AUTHOR.name}</h1>
-    <p>{AUTHOR.title}</p>
-    <p set:html={AUTHOR.bio} />
-  </section>
-</section>
-
-<!-- ══════════════════════════════════════════════════
-     POSTS
-══════════════════════════════════════════════════ -->
-<section id="posts" class="home-section">
-  <div class="container">
-    <h2 class="section-heading">Posts</h2>
-    {recentPosts.length === 0 ? (
-      <p class="empty-note">No posts yet. Create <code>src/content/post/my-first-post.mdx</code></p>
-    ) : (
-      <div class="post-list">
-        {recentPosts.map((post: any) => (
-          <a href={`/posts/${post.slug}/`} class="post-row fade-up">
-            <div class="post-row-body">
-              <h3 class="post-row-title">{post.data.title}</h3>
-              {post.data.subtitle && <p class="post-row-subtitle">{post.data.subtitle}</p>}
-              <div class="post-row-meta">
-                <time>{fmtDate(post.data.date)}</time>
-                <span class="meta-dot">·</span>
-                <span>{post.data.readingTime ?? readTime(post.body ?? '')} min read</span>
-              </div>
-            </div>
-            {post.data.image && (
-              <img src={post.data.image} alt="" class="post-row-thumb" width="120" height="80" loading="lazy" />
-            )}
-          </a>
-        ))}
-      </div>
-    )}
-    {allPosts.length > HOME_POST_COUNT && (
-      <div class="section-footer">
-        <a href="/posts/" class="see-all-link">See all posts →</a>
-      </div>
-    )}
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════
-     PUBLICATIONS
-══════════════════════════════════════════════════ -->
-<section id="publications" class="home-section home-section--alt">
-  <div class="container">
-    <h2 class="section-heading">Publications</h2>
-    {recentPubs.length === 0 ? (
-      <p class="empty-note">No publications yet. Create <code>src/content/publications/my-paper.md</code></p>
-    ) : (
-      <div class="pub-list">
-        {recentPubs.map((pub: any) => (
-          <a href={`/publications/${pub.slug}/`} class="pub-row fade-up">
-            <div class="pub-row-body">
-              <h3 class="pub-row-title">{pub.data.title}</h3>
-              <p class="pub-row-authors">
-                {pub.data.authors.map((a: string, i: number, arr: string[]) => (
-                  <span class:list={[{ 'author-self': a === AUTHOR.name }]}>
-                    {a}{i < arr.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
+  <div class="homepage-root">
+    <div class="homepage-content">
+      <section class="home-hero" id="about">
+        <HomepageBackground />
+        <div class="container hero-frame">
+          <div class="hero-copy">
+            <div class="hero-identity" data-field-quiet>
+              <p class="hero-role">
+                <span class="sr-only">{HERO.roles.join(', ')}</span>
+                <span class="hero-role-motion" aria-hidden="true">
+                  <span>i'm a&nbsp;</span><span class="hero-typed" data-hero-typed data-roles={JSON.stringify(HERO.roles)}></span><span class="hero-typed-cursor">▍</span>
+                </span>
               </p>
-              {pub.data.journal && (
-                <p class="pub-row-journal">
-                  <em>{pub.data.journal}</em>, {pub.data.year}
-                  {pub.data.status !== 'published' && <span class="pub-status"> · {pub.data.status.replace('-', ' ')}</span>}
-                </p>
-              )}
-              <div class="pub-row-links" onclick="event.preventDefault()">
-                {pub.data.pdf    && <a href={pub.data.pdf}                              target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">PDF</a>}
-                {pub.data.slides && <a href={pub.data.slides}                           target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Slides</a>}
-                {pub.data.arxiv  && <a href={`https://arxiv.org/abs/${pub.data.arxiv}`} target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">arXiv</a>}
-                {pub.data.doi    && <a href={`https://doi.org/${pub.data.doi}`}          target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">DOI</a>}
-                {pub.data.repo   && <a href={pub.data.repo}                              target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">Code</a>}
-              </div>
+              <h1>{AUTHOR.name}</h1>
+              <div class="hero-bio" set:html={AUTHOR.bio} />
+              <ul class="hero-themes" aria-label="Research themes">
+                {HERO.themes.map(theme => <li>{theme}</li>)}
+              </ul>
             </div>
-            {pub.data.image && (
-              <img src={pub.data.image} alt="" class="pub-row-thumb" width="120" height="80" loading="lazy" />
-            )}
-          </a>
-        ))}
-      </div>
-    )}
-    {allPubs.length > HOME_PUBLICATION_COUNT && (
-      <div class="section-footer">
-        <a href="/publications/" class="see-all-link">See all publications →</a>
-      </div>
-    )}
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════
-     RESEARCH
-══════════════════════════════════════════════════ -->
-<section id="research" class="home-section">
-  <div class="container">
-    <h2 class="section-heading">Research</h2>
-    {featuredProjs.length === 0 ? (
-      <p class="empty-note">No projects yet. Create <code>src/content/project/my-project.md</code></p>
-    ) : (
-      <div class="project-grid">
-        {featuredProjs.map((proj: any) => (
-          <a href={`/project/${proj.slug}/`} class="project-card fade-up">
-            {proj.data.image && (
-              <div class="project-card-img">
-                <img src={proj.data.image} alt="" width="540" height="200" loading="lazy" />
-              </div>
-            )}
-            <div class="project-card-body">
-              <h3 class="project-card-title">{proj.data.title}</h3>
-              <p class="project-card-desc">{proj.data.description}</p>
-              <div class="project-card-links" onclick="event.preventDefault()">
-                {proj.data.links.map((l: any) => (
-                  <a href={l.href} target="_blank" rel="noopener" class="pub-link" onclick="event.stopPropagation()">{l.label}</a>
-                ))}
-              </div>
-            </div>
-          </a>
-        ))}
-      </div>
-    )}
-    {allProjects.length > HOME_RESEARCH_COUNT && (
-      <div class="section-footer">
-        <a href="/project/" class="see-all-link">See all projects →</a>
-      </div>
-    )}
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════
-     CONTACT
-══════════════════════════════════════════════════ -->
-<section id="contact" class="home-section home-section--alt">
-  <div class="container">
-    <h2 class="section-heading">Contact</h2>
-    <div class="contact-grid">
-      <div class="contact-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        <span>{CONTACT.location}</span>
-      </div>
-      {CONTACT.office && (
-        <div class="contact-item">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>
-          <span>{CONTACT.office}</span>
+          </div>
         </div>
-      )}
-      <div class="contact-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        <a href={`mailto:${AUTHOR.email}`}>{AUTHOR.email}</a>
-      </div>
+      </section>
+
+      <section class="home-section home-research" id="research">
+        <div class="container section-frame">
+          <header class="section-header research-header">
+            <h2>Research</h2>
+            <a href="/research/">Research overview <span aria-hidden="true">↗</span></a>
+          </header>
+          <p class="research-intro">I use statistical mechanics, topology and computation as a common language for understanding and designing complex many-body systems.</p>
+          <div class="research-theme-grid">
+            {projects.map(project => <ResearchThemeCard project={project} publications={publicationsFor(project)} />)}
+          </div>
+        </div>
+      </section>
+
+      <section class="home-section" id="posts">
+        <div class="container section-frame">
+          <header class="section-header">
+            <h2>Blog posts</h2>
+            <a href="/posts/">View all <span aria-hidden="true">↗</span></a>
+          </header>
+          <ol class="card-grid post-grid">
+            {posts.map(post => <li>
+              <article class="home-card post-card">
+                <div class="card-head">
+                  <CardGlyph seed={post.data.tags?.[0] ?? post.data.title} />
+                  <span class="card-label">{post.data.tags?.[0] ?? 'Article'}</span>
+                </div>
+                <div class="card-copy">
+                  <time datetime={post.data.date.toISOString()}>{post.data.date.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})}</time>
+                  <h3><a href={url('post', post.id)}>{post.data.title}</a></h3>
+                  <p>{post.data.description}</p>
+                </div>
+                <div class="card-foot">
+                  <span>{post.data.tags?.slice(1,3).join(' · ') || 'Notes'}</span>
+                  <span aria-hidden="true">→</span>
+                </div>
+              </article>
+            </li>)}
+          </ol>
+        </div>
+      </section>
+
+      <section class="home-section" id="courses">
+        <div class="container section-frame">
+          <header class="section-header">
+            <h2>Lecture notes</h2>
+            <a href="/courses/">View all <span aria-hidden="true">↗</span></a>
+          </header>
+          <ol class="card-grid course-grid">
+            {courses.map(course => <li>
+              <a class="home-card course-card" href={url('courses', course.id)}>
+                <div class="card-head">
+                  <CardGlyph seed={course.data.title} />
+                  <span class="card-label">{course.data.level ?? 'Course'}</span>
+                </div>
+                <div class="card-copy">
+                  <h3>{course.data.title}</h3>
+                  <p>{course.data.description}</p>
+                </div>
+                <div class="card-foot">
+                  <span>{course.data.status}</span>
+                  <span aria-hidden="true">↗</span>
+                </div>
+              </a>
+            </li>)}
+          </ol>
+        </div>
+      </section>
+
     </div>
   </div>
-</section>
-
 </Base>
-
 <style>
-/* ── Hero overlay content ── */
-.hero-content {
-  text-align: center;
-  padding: 2.5rem 1rem 1rem;
-  max-width: 700px;
-  margin: 0 auto;
-}
-.hero-name  {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-  margin-bottom: 0.2rem;
-  color: var(--text);
-}
-.hero-title { font-size: 0.95rem; color: var(--text-2); margin-bottom: 0.1rem; font-weight: 400; }
-.hero-inst  { font-size: 0.82rem; color: var(--text-3); margin-bottom: 1rem; }
-.hero-bio   {
-  font-size: 0.9rem;
-  color: var(--text-2);
-  line-height: 1.65;
-  margin-bottom: 1.25rem;
-  max-width: 480px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.hero-bio a { text-decoration: underline; text-underline-offset: 2px; color: var(--accent); }
-.hero-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.hero-socials { display: flex; gap: 0.55rem; align-items: center; }
-.social-icon {
-  color: var(--text-3);
-  display: flex;
-  align-items: center;
-  transition: color var(--t), transform var(--t);
-}
-.social-icon:hover { color: var(--accent); transform: translateY(-2px); }
+  .homepage-root { position: relative; isolation: isolate; overflow: clip; }
+  .homepage-content { position: relative; z-index: 1; }
+  .home-hero,.home-section { position: relative; }
+  .home-hero { overflow:hidden; background:var(--bg); }
+  .home-section::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; }
 
-/* ── Home sections ── */
-.home-section     { padding: 3.5rem 0; background: var(--bg); }
-.home-section--alt { background: var(--bg-off); }
+  .hero-frame { position:relative; z-index:2; min-height:clamp(650px,80svh,840px); display:flex; align-items:center; justify-content:center; padding-block:clamp(7rem,13vh,10rem) clamp(5rem,10vh,7rem); }
+  .hero-copy { width:min(100%,1040px); margin-inline:auto; }
+  .hero-identity { width:100%; min-height:clamp(350px,44svh,440px); display:flex; flex-direction:column; justify-content:center; padding:clamp(2.2rem,4.5vw,4.4rem) clamp(2rem,5vw,5rem); border:1px solid var(--panel-border); border-radius:clamp(28px,3.2vw,42px); background:color-mix(in srgb,var(--surface) 78%,transparent); box-shadow:0 22px 70px -58px rgb(30 32 34 / .45); backdrop-filter:blur(4px); }
+  .hero-role { min-height:1.55em; margin:0 0 .9rem; color:var(--signal); font:450 clamp(.9rem,.87rem + .14vw,1rem)/1.45 var(--font-sans); letter-spacing:.015em; }
+  .hero-role-motion { display:inline-flex; align-items:baseline; }
+  .hero-typed-cursor { display:inline-block; margin-left:.12em; font-weight:300; animation:hero-cursor-blink .8s step-end infinite; }
+  @keyframes hero-cursor-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+  h1 { max-width:20ch; margin:0; font:600 clamp(2.2rem,3.8vw,3.75rem)/1 var(--font-display); letter-spacing:-.048em; }
+  .hero-bio { max-width:78ch; margin-top:clamp(1.45rem,2.6vw,2.1rem); color:var(--text-2); font-size:clamp(1.02rem,.98rem + .24vw,1.18rem); line-height:1.76; }
+  .hero-bio :global(p) { margin:0; }
+  .hero-bio :global(p + p) { margin-top:.85rem; }
+  .hero-themes { display:flex; flex-wrap:wrap; gap:0; margin:clamp(1.35rem,2.2vw,1.8rem) 0 0; padding:0; list-style:none; color:var(--text-3); font:400 .78rem/1.4 var(--font-sans); letter-spacing:.015em; }
+  .hero-themes li { display:inline-flex; align-items:center; white-space:nowrap; }
+  .hero-themes li:not(:last-child)::after { content:'·'; margin-inline:.65rem; color:var(--signal); opacity:.9; }
 
-.empty-note {
-  color: var(--text-3); font-size: 0.9rem; padding: 2rem;
-  border: 1px dashed var(--border-med); border-radius: var(--r-lg); text-align: center;
-}
-.section-footer { margin-top: 1.5rem; }
-.see-all-link { font-size: 0.9rem; font-weight: 500; }
+  .home-section { padding-block:clamp(4.75rem,8vw,7.5rem); }
+  .home-section::before { background:linear-gradient(90deg,var(--home-scrim) 0 16%,transparent 45% 58%,var(--home-scrim) 100%); opacity:.76; }
+  .section-frame { position:relative; }
+  .section-header { display:flex; align-items:end; justify-content:space-between; gap:2rem; margin-bottom:clamp(1.75rem,3vw,2.75rem); padding-bottom:.9rem; border-bottom:1px solid var(--border-med); }
+  .section-header h2 { margin:0; font:600 clamp(1.8rem,2.9vw,2.8rem)/1 var(--font-display); letter-spacing:-.035em; }
+  .section-header > a { flex:none; color:var(--text-2); font:600 .86rem/1.2 var(--font-sans); letter-spacing:.01em; text-decoration:none; }
+  .section-header > a:hover { color:var(--signal); }
+  .research-header { align-items:end; }
+  .research-intro { max-width:none; margin:-.65rem 0 clamp(1.8rem,3vw,2.7rem); color:var(--text-2); font-size:clamp(.92rem,.9rem + .12vw,1.02rem); line-height:1.7; white-space:nowrap; }
+  .research-theme-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(.9rem,1.6vw,1.35rem); }
 
-/* ── Post rows ── */
-.post-list { display: flex; flex-direction: column; }
-.post-row {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 1.5rem; padding: 1.25rem 0.5rem;
-  border-bottom: 1px solid var(--border);
-  text-decoration: none !important; color: inherit;
-  border-radius: var(--r); transition: background var(--t), padding var(--t);
-}
-.post-row:first-child { border-top: 1px solid var(--border); }
-.post-row:hover { background: var(--bg-off); padding-left: 1rem; padding-right: 1rem; }
-.post-row-body { flex: 1; min-width: 0; }
-.post-row-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; color: var(--text); transition: color var(--t); }
-.post-row:hover .post-row-title { color: var(--accent); }
-.post-row-subtitle {
-  font-size: 0.875rem; color: var(--text-2); margin-bottom: 0.35rem;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.post-row-meta { font-size: 0.8rem; color: var(--text-3); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-.meta-dot { opacity: 0.4; }
-.post-row-thumb { width: 110px; height: 74px; object-fit: cover; border-radius: var(--r); flex-shrink: 0; border: 1px solid var(--border); }
+  .card-grid { display:grid; gap:clamp(.85rem,1.5vw,1.3rem); margin:0; padding:0; list-style:none; }
+  .card-grid > li { min-width:0; display:flex; }
+  .course-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .post-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
 
-/* ── Publication rows ── */
-.pub-list { display: flex; flex-direction: column; }
-.pub-row {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 1.5rem; padding: 1.25rem 0.5rem;
-  border-bottom: 1px solid var(--border);
-  text-decoration: none !important; color: inherit;
-  border-radius: var(--r); transition: background var(--t), padding var(--t);
-}
-.pub-row:first-child { border-top: 1px solid var(--border); }
-.pub-row:hover { background: var(--bg-off); padding-left: 1rem; padding-right: 1rem; }
-.pub-row-body { flex: 1; min-width: 0; }
-.pub-row-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text); transition: color var(--t); }
-.pub-row:hover .pub-row-title { color: var(--accent); }
-.pub-row-authors { font-size: 0.84rem; color: var(--text-2); margin-bottom: 0.2rem; }
-.author-self { font-weight: 700; color: var(--text); }
-.pub-row-journal { font-size: 0.81rem; color: var(--text-3); margin-bottom: 0.35rem; }
-.pub-status { color: var(--accent); font-style: normal; font-weight: 500; }
-.pub-row-links { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem; }
-.pub-link {
-  font-size: 0.77rem; font-weight: 500; color: var(--accent-hover);
-  border: 1px solid var(--accent-border); background: var(--accent-light);
-  padding: 0.15em 0.6em; border-radius: 4px; transition: background var(--t);
-  text-decoration: none !important;
-}
-.pub-link:hover { background: var(--accent); color: var(--text-inv); }
-.pub-row-thumb { width: 110px; height: 74px; object-fit: cover; border-radius: var(--r); flex-shrink: 0; border: 1px solid var(--border); }
+  .home-card { position:relative; width:100%; min-height:310px; display:flex; flex-direction:column; gap:1.4rem; padding:1.25rem; overflow:hidden; border:1px solid var(--panel-border); border-radius:var(--r-lg); background:var(--panel-bg); box-shadow:var(--shadow-card); color:var(--text); text-decoration:none; backdrop-filter:blur(7px); transition:transform var(--t-med),border-color var(--t-med),background var(--t-med),box-shadow var(--t-med); }
+  .home-card:hover,.home-card:focus-within { transform:translateY(-3px); border-color:var(--signal-border); background:color-mix(in srgb,var(--panel-bg-hover) 95%,var(--signal-soft)); box-shadow:var(--shadow-lift); }
+  .card-head { min-height:4rem; display:flex; align-items:start; justify-content:space-between; gap:1rem; }
+  .card-label { max-width:10rem; min-height:1.7rem; display:inline-flex; align-items:center; justify-content:center; padding:.24rem .58rem; border:1px solid var(--border); border-radius:999px; color:var(--text-3); font:400 .66rem/1 var(--font-sans); letter-spacing:.025em; text-transform:lowercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-copy { min-width:0; }
+  .card-copy time,.publication-year { display:block; margin:0 0 .65rem; color:var(--text-3); font:600 .68rem/1.4 var(--font-sans); letter-spacing:.025em; }
+  .home-card h3 { margin:0 0 .75rem; font:600 clamp(1.08rem,1.2vw,1.34rem)/1.2 var(--font-display); letter-spacing:-.022em; text-wrap:balance; }
+  .home-card h3 a { color:inherit; text-decoration:none; }
+  .home-card h3 a::after { content:''; position:absolute; inset:0; }
+  .home-card p { margin:0; color:var(--text-2); font-size:.86rem; line-height:1.6; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+  .card-foot { position:relative; z-index:1; display:flex; justify-content:space-between; gap:1rem; margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); color:var(--signal); font:400 .69rem/1.4 var(--font-sans); letter-spacing:.02em; text-transform:lowercase; }
+  .card-foot span:first-child,.card-foot span:last-child { color:var(--signal); }
+  .course-card { min-height:285px; }
 
-/* ── Project grid ── */
-.project-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.25rem;
-}
-.project-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); overflow: hidden;
-  text-decoration: none !important; color: inherit;
-  display: flex; flex-direction: column;
-  transition: border-color var(--t), box-shadow var(--t), transform var(--t-med);
-}
-.project-card:hover {
-  border-color: var(--accent-dim);
-  box-shadow: 0 6px 24px rgba(0,0,0,.09);
-  transform: translateY(-3px);
-}
-.project-card:hover .project-card-title { color: var(--accent); }
-.project-card-img { aspect-ratio: 16/7; overflow: hidden; background: var(--bg-subtle); }
-.project-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--t-slow); }
-.project-card:hover .project-card-img img { transform: scale(1.04); }
-.project-card-body { padding: 1.1rem 1.25rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-.project-card-title { font-size: 0.95rem; font-weight: 600; line-height: 1.3; transition: color var(--t); }
-.project-card-desc  { font-size: 0.84rem; color: var(--text-2); line-height: 1.55; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.project-card-links { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-
-/* ── Contact ── */
-.contact-grid { display: flex; flex-direction: column; gap: 0.85rem; margin-top: 0.5rem; }
-.contact-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.92rem; color: var(--text-2); }
-.contact-item svg { flex-shrink: 0; color: var(--text-3); }
-.contact-item a { color: var(--accent); }
-
-/* ── Mobile ── */
-@media (max-width: 680px) {
-  .post-row-thumb, .pub-row-thumb { display: none; }
-  .project-grid { grid-template-columns: 1fr; }
-  .hero-bio { font-size: 0.85rem; }
-}
+  @media (max-width:1200px) {
+    .post-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
+  @media (max-width:980px) {
+    .research-intro { white-space:normal; }
+  }
+  @media (max-width:900px) {
+    .hero-frame { min-height:auto; padding-block:7rem 5rem; }
+    .hero-copy { width:min(100%,820px); }
+    .hero-identity { min-height:360px; }
+    .post-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media (max-width:640px) {
+    .hero-frame { padding-block:6.5rem 3.5rem; }
+    .hero-identity { min-height:340px; padding:1.6rem 1.25rem 1.8rem; border-radius:24px; }
+    h1 { font-size:clamp(2.15rem,9.8vw,3rem); }
+    .hero-bio { margin-top:1.4rem; }
+    .home-section { padding-block:4rem; }
+    .section-header { align-items:center; gap:1rem; }
+    .section-header h2 { font-size:clamp(1.65rem,8vw,2.2rem); }
+    .research-theme-grid,.course-grid,.post-grid { grid-template-columns:1fr; }
+    .home-card,.course-card { min-height:250px; }
+  }
 </style>
+
+<script>
+  const typedRole = document.querySelector<HTMLElement>('[data-hero-typed]');
+  if (typedRole) {
+    const roles: string[] = JSON.parse(typedRole.dataset.roles ?? '[]');
+    let roleIndex = 0;
+    let charIndex = 0;
+    let deleting = false;
+
+    const tick = () => {
+      if (!roles.length) return;
+      const word = roles[roleIndex];
+
+      if (!deleting) {
+        charIndex++;
+        typedRole.textContent = word.slice(0, charIndex);
+        if (charIndex === word.length) {
+          deleting = true;
+          setTimeout(tick, 1800);
+          return;
+        }
+        setTimeout(tick, 70);
+      } else {
+        charIndex--;
+        typedRole.textContent = word.slice(0, charIndex);
+        if (charIndex === 0) {
+          deleting = false;
+          roleIndex = (roleIndex + 1) % roles.length;
+          setTimeout(tick, 350);
+          return;
+        }
+        setTimeout(tick, 35);
+      }
+    };
+
+    tick();
+  }
+</script>

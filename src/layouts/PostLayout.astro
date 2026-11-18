@@ -1,280 +1,32 @@
 ---
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
 import Base from './Base.astro';
-import { AUTHOR } from '../config';
-
-interface Props {
-  title: string;
-  subtitle?: string;
-  description?: string;
-  date: Date;
-  tags?: string[];
-  image?: string;
-  readingTime?: number;
-}
-
-const { title, subtitle, description, date, tags = [], image, readingTime } = Astro.props;
-
-function fmtDate(d: Date) {
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
+import Toc from '../components/navigation/Toc.astro';
+import Resources from '../components/content/Resources.astro';
+import { topicsOf, topicSlug, published, url } from '../lib/content';
+interface Props { post: CollectionEntry<'post'>; headings: MarkdownHeading[]; }
+const { post, headings } = Astro.props;
+const data=post.data;
+const related=(await published('post')).filter(p=>data.related.includes(p.id));
+const series=data.series?(await published('post')).filter(p=>p.data.series===data.series).sort((a,b)=>a.data.seriesOrder!-b.data.seriesOrder!):[];
+const index=series.findIndex(p=>p.id===post.id);
+const minutes=data.readingTime??Math.max(1,Math.ceil((post.body??'').split(/\s+/).length/200));
 ---
-
-<Base title={title} description={description} noCanvas={true}>
-  <div class="post-layout">
-
-    <!-- ── LEFT: TOC sidebar (hidden on mobile) ── -->
-    <aside class="post-sidebar" id="post-sidebar">
-      <div class="sidebar-inner">
-        <p class="sidebar-label">Contents</p>
-        <nav class="toc" id="toc" aria-label="Table of contents"></nav>
-      </div>
-    </aside>
-
-    <!-- ── RIGHT: Main article ── -->
-    <article class="post-main">
-
-      <header class="post-header">
-        <a href="/posts/" class="back-link">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Posts
-        </a>
-
-        <h1 class="post-title">{title}</h1>
-        {subtitle && <p class="post-subtitle">{subtitle}</p>}
-
-        <div class="post-meta">
-          <time datetime={date.toISOString()}>{fmtDate(date)}</time>
-          <span class="meta-sep">·</span>
-          <span id="reading-time">{readingTime ? `${readingTime} min read` : '— min read'}</span>
-        </div>
-
-        {tags.length > 0 && (
-          <div class="post-tags">
-            {tags.map(t => <span class="tag">{t}</span>)}
-          </div>
-        )}
-
-        {image && (
-          <div class="post-hero-img">
-            <img src={image} alt={title} />
-          </div>
-        )}
-
-        <hr class="post-divider" />
-      </header>
-
-      <div class="prose" id="post-body">
-        <slot />
-      </div>
-
-      <footer class="post-footer">
-        <hr />
-        <div class="author-card">
-          <img
-            src={AUTHOR.avatar}
-            alt={AUTHOR.name}
-            class="author-avatar"
-            width="56"
-            height="56"
-            onerror="this.style.display='none'"
-          />
-          <div class="author-info">
-            <p class="author-name">{AUTHOR.name}</p>
-            <p class="author-bio" set:html={AUTHOR.bio} />
-          </div>
-        </div>
-        <div class="post-nav">
-          <a href="/posts/" class="btn btn-ghost btn-sm">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            All posts
-          </a>
-        </div>
-      </footer>
-
-    </article>
-  </div>
+<Base title={data.title} description={data.description} type="article" image={data.image}>
+ <div class="reading-shell container page">
+  <aside class="reading-toc"><Toc headings={headings}/></aside>
+  <article class="reading-main">
+   <header><a href="/posts/">Articles</a><h1>{data.title}</h1>{data.subtitle&&<p class="subtitle">{data.subtitle}</p>}
+    <p class="meta"><time datetime={data.date.toISOString()}>{data.date.toLocaleDateString('en-GB',{timeZone:'UTC',dateStyle:'long'})}</time> · approximately {minutes} min read{data.updated&&<> · Updated <time datetime={data.updated.toISOString()}>{data.updated.toISOString().slice(0,10)}</time></>}</p>
+    <p>{topicsOf(post).map(t=><a class="tag" href={`/topics/${topicSlug(t)}/`}>{t}</a>)}</p>
+    {data.image&&<img src={data.image} alt={data.imageAlt??''} />}
+    <Resources resources={data.resources}/>
+   </header>
+   {data.series&&<p class="meta">Part {data.seriesOrder} of <a href={`/series/${data.series}/`}>{data.series.replaceAll('-',' ')}</a></p>}
+   <div class="prose"><slot/></div>
+   {series.length>0&&<nav class="pagination" aria-label="Article series">{index>0?<a href={url('post',series[index-1].id)}>← {series[index-1].data.title}</a>:<span/>}{index<series.length-1&&<a href={url('post',series[index+1].id)}>{series[index+1].data.title} →</a>}</nav>}
+   {related.length>0&&<section><h2>Related articles</h2><ul>{related.map(p=><li><a href={url('post',p.id)}>{p.data.title}</a></li>)}</ul></section>}
+  </article>
+ </div>
 </Base>
-
-<script>
-// Auto-compute reading time
-const body = document.getElementById('post-body');
-const rtEl = document.getElementById('reading-time');
-if (body && rtEl && rtEl.textContent?.includes('—')) {
-  const words = (body.textContent ?? '').split(/\s+/).filter(Boolean).length;
-  rtEl.textContent = `${Math.max(1, Math.ceil(words / 200))} min read`;
-}
-
-// Build TOC
-const headings = body?.querySelectorAll<HTMLElement>('h2, h3');
-const tocEl = document.getElementById('toc');
-const sidebar = document.getElementById('post-sidebar');
-
-if (headings && headings.length > 1 && tocEl && sidebar) {
-  headings.forEach((h, i) => {
-    if (!h.id) h.id = `h-${i}`;
-    const a = document.createElement('a');
-    a.href = `#${h.id}`;
-    a.textContent = h.textContent ?? '';
-    a.className = `toc-link toc-${h.tagName.toLowerCase()}`;
-    tocEl.appendChild(a);
-  });
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      const link = tocEl.querySelector(`[href="#${entry.target.id}"]`);
-      if (entry.isIntersecting) {
-        tocEl.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
-        link?.classList.add('active');
-      }
-    });
-  }, { rootMargin: '-8% 0px -80% 0px' });
-  headings.forEach(h => io.observe(h));
-} else {
-  if (sidebar) sidebar.style.display = 'none';
-}
-
-// Heading anchor links
-body?.querySelectorAll<HTMLElement>('h2, h3, h4').forEach(h => {
-  if (!h.id) return;
-  const anchor = document.createElement('a');
-  anchor.href = `#${h.id}`;
-  anchor.className = 'heading-anchor';
-  anchor.innerHTML = '#';
-  anchor.setAttribute('aria-hidden', 'true');
-  h.appendChild(anchor);
-});
-</script>
-
-<style>
-/* ══════════════════════════════════════════
-   DESKTOP: two columns — TOC left | content right
-   MOBILE:  single column, TOC hidden
-══════════════════════════════════════════ */
-
-.post-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  width: 100%;
-  margin: 0;
-  gap: 0.5rem;
-  padding-top: 2.5rem;
-  padding-bottom: 5rem;
-  padding-left: 2.5rem;
-  padding-right: 1.5rem;
-}
-
-.prose {
-  max-width: 100%;
-}
-
-/* ── Left TOC ── */
-.post-sidebar {
-  position: sticky;
-  top: 80px;
-  align-self: start;
-  max-height: calc(100vh - 96px);
-  overflow-y: auto;
-  padding-right: 1rem;
-}
-.sidebar-inner {
-  border-left: 2px solid var(--border);
-  padding-left: 1rem;
-}
-.sidebar-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-3);
-  margin-bottom: 0.6rem;
-}
-.toc { display: flex; flex-direction: column; }
-.toc-link {
-  font-size: 0.81rem;
-  color: var(--text-3);
-  padding: 0.22em 0;
-  line-height: 1.4;
-  transition: color var(--t);
-  text-decoration: none;
-  display: block;
-}
-.toc-link:hover  { color: var(--text); }
-.toc-link.active { color: var(--accent); font-weight: 500; }
-.toc-h3 { padding-left: 0.85rem; font-size: 0.77rem; }
-
-/* ── Right content ── */
-.post-main {
-  min-width: 0;
-  padding-left: 2rem;
-  max-width: 800px;
-}
-
-/* ── Post header ── */
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  font-size: 0.85rem;
-  color: var(--text-3);
-  margin-bottom: 1.5rem;
-  transition: color var(--t);
-  text-decoration: none;
-}
-.back-link:hover { color: var(--accent); }
-
-.post-title    { font-size: clamp(1.5rem, 3.5vw, 2.1rem); margin-bottom: 0.4rem; line-height: 1.2; }
-.post-subtitle { font-size: 1.05rem; color: var(--text-2); margin-bottom: 0.65rem; line-height: 1.5; font-style: italic; }
-.post-meta     { font-size: 0.82rem; color: var(--text-3); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.65rem; }
-.meta-sep      { opacity: 0.5; }
-.post-tags     { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
-.post-hero-img { margin: 1.25rem 0; }
-.post-hero-img img { width: 100%; border-radius: var(--r-lg); border: 1px solid var(--border); max-height: 420px; object-fit: cover; }
-.post-divider  { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0 1.75rem; }
-
-/* ── Heading anchors ── */
-.heading-anchor {
-  margin-left: 0.5em;
-  opacity: 0;
-  color: var(--text-3);
-  font-size: 0.8em;
-  font-weight: 400;
-  transition: opacity var(--t);
-  text-decoration: none;
-}
-h2:hover .heading-anchor,
-h3:hover .heading-anchor,
-h4:hover .heading-anchor { opacity: 1; }
-
-/* ── Post footer ── */
-.post-footer { margin-top: 3.5rem; }
-.post-footer > hr { border: none; border-top: 1px solid var(--border); margin-bottom: 1.75rem; }
-.author-card   { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem; }
-.author-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--border); }
-.author-name   { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
-.author-bio    { font-size: 0.84rem; color: var(--text-2); line-height: 1.55; }
-.author-bio a  { text-decoration: underline; text-underline-offset: 2px; }
-.post-nav      { display: flex; gap: 0.75rem; }
-
-/* ── Code blocks ── */
-pre, [data-rehype-pretty-code-figure] pre {
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-/* ══ MOBILE ══ */
-@media (max-width: 860px) {
-  /* Switch to single column, hide sidebar */
-  .post-layout {
-    display: block;
-    padding: 2rem 1rem 4rem;
-  }
-  .post-sidebar { display: none !important; }
-  .post-main {
-    padding-left: 0;
-    max-width: 100%;
-  }
-  /* Shrink code font so snippets don't overflow */
-  pre, code, [data-rehype-pretty-code-figure] pre {
-    font-size: 0.78rem !important;
-  }
-}
-</style>

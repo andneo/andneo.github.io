@@ -1,0 +1,1453 @@
+import {test,expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+const paths=['/','/posts/nbody-integrators/','/courses/numerical-methods/01-odes/','/research/dwarf-galaxies/','/publications/smith2023/','/cv/'];
+for(const width of [390,1440])for(const path of paths)test(`${width}px ${path}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(path);await expect(page.locator('main h1')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ const report=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+ expect(report.violations).toEqual([]);expect(errors).toEqual([]);
+});
+test('navigation and mathematical content work without JavaScript',async({browser})=>{
+ const context=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:800}});const page=await context.newPage();
+ await page.goto('http://127.0.0.1:4321/courses/numerical-methods/01-odes/');
+ await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Course chapters'})).toBeVisible();
+ await expect(page.locator('.katex').first()).toBeVisible();await context.close();
+});
+test('hero lattice network has human-scale motion on real graph edges',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.goto('/');
+
+ const hero=page.locator('.home-hero');
+ const canvas=hero.locator('.homepage-field__dynamic');
+ await expect(canvas).toBeVisible();
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-motion-preference','no-preference');
+ await expect(canvas).toHaveAttribute('data-motion-policy','always-animated');
+ await expect(canvas).toHaveAttribute('data-motion-reason','animated');
+ await expect(canvas).toHaveAttribute('data-lattice','kagome');
+ await expect(canvas).toHaveAttribute('data-field-mode','global');
+ await expect(canvas).toHaveAttribute('data-layers','base-dynamic');
+ await expect(canvas).toHaveAttribute('data-canvas-buffers','2');
+ await expect(canvas).toHaveAttribute('data-active-overlay','vector');
+ await expect(canvas).toHaveAttribute('data-diagnostics-hz','4');
+ await expect(canvas).toHaveAttribute('data-quiet-zones','1');
+
+ const nodes=Number(await canvas.getAttribute('data-nodes'));
+ const edges=Number(await canvas.getAttribute('data-edges'));
+ const walkers=Number(await canvas.getAttribute('data-walkers'));
+ expect(nodes).toBeGreaterThan(100);expect(nodes).toBeLessThanOrEqual(4800);
+ expect(edges).toBeGreaterThan(nodes);expect(edges).toBeLessThanOrEqual(11000);
+ expect(walkers).toBeGreaterThan(20);expect(walkers).toBeLessThanOrEqual(60);
+ expect(await page.locator('.home-section .homepage-field').count()).toBe(0);
+
+ const layer=await page.locator('homepage-background').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
+ const contentLayer=await page.locator('.hero-frame').evaluate((node:HTMLElement)=>Number(getComputedStyle(node).zIndex));
+ expect(layer).toBeGreaterThanOrEqual(1);expect(contentLayer).toBeGreaterThan(layer);
+
+ const before=await canvas.evaluate((node:HTMLCanvasElement)=>{
+  const ctx=node.getContext('2d')!;
+  const data=ctx.getImageData(0,0,node.width,node.height).data;
+  let covered=0,samples=0;
+  for(let i=3;i<data.length;i+=64){if(data[i]>10)covered++;samples++;}
+  (node as HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray}).__networkSnapshot=data.slice();
+  return{
+   coverage:covered/samples,
+   transitions:Number(node.dataset.transitions||0),
+   simSteps:Number(node.dataset.simSteps||0),
+   probeTravel:Number(node.dataset.probeTravel||0),
+  };
+ });
+ expect(before.coverage).toBeGreaterThan(.001);
+
+ await page.waitForTimeout(1200);
+
+ const after=await canvas.evaluate((node:HTMLCanvasElement&{__networkSnapshot?:Uint8ClampedArray})=>{
+  const ctx=node.getContext('2d')!;
+  const data=ctx.getImageData(0,0,node.width,node.height).data;
+  const previous=node.__networkSnapshot;
+  let changed=0,samples=0;
+  if(previous){
+   for(let i=0;i<data.length;i+=64){
+    const delta=Math.abs(data[i]-previous[i])+Math.abs(data[i+1]-previous[i+1])+Math.abs(data[i+2]-previous[i+2])+Math.abs(data[i+3]-previous[i+3]);
+    if(delta>32)changed++;
+    samples++;
+   }
+  }
+  delete node.__networkSnapshot;
+  return{
+   transitions:Number(node.dataset.transitions||0),
+   simSteps:Number(node.dataset.simSteps||0),
+   probeTravel:Number(node.dataset.probeTravel||0),
+   activeWalkers:Number(node.dataset.activeWalkers||0),
+   activeEdges:Number(node.dataset.activeEdges||0),
+   meanTravel:Number(node.dataset.meanTravel||0),
+   maxTravel:Number(node.dataset.maxTravel||0),
+   walkerBins:Number(node.dataset.walkerBins||0),
+   explorerBins:Number(node.dataset.explorerBins||0),
+   activityBins:Number(node.dataset.activityBins||0),
+   nearBoxWalkers:Number(node.dataset.nearBoxWalkers||0),
+   focusWalkers:Number(node.dataset.focusWalkers||0),
+   explorerWalkers:Number(node.dataset.explorerWalkers||0),
+   walkerSpanX:Number(node.dataset.walkerSpanX||0),
+   walkerSpanY:Number(node.dataset.walkerSpanY||0),
+   lastTransitionTime:Number(node.dataset.lastTransitionTime||0),
+   changedRatio:samples?changed/samples:0,
+  };
+ });
+
+ expect(after.simSteps-before.simSteps).toBeGreaterThan(30);
+ expect(after.transitions-before.transitions).toBeGreaterThan(20);
+ expect(after.probeTravel-before.probeTravel).toBeGreaterThan(12);
+ expect(after.activeWalkers).toBeGreaterThan(4);
+ expect(after.activeEdges).toBeGreaterThan(4);
+ expect(after.meanTravel).toBeGreaterThan(1.5);
+ expect(after.maxTravel).toBeGreaterThan(4);
+ // The active simulation must occupy the hero, not collapse into the annulus
+ // surrounding the text exclusion rectangle.
+ expect(after.focusWalkers/walkers).toBeGreaterThan(.32);
+ expect(after.focusWalkers/walkers).toBeLessThan(.44);
+ expect(after.explorerWalkers).toBeGreaterThan(after.focusWalkers);
+ // Explorer traffic must remain distributed across most of the hero while a
+ // separate focus population keeps the text perimeter visually active.
+ expect(after.walkerBins).toBeGreaterThanOrEqual(12);
+ expect(after.explorerBins).toBeGreaterThanOrEqual(9);
+ expect(after.activityBins).toBeGreaterThanOrEqual(14);
+ expect(after.nearBoxWalkers).toBeGreaterThanOrEqual(10);
+ expect(after.walkerSpanX).toBeGreaterThan(.72);
+ expect(after.walkerSpanY).toBeGreaterThan(.66);
+ expect(after.lastTransitionTime).toBeGreaterThan(0);
+ expect(after.changedRatio).toBeGreaterThan(.0015);
+
+ const quietAlpha=await page.evaluate(()=>{
+  const node=document.querySelector<HTMLCanvasElement>('.home-hero .homepage-field__dynamic')!;
+  const quiet=document.querySelector<HTMLElement>('.home-hero [data-field-quiet]')!;
+  const ctx=node.getContext('2d')!;
+  const cr=node.getBoundingClientRect();
+  const qr=quiet.getBoundingClientRect();
+  const sx=node.width/cr.width,sy=node.height/cr.height;
+  const inset=Math.min(24,qr.width*.15,qr.height*.15);
+  const x=Math.max(0,Math.floor((qr.left-cr.left+inset)*sx));
+  const y=Math.max(0,Math.floor((qr.top-cr.top+inset)*sy));
+  const w=Math.max(1,Math.floor((qr.width-inset*2)*sx));
+  const h=Math.max(1,Math.floor((qr.height-inset*2)*sy));
+  const data=ctx.getImageData(x,y,Math.min(w,node.width-x),Math.min(h,node.height-y)).data;
+  let visible=0;for(let i=3;i<data.length;i+=4)if(data[i]>8)visible++;
+  return visible/(data.length/4);
+ });
+ expect(quietAlpha).toBeLessThan(.002);
+ expect(errors).toEqual([]);
+});
+test('hero lattice stays registered after responsive resize',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const field=page.locator('.homepage-field');
+ const base=page.locator('.homepage-field__base');
+ const dynamic=page.locator('.homepage-field__dynamic');
+ const active=page.locator('.homepage-field__active');
+
+ const assertRegistered=async()=>{
+  await page.waitForTimeout(180);
+  const geometry=await page.evaluate(()=>{
+   const field=document.querySelector<HTMLElement>('.homepage-field')!;
+   const base=document.querySelector<HTMLCanvasElement>('.homepage-field__base')!;
+   const dynamic=document.querySelector<HTMLCanvasElement>('.homepage-field__dynamic')!;
+   const active=document.querySelector<SVGSVGElement>('.homepage-field__active')!;
+   const fr=field.getBoundingClientRect();
+   const br=base.getBoundingClientRect();
+   const dr=dynamic.getBoundingClientRect();
+   const ar=active.getBoundingClientRect();
+   const vb=active.viewBox.baseVal;
+   return{
+    field:[fr.width,fr.height],
+    base:[br.width,br.height],
+    dynamic:[dr.width,dr.height],
+    active:[ar.width,ar.height],
+    viewBox:[vb.width,vb.height],
+    render:[Number(dynamic.dataset.renderWidth),Number(dynamic.dataset.renderHeight)],
+    inlineWidth:dynamic.style.width,
+    inlineHeight:dynamic.style.height,
+   };
+  });
+  for(const dims of [geometry.base,geometry.dynamic,geometry.active]){
+   expect(Math.abs(dims[0]-geometry.field[0])).toBeLessThan(1);
+   expect(Math.abs(dims[1]-geometry.field[1])).toBeLessThan(1);
+  }
+  expect(Math.abs(geometry.viewBox[0]-geometry.field[0])).toBeLessThan(1);
+  expect(Math.abs(geometry.viewBox[1]-geometry.field[1])).toBeLessThan(1);
+  expect(Math.abs(geometry.render[0]-geometry.field[0])).toBeLessThan(1);
+  expect(Math.abs(geometry.render[1]-geometry.field[1])).toBeLessThan(1);
+  expect(geometry.inlineWidth).toBe('');
+  expect(geometry.inlineHeight).toBe('');
+ };
+
+ await assertRegistered();
+ const before=Number(await dynamic.getAttribute('data-sim-steps'));
+
+ await page.setViewportSize({width:820,height:780});
+ await assertRegistered();
+ await expect.poll(async()=>Number(await dynamic.getAttribute('data-sim-steps'))).toBeGreaterThan(before);
+ const mid=Number(await dynamic.getAttribute('data-sim-steps'));
+
+ await page.setViewportSize({width:1600,height:960});
+ await assertRegistered();
+ await expect.poll(async()=>Number(await dynamic.getAttribute('data-sim-steps'))).toBeGreaterThan(mid);
+
+ await expect(field).toBeVisible();
+ await expect(base).toBeVisible();
+ await expect(dynamic).toBeVisible();
+ await expect(active).toBeVisible();
+});
+
+test('hero animation is universal and pauses only when offscreen',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/');
+ const canvas=page.locator('.home-hero .homepage-field__dynamic');
+ await expect(canvas).toHaveAttribute('data-motion-preference','reduce');
+ await expect(canvas).toHaveAttribute('data-motion-policy','always-animated');
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await expect(canvas).toHaveAttribute('data-motion-reason','animated');
+ const before=Number(await canvas.getAttribute('data-sim-steps'));
+ await page.waitForTimeout(600);
+ const animated=Number(await canvas.getAttribute('data-sim-steps'));
+ expect(animated).toBeGreaterThan(before+20);
+
+ await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+ await expect(canvas).toHaveAttribute('data-motion','paused');
+ await expect(canvas).toHaveAttribute('data-motion-reason','offscreen');
+ await page.waitForTimeout(300);
+ const paused=Number(await canvas.getAttribute('data-sim-steps'));
+ await page.waitForTimeout(500);
+ expect(Number(await canvas.getAttribute('data-sim-steps'))).toBe(paused);
+
+ await page.evaluate(()=>scrollTo(0,0));
+ await expect(canvas).toHaveAttribute('data-motion','running');
+ await page.waitForTimeout(500);
+ expect(Number(await canvas.getAttribute('data-sim-steps'))).toBeGreaterThan(paused+15);
+});
+test('light theme uses a warm bone surface system and icon-only theme control',async({page})=>{
+ await page.emulateMedia({colorScheme:'light'});
+ await page.goto('/');
+
+ const palette=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  return{
+   bg:root.getPropertyValue('--bg').trim(),
+   bgOff:root.getPropertyValue('--bg-off').trim(),
+   surface:root.getPropertyValue('--surface').trim(),
+   text3:root.getPropertyValue('--text-3').trim(),
+   signal:root.getPropertyValue('--signal').trim(),
+   cool:root.getPropertyValue('--cool').trim(),
+  };
+ });
+ expect(palette.bg).toBe('#ede8de');
+ expect(palette.bgOff).toBe('#e3ddd2');
+ expect(palette.surface).toBe('#f4f1eb');
+ expect(palette.bg).not.toBe('#ffffff');
+
+ const contrast=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  const parse=(value:string)=>{
+   const hex=value.trim().replace('#','');
+   return [0,2,4].map(i=>Number.parseInt(hex.slice(i,i+2),16)/255);
+  };
+  const luminance=(value:string)=>{
+   const [r,g,b]=parse(value).map(c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4));
+   return .2126*r+.7152*g+.0722*b;
+  };
+  const ratio=(a:string,b:string)=>{
+   const [hi,lo]=[luminance(a),luminance(b)].sort((x,y)=>y-x);
+   return (hi+.05)/(lo+.05);
+  };
+  const bgOff=root.getPropertyValue('--bg-off').trim();
+  return ['--text-3','--accent','--signal','--cool'].map(name=>ratio(root.getPropertyValue(name).trim(),bgOff));
+ });
+ expect(contrast.every(ratio=>ratio>=4.5)).toBe(true);
+
+ const theme=page.getByRole('button',{name:'Dark theme'});
+ await expect(theme).toBeVisible();
+ await expect(theme.locator('.theme-icon-moon')).toBeVisible();
+ await expect(theme.locator('.theme-icon-sun')).toBeHidden();
+ expect((await theme.textContent())?.trim()).toBe('');
+
+ await theme.click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ const darkPalette=await page.evaluate(()=>{
+  const root=getComputedStyle(document.documentElement);
+  return{
+   bg:root.getPropertyValue('--bg').trim(),
+   surface:root.getPropertyValue('--surface').trim(),
+   signal:root.getPropertyValue('--signal').trim(),
+   cool:root.getPropertyValue('--cool').trim(),
+  };
+ });
+ expect(darkPalette).toEqual({bg:'#191817',surface:'#242220',signal:'#e88770',cool:'#82a1b0'});
+ const lightAction=page.getByRole('button',{name:'Light theme'});
+ await expect(lightAction.locator('.theme-icon-sun')).toBeVisible();
+ await expect(lightAction.locator('.theme-icon-moon')).toBeHidden();
+
+ await lightAction.click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
+});
+
+test('keyboard access, dark theme and legacy redirect remain intact',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+ const field=page.locator('.home-hero .homepage-field__dynamic');
+ await expect(field).toHaveAttribute('data-motion','running');
+ await expect(field).toHaveAttribute('data-motion-policy','always-animated');
+ expect(await page.getByRole('button',{name:/background/i}).count()).toBe(0);
+ await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
+ await page.getByRole('button',{name:'Dark theme'}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
+ await page.goto('/course/numerical-methods/01-odes/#euler-method');await expect(page).toHaveURL(/\/courses\/numerical-methods\/01-odes\/#euler-method$/);
+});
+test('MDX components render and independent enhancements operate',async({page})=>{
+ await page.goto('/posts/component-test/');
+ await expect(page.locator('scientific-plot')).toHaveCount(2);
+ const first=page.locator('scientific-plot').first();await first.locator('input').uncheck();
+ await expect(first.locator('polyline')).toHaveAttribute('visibility','hidden');
+ await expect(page.locator('scientific-plot').last().locator('polyline')).not.toHaveAttribute('visibility','hidden');
+ const sim=page.locator('scientific-simulation').first();await sim.getByRole('button').click();await expect(sim.getByRole('button')).toHaveText('Play playback');
+ await sim.getByRole('button').click();await expect(sim.getByRole('button')).toHaveText('Pause playback');await sim.getByRole('button').click();
+ expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
+});
+
+test('homepage hero is centered, expanded and stripped of redundant metadata',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/');
+ const hero=page.locator('.home-hero');
+ const identity=hero.locator('.hero-identity');
+ await expect(hero.locator('.homepage-field canvas')).toHaveCount(2);
+ await expect(hero.locator('.homepage-field__active')).toHaveCount(1);
+ await expect(identity).toBeVisible();
+ await expect(hero.locator('.hero-actions')).toHaveCount(0);
+ await expect(hero.locator('.hero-details')).toHaveCount(0);
+ const geometry=await page.evaluate(()=>{
+  const hero=document.querySelector<HTMLElement>('.home-hero')!;
+  const box=document.querySelector<HTMLElement>('.hero-identity')!;
+  const heading=box.querySelector<HTMLElement>('h1')!;
+  const hr=hero.getBoundingClientRect();
+  const br=box.getBoundingClientRect();
+  return{
+   centreOffset:Math.abs((br.left+br.width/2)-(hr.left+hr.width/2)),
+   widthRatio:br.width/hr.width,
+   height:br.height,
+   headingSize:Number.parseFloat(getComputedStyle(heading).fontSize),
+  };
+ });
+ expect(geometry.centreOffset).toBeLessThan(12);
+ expect(geometry.widthRatio).toBeGreaterThan(.65);
+ expect(geometry.height).toBeGreaterThan(330);
+ expect(geometry.headingSize).toBeLessThan(72);
+ expect(geometry.headingSize).toBeGreaterThan(38);
+});
+
+test('homepage research is organised as four themes with selected publication evidence',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000}); await page.goto('/');
+ const themes=page.locator('#research .research-theme-card'); await expect(themes).toHaveCount(4);
+ await expect(themes.nth(0)).toContainText('Topology of Networked Matter');
+ await expect(themes.nth(0).locator('.theme-image')).toHaveAttribute('src','/images/research/topology-networked-matter.webp');
+ await expect(themes.nth(0).locator('.theme-visual-link')).toHaveAttribute('href','/research/topology-networked-matter/');
+ const topologyImage=themes.nth(0).locator('.theme-image');
+ expect(await topologyImage.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0&&img.naturalHeight>0)).toBe(true);
+ const visualHeights=await page.locator('#research .theme-visual').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().height));
+ expect(Math.max(...visualHeights)-Math.min(...visualHeights)).toBeLessThanOrEqual(2);
+ await expect(themes.nth(0).locator('.research-glyph')).toHaveCount(0);
+ await expect(themes.nth(1).locator('.research-glyph')).toHaveCount(1);
+ await expect(themes.nth(1)).toContainText('Programming Self-Assembly');
+ await expect(themes.nth(2)).toContainText('Liquids, Glasses & Energy Landscapes');
+ await expect(themes.nth(3)).toContainText('Self-Assembly in Life');
+ await expect(page.locator('#research .theme-index')).toHaveCount(0);
+ await expect(page.locator('#research .paper-arrow')).toHaveCount(0);
+ const topicDots=await page.locator('#research .theme-topics li:not(:last-child)').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node,'::after').content));
+ expect(topicDots.length).toBeGreaterThan(4);
+ expect(topicDots.every(content=>content.includes('·'))).toBe(true);
+ const heroDots=await page.locator('.hero-themes li:not(:last-child)').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node,'::after').content));
+ expect(heroDots).toHaveLength(3);
+ expect(heroDots.every(content=>content.includes('·'))).toBe(true);
+ const visualBackgrounds=await page.locator('#research .theme-visual').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).backgroundImage));
+ expect(new Set(visualBackgrounds).size).toBeGreaterThanOrEqual(3);
+ const introLines=await page.locator('#research .research-intro').evaluate(node=>Math.round(node.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(node).lineHeight)));
+ expect(introLines).toBe(1);
+
+ const programming=page.locator('#research .research-theme-card').filter({hasText:'Programming Self-Assembly'});
+ const baselineBackground=await programming.evaluate(node=>getComputedStyle(node).backgroundColor);
+ await programming.getByRole('link',{name:'Programming Self-Assembly',exact:true}).click();
+ await expect(page).toHaveURL(/\/research\/programming-self-assembly\/$/);
+ await page.goBack();
+ await page.mouse.move(1,1);
+ await page.waitForTimeout(220);
+ const restored=page.locator('#research .research-theme-card').filter({hasText:'Programming Self-Assembly'});
+ expect(await restored.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe(baselineBackground);
+
+ const paperLinks=page.locator('#research .theme-papers a'); expect(await paperLinks.count()).toBeGreaterThanOrEqual(9);
+ expect(await paperLinks.evaluateAll(nodes=>nodes.every(node=>(node.getAttribute('href')??'').startsWith('/publications/')))).toBe(true);
+ const columns=await page.locator('#research .research-theme-grid').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length); expect(columns).toBe(2);
+ await page.goto('/publications/'); const publicationItems=page.locator('.content-list > li'); expect(await publicationItems.count()).toBeGreaterThanOrEqual(13);
+ await expect(page.getByRole('link',{name:/Topological nature of the liquid/i})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Designing the Self-Assembly of Disordered Materials/i})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Effect of coat-protein concentration/i})).toBeVisible();
+ await page.goto('/research/');
+ await expect(page.locator('.research-page-grid .research-theme-card')).toHaveCount(4);
+ const headingMetrics=await page.evaluate(()=>{
+  const heading=document.querySelector<HTMLElement>('.research-page-heading h1')!;
+  const lede=document.querySelector<HTMLElement>('.research-page-heading > p:last-child')!;
+  return{
+   headingLines:Math.round(heading.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(heading).lineHeight)),
+   ledeRight:lede.getBoundingClientRect().right,
+   frameRight:document.querySelector<HTMLElement>('.research-page')!.getBoundingClientRect().right,
+  };
+ });
+ expect(headingMetrics.headingLines).toBe(1);
+ expect(headingMetrics.frameRight-headingMetrics.ledeRight).toBeLessThanOrEqual(1);
+});
+
+test('water network story is contained, button-driven and replaces the old topology instrument',async({page})=>{
+ test.setTimeout(90000);
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/research/topology-networked-matter/');
+
+ await expect(page.locator('.research-detail-main > .subtitle')).toHaveCount(0);
+ await expect(page.getByText('Interactive exhibit',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Enter the network.'})).toHaveCount(0);
+ await expect(page.locator('topology-network-lab')).toHaveCount(0);
+
+ const story=page.locator('water-network-story');
+ const stage=story.locator('[data-water-stage]');
+ const hero=story.locator('[data-water-hero-frame]');
+ const heroFrame=story.locator('[data-water-hero-iframe]');
+ const canvas=story.locator('[data-water-canvas]');
+ const monolayerCanvas=story.locator('[data-monolayer-canvas]');
+ const monolayerControls=story.locator('[data-monolayer-controls]');
+ await expect(story).toBeVisible();
+ await expect(heroFrame).toHaveAttribute('src','/water-live/index.html');
+ const waterDemo=page.frameLocator('[data-water-hero-iframe]');
+ await expect(waterDemo.locator('canvas')).toBeVisible({timeout:15000});
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-view','normal');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-bounds','cropped-edge-to-edge');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-pool-width','baseline');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-wave-driving','occasional-drops-only');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-view-scale','edge-overfill');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-drop-cadence','moderately-more-frequent');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-projection','compressed-perspective');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-framing','aspect-cover');
+ await expect(waterDemo.locator('html')).toHaveAttribute('data-water-camera-distance','3.00');
+ expect(Number(await waterDemo.locator('html').getAttribute('data-water-visible-half-width'))).toBeLessThanOrEqual(.941);
+ await expect(story).toHaveAttribute('data-scene','0');
+ await expect(story.locator('[data-water-title]')).toHaveText('Water is a network.');
+ await expect(story.locator('[data-water-copy]')).toContainText('hydrogen bonds');
+ await expect(story.locator('[data-water-copy]')).toContainText('locally tetrahedral network');
+ await expect(story.locator('[data-water-kicker]')).toBeHidden();
+
+ const lens=story.locator('[data-water-lens]');
+ const lensCanvas=story.locator('[data-water-lens-canvas]');
+ const lensWindow=story.locator('.water-story__lens-window');
+ const lensShell=story.locator('.water-story__lens-shell');
+ await expect(lens).toBeVisible();
+ await expect(lensShell).toBeVisible();
+ await expect(lensShell).toHaveAttribute('src','/images/research/magnifier.webp');
+ await expect(lensShell).toHaveAttribute('data-magnifier-render','webp-raster');
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete?img.naturalWidth:0)).toBe(2048);
+ await expect.poll(async()=>lensShell.evaluate((img:HTMLImageElement)=>img.complete?img.naturalHeight:0)).toBe(2048);
+
+ const shellAlpha=await lensShell.evaluate((img:HTMLImageElement)=>{
+  const sample=document.createElement('canvas');
+  sample.width=256;
+  sample.height=256;
+  const ctx=sample.getContext('2d',{willReadFrequently:true})!;
+  ctx.drawImage(img,0,0,sample.width,sample.height);
+  const alphaAt=(x:number,y:number)=>ctx.getImageData(Math.round(x*255),Math.round(y*255),1,1).data[3];
+  return{
+   aperture:alphaAt(.352,.482),
+   ring:alphaAt(.352,.205),
+   handle:alphaAt(.75,.72),
+  };
+ });
+ expect(shellAlpha.aperture).toBeLessThan(8);
+ expect(shellAlpha.ring).toBeGreaterThan(220);
+ expect(shellAlpha.handle).toBeGreaterThan(220);
+
+ const lensShellBox=await lensShell.boundingBox();
+ const lensWindowBox=await lensWindow.boundingBox();
+ expect(lensShellBox).not.toBeNull();
+ expect(lensWindowBox).not.toBeNull();
+ const windowLeft=(lensWindowBox!.x-lensShellBox!.x)/lensShellBox!.width;
+ const windowTop=(lensWindowBox!.y-lensShellBox!.y)/lensShellBox!.height;
+ const windowWidth=lensWindowBox!.width/lensShellBox!.width;
+ const windowHeight=lensWindowBox!.height/lensShellBox!.height;
+ expect(windowLeft).toBeCloseTo(.098,2);
+ expect(windowTop).toBeCloseTo(.228,2);
+ expect(windowWidth).toBeCloseTo(.507,2);
+ expect(windowHeight).toBeCloseTo(.507,2);
+ expect(windowLeft+windowWidth).toBeLessThan(.61);
+ expect(windowTop+windowHeight).toBeLessThan(.74);
+
+ await expect(lensCanvas).toHaveAttribute('data-renderer','molecular-lens');
+ await expect(lensCanvas).toHaveAttribute('data-molecule-count','28');
+ await expect(lensCanvas).toHaveAttribute('data-model','tip4p-style-rigid-water-md');
+ await expect(lensCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rotation-transient-network');
+ await expect(lensCanvas).toHaveAttribute('data-integrator','baoab-180hz');
+ await expect(lensCanvas).toHaveAttribute('data-hbond-valence','2-donor-2-acceptor');
+ await expect(lensCanvas).toHaveAttribute('data-repulsion','oxygen-oxygen-hydrogen-hydrogen-hydrogen-oxygen');
+ await expect(lensCanvas).toHaveAttribute('data-electrostatics','screened-tip4p-style-m-site-3d');
+ await expect(lensCanvas).toHaveAttribute('data-orientation','quaternion-3d');
+ await expect(lensCanvas).toHaveAttribute('data-translation','planar-xy');
+ await expect(lensCanvas).toHaveAttribute('data-background','opaque-microscopic-water');
+ await expect(story).toHaveAttribute('data-lens-ready','true');
+
+ const initialSteps=Number(await lensCanvas.getAttribute('data-md-steps')||0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-md-steps')||0)).toBeGreaterThan(initialSteps+10);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-mean-speed')||0)).toBeGreaterThan(.01);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-mean-angular-speed')||0)).toBeGreaterThan(.05);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-mean-out-of-plane')||0),{timeout:10000}).toBeGreaterThan(.02);
+ expect(Math.abs(Number(await lensCanvas.getAttribute('data-max-center-z')||0))).toBeLessThan(1e-6);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:10000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-bonds-formed')||0),{timeout:10000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-bonds-broken')||0),{timeout:12000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await lensCanvas.getAttribute('data-visible-molecules')||0)).toBeGreaterThan(12);
+ expect(Number(await lensCanvas.getAttribute('data-max-donor-degree'))).toBeLessThanOrEqual(2);
+ expect(Number(await lensCanvas.getAttribute('data-max-acceptor-degree'))).toBeLessThanOrEqual(2);
+ expect(Number(await lensCanvas.getAttribute('data-max-total-degree'))).toBeLessThanOrEqual(4);
+ expect(Number(await lensCanvas.getAttribute('data-min-oo'))).toBeGreaterThanOrEqual(.187);
+ expect(Number(await lensCanvas.getAttribute('data-min-hh'))).toBeGreaterThanOrEqual(.095);
+ expect(Number(await lensCanvas.getAttribute('data-min-ho'))).toBeGreaterThanOrEqual(.085);
+ expect(Number(await lensCanvas.getAttribute('data-q-o'))).toBeCloseTo(0,2);
+ expect(Number(await lensCanvas.getAttribute('data-q-h'))).toBeCloseTo(.42,2);
+ expect(Number(await lensCanvas.getAttribute('data-q-m'))).toBeCloseTo(-.84,2);
+ expect(Number(await lensCanvas.getAttribute('data-o-m'))).toBeGreaterThan(.010);
+ expect(Number(await lensCanvas.getAttribute('data-o-m'))).toBeLessThan(.014);
+ expect(Math.abs(Number(await lensCanvas.getAttribute('data-net-charge')))).toBeLessThan(1e-6);
+
+ const lensPixels=await lensCanvas.evaluate((canvas:HTMLCanvasElement)=>{
+  const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
+  const points=[[canvas.width*.5,canvas.height*.5],[canvas.width*.25,canvas.height*.5],[canvas.width*.5,canvas.height*.25]];
+  return points.map(([x,y])=>ctx.getImageData(Math.floor(x),Math.floor(y),1,1).data[3]);
+ });
+ expect(lensPixels.every(alpha=>alpha===255)).toBe(true);
+
+ const heroBox=await hero.boundingBox();
+ expect(heroBox).not.toBeNull();
+ expect(heroBox!.width).toBeGreaterThan(700);
+ expect(heroBox!.height).toBeGreaterThan(450);
+ await expect(hero).toHaveCSS('opacity','1');
+ await expect(canvas).toHaveCSS('opacity','0');
+
+ const headingSize=await story.locator('[data-water-title]').evaluate(node=>Number.parseFloat(getComputedStyle(node).fontSize));
+ expect(headingSize).toBeLessThan(64);
+
+ const initialProjectionFov=Number(await waterDemo.locator('html').getAttribute('data-water-projection-fov'));
+ await page.setViewportSize({width:1440,height:620});
+ await expect.poll(async()=>Number(await waterDemo.locator('html').getAttribute('data-water-visible-half-width'))).toBeLessThanOrEqual(.941);
+ const shortViewportFov=Number(await waterDemo.locator('html').getAttribute('data-water-projection-fov'));
+ expect(shortViewportFov).toBeLessThanOrEqual(initialProjectionFov);
+ await page.setViewportSize({width:1440,height:1000});
+
+ const stagePosition=await stage.evaluate(node=>getComputedStyle(node).position);
+ expect(stagePosition).toBe('relative');
+
+ await page.evaluate(()=>window.scrollBy(0,900));
+ await page.waitForTimeout(150);
+ await expect(story).toHaveAttribute('data-scene','0');
+ await story.evaluate(element=>element.scrollIntoView({block:'center'}));
+ await page.waitForTimeout(100);
+
+ await story.getByRole('button',{name:/scene 2: Confine the network/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','1');
+ await expect(story.locator('[data-water-title]')).toHaveText('Confine the network.');
+ await expect(story.locator('[data-water-copy]')).toContainText('400 water molecules');
+ await expect(story.locator('.water-story__copy')).toBeHidden();
+ await expect(monolayerCanvas).toBeVisible();
+ await expect(monolayerControls).toBeVisible();
+ await expect(canvas).toHaveCSS('opacity','0');
+ await expect(lens).toHaveCSS('opacity','0');
+ await expect(story).toHaveAttribute('data-monolayer-ready','true');
+ await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v10');
+ await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','400');
+ await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
+ await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-fixed-shape-cell');
+ await expect(monolayerCanvas).toHaveAttribute('data-ensemble','langevin-md-weak-pressure-control');
+ await expect(monolayerCanvas).toHaveAttribute('data-barostat','isotropic-area-weak-coupling');
+ await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','configurational-pressure-plus-ideal-term');
+ await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
+ await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-staged-friction-kbt');
+ await expect(monolayerCanvas).toHaveAttribute('data-potential','directional-hbond-plus-cooperative-oxygen-network');
+ await expect(monolayerCanvas).toHaveAttribute('data-dynamics','planar-translation-3d-rigid-rotation');
+ await expect(monolayerCanvas).toHaveAttribute('data-view-fill','stage-margin');
+ await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
+ await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
+ await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
+ await expect(monolayerCanvas).toHaveAttribute('data-cell-shape-mode','fixed-shape-isotropic');
+ await expect(monolayerCanvas).toHaveAttribute('data-render-scale','equal-outer-margins-fixed-physical-zoom');
+ await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
+ await expect(story.locator('[data-monolayer-kinetic-translation]')).toContainText('K');
+ await expect(story.locator('[data-monolayer-kinetic-rotation]')).toContainText('K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kinetic-translation-k')),{timeout:15000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kinetic-rotation-k')),{timeout:15000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-substeps')),{timeout:15000})
+  .toBeGreaterThanOrEqual(1);
+
+ const monolayerInitialSteps=Number(await monolayerCanvas.getAttribute('data-md-steps')||0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-steps')||0),{timeout:15000}).toBeGreaterThan(monolayerInitialSteps+6);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-neighbor-pairs')||0),{timeout:10000}).toBeGreaterThan(0);
+ const monolayerNeighborPairs=Number(await monolayerCanvas.getAttribute('data-neighbor-pairs')||0);
+ expect(monolayerNeighborPairs).toBeLessThan(10000);
+ expect(monolayerNeighborPairs).toBeLessThan(400*399/2);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-hydrogen-bonds')||0),{timeout:15000}).toBeGreaterThan(0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')||0),{timeout:15000}).toBeGreaterThan(.4);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-out-of-plane')||0),{timeout:15000}).toBeGreaterThan(.1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-angular-speed')||0),{timeout:15000}).toBeGreaterThan(.1);
+ expect(Number(await monolayerCanvas.getAttribute('data-quaternion-error')||1)).toBeLessThan(1e-10);
+ // Physical coordination diagnostics are measured independently of the
+ // degree-capped graph; they must not be hard-coded to zero.
+ const initialWeightedCoordination=Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination'));
+ const initialRingCounts=await Promise.all(['3','4','5','6','7'].map(async n=>
+  Number(await monolayerCanvas.getAttribute('data-oxygen-ring'+n))));
+ expect(initialRingCounts.every(Number.isFinite)).toBe(true);
+ const initialQ3=Number(await monolayerCanvas.getAttribute('data-mean-local-q3'));
+ const initialQ4=Number(await monolayerCanvas.getAttribute('data-mean-local-q4'));
+ const initialOvercoordination=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
+ const initialClosePacking=Number(await monolayerCanvas.getAttribute('data-close-packed-fraction'));
+ expect(initialWeightedCoordination).toBeGreaterThan(1.5);
+ for(const value of [initialQ3,initialQ4,initialOvercoordination,initialClosePacking]){
+  expect(Number.isFinite(value)).toBe(true);
+  expect(value).toBeGreaterThanOrEqual(0);
+  expect(value).toBeLessThanOrEqual(1);
+ }
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-force-evaluations')||0),{timeout:15000}).toBeGreaterThan(1000);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-barostat-updates')||0),{timeout:15000}).toBeGreaterThan(1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')||0),{timeout:15000}).toBeGreaterThan(.05);
+ await expect.poll(async()=>monolayerCanvas.getAttribute('data-orientational-c1'),{timeout:15000}).not.toBeNull();
+ const initialMsd=Number(await monolayerCanvas.getAttribute('data-msd')||0);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-msd')||0),{timeout:15000}).toBeGreaterThan(initialMsd+.002);
+
+ const temperature=story.locator('[data-monolayer-temperature]');
+ const pressure=story.locator('[data-monolayer-pressure]');
+ expect(await pressure.getAttribute('step')).toBe('0.01');
+ await pressure.fill('0.03');
+ await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('0.03 GPa');
+ await pressure.fill('1');
+
+ expect(Number(await monolayerCanvas.getAttribute('data-pressure-work-scale'))).toBeCloseTo(301.107038,3);
+ expect(Number(await monolayerCanvas.getAttribute('data-confinement-width-nm'))).toBeCloseTo(.5,3);
+
+ const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
+ const initialArea=Number(await monolayerCanvas.getAttribute('data-box-area'));
+ expect(initialArea*initialDensity).toBeCloseTo(400,1);
+ await expect(story.locator('[data-monolayer-density]')).toContainText('nm⁻²');
+ await expect(story.locator('[data-monolayer-area]')).toContainText('nm²');
+ await expect(story.locator('[data-monolayer-density-change]')).toContainText('%');
+ await expect(story.locator('[data-monolayer-density-meter]')).toHaveAttribute('style',/width:/);
+ const initialDegree4=Number(await monolayerCanvas.getAttribute('data-degree4-fraction'));
+ expect(initialDegree4).toBeGreaterThanOrEqual(0);
+ const initialSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
+
+ await temperature.fill('500');
+ await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('500 K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(500);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kbt'))).toBeCloseTo(4.15723,3);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:15000}).toBeGreaterThan(initialSpeed*1.08);
+ const hotSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
+
+ await temperature.fill('120');
+ await expect(story.locator('[data-monolayer-temperature-output]')).toHaveText('120 K');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-temperature-k'))).toBe(120);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-kbt'))).toBeCloseTo(.99774,3);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-speed')),{timeout:15000}).toBeLessThan(hotSpeed*.95);
+
+ await pressure.fill('6');
+ await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('6.00 GPa');
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(6,1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+.25);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-box-area')),{timeout:25000}).toBeLessThan(initialArea);
+ expect(Number(await monolayerCanvas.getAttribute('data-cell-shear'))).toBe(0);
+ const initialAspect=Number(await monolayerCanvas.getAttribute('data-initial-aspect'));
+ expect(initialAspect).toBeGreaterThan(.65);
+ expect(initialAspect).toBeLessThanOrEqual(1.6);
+ expect(Number(await monolayerCanvas.getAttribute('data-cell-aspect'))).toBeCloseTo(initialAspect,3);
+ // Degree-four occupancy is a phase observable, not guaranteed during a
+ // short, stochastic parameter sweep. Check the underlying uncapped structure.
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')),{timeout:25000}).toBeGreaterThan(.4);
+ // Slow, physically integrated pressure response should increase weighted
+ // coordination; don't require a phase transition within a few frames.
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-weighted-coordination')),{timeout:25000}).toBeGreaterThan(initialWeightedCoordination+.10);
+ // A capped displayed graph cannot establish physical valence saturation.
+ const highPressureOver=Number(await monolayerCanvas.getAttribute('data-overcoordinated-fraction'));
+ const highPressureClosePacking=Number(await monolayerCanvas.getAttribute('data-close-packed-fraction'));
+ expect(highPressureOver).toBeGreaterThanOrEqual(0);
+ expect(highPressureOver).toBeLessThanOrEqual(1);
+ expect(highPressureClosePacking).toBeLessThan(.3);
+ const finalCellAspect=Number(await monolayerCanvas.getAttribute('data-cell-aspect'));
+ expect(finalCellAspect).toBeGreaterThanOrEqual(1/1.62-.005);
+ expect(finalCellAspect).toBeLessThanOrEqual(1.62+.005);
+ // Full pressure convergence is tested with direct MD trajectories,
+ // not on a fixed wall-clock window in the 400-particle browser UI.
+ expect(Number.isFinite(Number(await monolayerCanvas.getAttribute('data-measured-pressure-gpa')))).toBe(true);
+ await expect(story.locator('[data-monolayer-measured-pressure]')).toContainText('GPa');
+ await expect(story.locator('[data-monolayer-density]')).not.toHaveText('—');
+
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','2');
+ await expect(hero).toHaveCSS('opacity','0');
+ await expect(canvas).toHaveCSS('opacity','1');
+ await expect(lens).toHaveCSS('opacity','0');
+
+ await story.getByRole('button',{name:/scene 1: Water is a network/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','0');
+ await expect(hero).toHaveCSS('opacity','1');
+ await expect(canvas).toHaveCSS('opacity','0');
+ await expect(lens).toHaveCSS('opacity','1');
+
+ await story.getByRole('button',{name:/scene 3: A tiny piece/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','2');
+ await expect(story.locator('[data-water-scale]')).toBeVisible();
+ await expect(story.locator('[data-water-scale]')).toContainText('~2 nm');
+
+ await story.getByRole('button',{name:/scene 4: The network never stands still/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','3');
+ await expect(story.locator('[data-water-title]')).toHaveText('The network never stands still.');
+
+ await story.getByRole('button',{name:/scene 5: Same liquid/i}).evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-scene','4');
+ const slider=story.locator('[data-water-mix]');
+ await expect(slider).toBeVisible();
+ await slider.fill('15');
+ expect(Number(await slider.inputValue())).toBe(15);
+
+ const pause=story.locator('[data-water-pause]');
+ await expect(pause).toBeVisible();
+ await pause.click();
+ await expect(pause).toHaveAttribute('aria-pressed','true');
+ await expect(pause).toHaveText('Resume motion');
+});
+
+test('monolayer Hamiltonian forces and sheared periodic geometry are numerically consistent',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser-served public module is not in the TypeScript module graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const md=new MonolayerWaterMD({count:32,temperatureKelvin:240,pressureGPa:1});
+  const h=1e-6;
+  let maxRelativeError=0;
+  for(let i=0;i<8;i++)for(const axis of ['x','y','rx','ry','rz'] as const){
+   md.computeForces();
+   const particle=md.molecules[i];
+   const q0={...particle.q};
+   const rotational=axis[0]==='r';
+   const force=axis==='x'?particle.fx:axis==='y'?particle.fy:
+     axis==='rx'?particle.tx:axis==='ry'?particle.ty:particle.tz;
+   if(rotational)md.rotateOrientation(particle,axis==='rx'?1:0,axis==='ry'?1:0,axis==='rz'?1:0,h);
+   else particle[axis]+=h;
+   const plus=md.totalEnergy();
+   if(rotational){
+    particle.q={...q0};
+    md.rotateOrientation(particle,axis==='rx'?1:0,axis==='ry'?1:0,axis==='rz'?1:0,-h);
+   }else particle[axis]-=2*h;
+   const minus=md.totalEnergy();
+   if(rotational)particle.q=q0;
+   else particle[axis]+=h;
+   const numerical=-(plus-minus)/(2*h);
+   maxRelativeError=Math.max(maxRelativeError,Math.abs(force-numerical)/Math.max(1,Math.abs(force),Math.abs(numerical)));
+  }
+  const cell={lx:2.05,ly:1.51,shear:.61};
+  let maxImageError=0;
+  for(let ix=-5;ix<=5;ix++)for(let iy=-5;iy<=5;iy++){
+   const dx=ix*.33+.11,dy=iy*.27+.05;
+   const actual=md.minimumImageVector(dx,dy,cell);
+   let best=Infinity;
+   for(let a=-3;a<=3;a++)for(let b=-3;b<=3;b++){
+    const x=dx-a*cell.lx-b*cell.shear,y=dy-b*cell.ly;
+    best=Math.min(best,x*x+y*y);
+   }
+   maxImageError=Math.max(maxImageError,Math.abs(actual.x*actual.x+actual.y*actual.y-best));
+  }
+  return{maxRelativeError,maxImageError};
+ });
+ expect(result.maxRelativeError).toBeLessThan(1e-4);
+ expect(result.maxImageError).toBeLessThan(1e-9);
+});
+test('Scene 02 retains equal top/bottom/right margins without overlapping controls on resize',async({page})=>{
+ test.setTimeout(120000);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/research/topology-networked-matter/');
+ const story=page.locator('water-network-story');
+ await story.locator('[data-water-jump="1"]').evaluate((button:HTMLButtonElement)=>button.click());
+ await expect(story).toHaveAttribute('data-monolayer-ready','true');
+ await story.locator('[data-water-pause]').click();
+ const samples=[];
+ for(const [width,height] of [[1440,900],[980,800],[820,760],[740,820],[390,820]]){
+  await page.setViewportSize({width,height});
+  await page.waitForTimeout(180);
+  const sample=await page.evaluate(()=>{
+   const canvas=document.querySelector('[data-monolayer-canvas]') as any;
+   const explorer=canvas?.__monolayerExplorer;
+   if(!explorer?.md)throw new Error('Scene 02 simulation not ready');
+   const md=explorer.md,v=explorer.view(),f=explorer.simulationFrame();
+   const rect=explorer.stage.getBoundingClientRect();
+   const local=(r:DOMRect)=>({
+    left:r.left-rect.left,right:r.right-rect.left,
+    top:r.top-rect.top,bottom:r.bottom-rect.top,
+   });
+   const p=local(explorer.thermoPanel.getBoundingClientRect());
+   const rail=local(explorer.navRail.getBoundingClientRect());
+   const pause=local(explorer.pauseButton.getBoundingClientRect());
+   const width=md.cell.lx*v.scale,height=md.cell.ly*v.scale;
+   const box={left:v.cx-width/2,right:v.cx+width/2,
+    top:v.cy-height/2,bottom:v.cy+height/2};
+   // The camera repositions as the physical box expands. Check the
+   // maximum box at its own equal-margin centre, not today's centre.
+   const maxW=Math.sqrt(md.maxArea*md.initialAspect)*v.scale;
+   const maxH=Math.sqrt(md.maxArea/md.initialAspect)*v.scale;
+   const maxGap=(f.bottom-f.top-maxH)/2;
+   const maxCx=f.right-maxGap-maxW/2;
+   const maximum={left:maxCx-maxW/2,right:maxCx+maxW/2,
+    top:v.cy-maxH/2,bottom:v.cy+maxH/2};
+   const overlap=(a:typeof box,b:typeof box)=>a.left<b.right&&a.right>b.left&&
+     a.top<b.bottom&&a.bottom>b.top;
+   const top=box.top-f.top,bottom=f.bottom-box.bottom,right=f.right-box.right;
+   const outerTop=box.top,outerBottom=explorer.height-box.bottom;
+   const outerRight=explorer.width-box.right;
+   return{
+    area:md.area(),density:md.count/md.area(),aspect:md.cell.lx/md.cell.ly,
+    scale:v.scale,region:f.kind,stageHeight:explorer.height,
+    marginError:Math.max(Math.abs(top-bottom),Math.abs(top-right)),
+    outerMarginError:Math.max(Math.abs(outerTop-outerBottom),
+      Math.abs(outerTop-outerRight)),
+    overlaps:[p,rail,pause].some(r=>overlap(box,r)||overlap(maximum,r)),
+    fits:[box,maximum].every(r=>r.left>=f.left-1&&r.right<=f.right+1&&
+      r.top>=f.top-1&&r.bottom<=f.bottom+1),
+   };
+  });
+  samples.push(sample);
+ }
+ for(const sample of samples){
+  expect(sample.overlaps).toBe(false);
+  expect(sample.fits).toBe(true);
+  expect(sample.marginError).toBeLessThan(2);
+  if(sample.region==='side')expect(sample.outerMarginError).toBeLessThan(2);
+  expect(sample.scale).toBeGreaterThan(0);
+  expect(sample.area).toBeCloseTo(samples[0].area,8);
+  expect(sample.density).toBeCloseTo(samples[0].density,8);
+  expect(sample.aspect).toBeCloseTo(samples[0].aspect,8);
+ }
+ expect(samples[4].stageHeight).toBeGreaterThanOrEqual(700);
+ expect(samples[4].scale).toBeLessThan(samples[0].scale);
+});
+
+test('higher-temperature model has greater oxygen displacement without loss of kinetic equipartition',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: runtime public module, outside the TypeScript module graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function sample(T:number){
+   const m=new MonolayerWaterMD({
+    count:80,temperatureKelvin:T,pressureGPa:1,randomSeed:4242});
+   for(let i=0;i<540;i++)m.integrateStep(false);
+   const start=m.molecules.map((p:any)=>({dx:p.diffX,dy:p.diffY}));
+   let kinetic=0,rotational=0,n=0;
+   for(let i=0;i<450;i++){
+    m.integrateStep(false);
+    if(i%15===0){
+     const kt=m.kineticTemperatures();
+     kinetic+=kt.translationKelvin;rotational+=kt.rotationKelvin;n++;
+    }
+   }
+   let msd=0;
+   for(let i=0;i<m.count;i++){
+    const p=m.molecules[i],b=start[i];
+    msd+=(p.diffX-b.dx)**2+(p.diffY-b.dy)**2;
+   }
+   return{msd:msd/m.count,
+     translationalT:kinetic/n,rotationalT:rotational/n};
+  }
+  return{cold:sample(120),hot:sample(500)};
+ });
+ expect(result.hot.msd).toBeGreaterThan(result.cold.msd*3);
+ for(const [T,sample] of [[120,result.cold],[500,result.hot]] as const){
+  expect(sample.translationalT).toBeGreaterThan(T*.70);
+  expect(sample.translationalT).toBeLessThan(T*1.30);
+  expect(sample.rotationalT).toBeGreaterThan(T*.70);
+  expect(sample.rotationalT).toBeLessThan(T*1.30);
+ }
+});
+
+test('staged Langevin thermostat approaches equipartition at 120 and 500 K',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: runtime public module is served directly in the browser
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function sample(temperature:number){
+   const md=new MonolayerWaterMD({count:80,randomSeed:1717,
+    temperatureKelvin:temperature,pressureGPa:1});
+   let tSum=0,rSum=0,n=0;
+   for(let step=0;step<480;step++){
+    md.integrateStep(false);
+    if(step>240&&step%8===0){
+     const k=md.kineticTemperatures();
+     tSum+=k.translationKelvin;rSum+=k.rotationKelvin;n++;
+    }
+   }
+   return{translation:tSum/n,rotation:rSum/n,remaining:md.thermalizationRemaining};
+  }
+  const cold=sample(120),hot=sample(500);
+  const changed=new MonolayerWaterMD({count:24,temperatureKelvin:120,randomSeed:13});
+  const old=changed.molecules.map((m:any)=>[m.vx,m.vy,m.wx,m.wy,m.wz]);
+  changed.setTemperatureKelvin(500);
+  const velocitiesUnchanged=changed.molecules.every((m:any,i:number)=>
+   [m.vx,m.vy,m.wx,m.wy,m.wz].every((v:number,k:number)=>v===old[i][k]));
+  return{cold,hot,velocitiesUnchanged};
+ });
+ for(const [target,observed] of [[120,result.cold],[500,result.hot]] as const){
+  expect(observed.translation).toBeGreaterThan(target*.72);
+  expect(observed.translation).toBeLessThan(target*1.28);
+  expect(observed.rotation).toBeGreaterThan(target*.72);
+  expect(observed.rotation).toBeLessThan(target*1.28);
+  expect(observed.remaining).toBe(0);
+ }
+ expect(result.velocitiesUnchanged).toBe(true);
+});
+
+test('monolayer pressure changes area isotropically, preserves shape, and reverses on decompression',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser runtime module is served from public
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const responses=[];
+  for(const seed of [27182,31415]){
+   const md=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:1,randomSeed:seed});
+   const snapshots=[];
+   for(const [pressure,steps] of [[1,300],[6,550],[.03,900]] as const){
+    md.setPressureGPa(pressure);
+    for(let i=0;i<steps;i++)md.integrateStep(false);
+    const d=md.diagnostics();
+    snapshots.push({rho:d.arealDensity,area:d.area,aspect:d.cellAspect,shear:d.cellShear,
+      measuredPressure:d.pressureEstimateGPa});
+   }
+   responses.push(snapshots);
+  }
+  const probe=new MonolayerWaterMD({count:32,randomSeed:23});
+  // A physically admissible, initially sheared reference cell.
+  probe.cell={lx:2.1,ly:1.5,shear:.25};
+  const fractions=probe.fractionalSnapshot();
+  probe.applyCell(probe.cell,fractions);
+  const original={...probe.cell},initialAspect=probe.cell.lx/probe.cell.ly;
+  const initialShear=probe.cell.shear/probe.cell.lx;
+  probe.evaluateCellResponse();
+  const probeRestored=JSON.stringify(original)===JSON.stringify(probe.cell);
+  probe.updateBarostat();
+  const invariantShape=Math.abs(probe.cell.lx/probe.cell.ly-initialAspect)<1e-10&&
+    Math.abs(probe.cell.shear/probe.cell.lx-initialShear)<1e-10;
+  return{responses,probeRestored,invariantShape};
+ });
+ for(const snapshots of result.responses){
+  expect(snapshots[1].rho).toBeGreaterThan(snapshots[0].rho+1.0);
+  expect(snapshots[2].rho).toBeLessThan(snapshots[1].rho-1.0);
+  expect(snapshots[1].area).toBeLessThan(snapshots[0].area);
+  expect(snapshots[2].area).toBeGreaterThan(snapshots[1].area);
+  for(const sample of snapshots){
+   expect(sample.aspect).toBeCloseTo(1,8);
+   expect(sample.shear).toBe(0);
+   expect(Number.isFinite(sample.measuredPressure)).toBe(true);
+  }
+ }
+ expect(result.probeRestored).toBe(true);
+ expect(result.invariantShape).toBe(true);
+});
+
+test('monolayer donor-acceptor bonds follow actual molecular orientation',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: public browser module is deliberately outside TypeScript imports
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const md=new MonolayerWaterMD({count:2,temperatureKelvin:240,pressureGPa:0});
+  md.cell={lx:2,ly:2,shear:0};
+  md.molecules[0].x=-.155;md.molecules[0].y=0;
+  md.molecules[1].x=.155;md.molecules[1].y=0;
+  const fromAngle=(a:number)=>({w:Math.cos(a/2),x:0,y:0,z:Math.sin(a/2)});
+  md.molecules[0].q=fromAngle(-104.5*Math.PI/360);
+  md.molecules[1].q=fromAngle(0);
+  md.neighborDirty=true;md.rebuildNeighborList();
+  const aligned=md.directedContacts().contacts
+   .filter((c:any)=>c.donor===0&&c.acceptor===1)
+   .reduce((v:number,c:any)=>Math.max(v,c.score),0);
+  md.updateBondNetwork(true);
+  const alignedBond=md.bonds.size;
+  const alignedDonor=Array.from(md.bonds.values())[0] as any;
+  md.molecules[1].q=fromAngle(Math.PI); // its hydrogens now face the donor
+  const opposed=md.directedContacts().contacts
+   .filter((c:any)=>c.donor===0&&c.acceptor===1)
+   .reduce((v:number,c:any)=>Math.max(v,c.score),0);
+  md.updateBondNetwork(true);
+  const opposedBonds=md.bonds.size;
+  // A separate finite-temperature MD run must never retain a stale,
+  // orientation-incompatible edge after the molecular rotations evolve.
+  const evolving=new MonolayerWaterMD({count:32,temperatureKelvin:320,pressureGPa:1});
+  for(let step=0;step<45;step++)evolving.integrateStep();
+  const physicalContacts=evolving.directedContacts().contacts;
+  const diagnostics=evolving.diagnostics();
+  const quaternionNorms=evolving.molecules.map((m:any)=>Math.hypot(m.q.w,m.q.x,m.q.y,m.q.z));
+  const allPlanar=evolving.molecules.every((m:any)=>m.z===undefined&&m.vz===undefined);
+  const meanOut=diagnostics.meanOutOfPlane;
+  const donated=new Set<string>(),accepted=new Uint8Array(32);
+  let invalidBonds=0,duplicateDonor=0;
+  for(const b of evolving.bonds.values() as Iterable<any>){
+   const key=b.a+'-'+b.patch;
+   if(donated.has(key))duplicateDonor++;
+   donated.add(key);accepted[b.b]++;
+   const score=physicalContacts.find((c:any)=>c.donor===b.a&&c.acceptor===b.b&&c.patch===b.patch)?.score??0;
+   if(score<=.23-1e-8)invalidBonds++;
+  }
+  return {aligned,opposed,alignedBond,alignedDonor:alignedDonor?.a,
+   opposedBonds,invalidBonds,duplicateDonor,maxAccepted:Math.max(...accepted),
+   meanOut,maxQuaternionError:Math.max(...quaternionNorms.map((n:number)=>Math.abs(n-1))),
+   allPlanar};
+ });
+ expect(result.aligned).toBeGreaterThan(.5);
+ expect(result.opposed).toBeLessThan(.08);
+ expect(result.alignedBond).toBe(1);
+ expect(result.alignedDonor).toBe(0);
+ expect(result.opposedBonds).toBe(0);
+ expect(result.invalidBonds).toBe(0);
+ expect(result.duplicateDonor).toBe(0);
+ expect(result.maxAccepted).toBeLessThanOrEqual(2);
+ expect(result.meanOut).toBeGreaterThan(.1);
+ expect(result.maxQuaternionError).toBeLessThan(1e-10);
+ expect(result.allPlanar).toBe(true);
+});
+
+test('cooperative potential retains three candidate crystal topologies without templates',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser public module is outside the TS import graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const out:Record<string,{before:number,after:number,other:number,msd:number}>={};
+  for(const [kind,pressure] of [['hexagonal',.03],['pentagonal',.45],['square',3]] as const){
+   const md=new MonolayerWaterMD({count:144,randomSeed:123,temperatureKelvin:120,pressureGPa:pressure});
+   const points:{x:number,y:number}[]=[];
+   let cell:{lx:number,ly:number,shear:number};
+   if(kind==='hexagonal'){
+    const r=Math.sqrt(4/(3*Math.sqrt(3)*10.28)),nx=6,ny=6,rt=Math.sqrt(3);
+    cell={lx:3*nx*r,ly:ny*rt*r,shear:0};
+    const basis=[[0,0],[1,0],[1.5,rt/2],[2.5,rt/2]];
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)for(const [x,y] of basis)
+     points.push({x:(3*i+x)*r,y:(rt*j+y)*r});
+   }else if(kind==='pentagonal'){
+    // Periodic Cairo-style tiling: 4-fold sites at grid vertices,
+    // 3-fold sites on displaced edges. Every primitive cell has
+    // three oxygen sites and exactly two pentagonal faces.
+    const nx=6,ny=8,L=Math.sqrt(3/11.58),delta=(4-Math.sqrt(7))/6;
+    cell={lx:nx*L,ly:ny*L,shear:0};
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+     const even=(i+j)%2===0;
+     points.push({x:i*L,y:j*L});
+     points.push({x:(i+(even?delta:-delta))*L,y:(j+.5)*L});
+     points.push({x:(i+.5)*L,y:(j+(even?-delta:delta))*L});
+    }
+   }else{
+    const L=Math.sqrt(1/12.54),n=12;
+    cell={lx:n*L,ly:n*L,shear:0};
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++)
+     points.push({x:(i+.5)*L,y:(j+.5)*L});
+   }
+   if(points.length!==144)throw new Error('Invalid lattice site count');
+   md.cell=cell;
+   for(let i=0;i<144;i++){
+    md.molecules[i].x=points[i].x-cell.lx/2;
+    md.molecules[i].y=points[i].y-cell.ly/2;
+    md.molecules[i].vx=0;md.molecules[i].vy=0;
+   }
+   md.neighborDirty=true;md.rebuildNeighborList();
+   md.computeForces();md.updateBondNetwork(true);md.updateOxygenRingStatistics();
+   const key=kind==='hexagonal'?'ring6':kind==='pentagonal'?'ring5':'ring4';
+   const before=md.diagnostics()[key];
+   for(let k=0;k<280;k++)md.integrateStep();
+   md.updateOxygenRingStatistics();
+   const d=md.diagnostics();
+   const after=d[key];
+   const other=d.ring3+
+    (kind==='hexagonal'?d.ring4+d.ring5:
+     kind==='pentagonal'?d.ring4+d.ring6:d.ring5+d.ring6);
+   out[kind]={before,after,other,msd:d.msd};
+  }
+  return out;
+ });
+ expect(result.hexagonal.before).toBe(72);
+ expect(result.pentagonal.before).toBe(96);
+ expect(result.square.before).toBe(144);
+ for(const [kind,expected] of [['hexagonal',72],['pentagonal',96],['square',144]] as const){
+  expect(result[kind].after).toBeGreaterThanOrEqual(expected*.95);
+  expect(result[kind].other).toBeLessThanOrEqual(4);
+  expect(result[kind].msd).toBeLessThan(.05);
+ }
+});
+
+test('cooperative oxygen potential yields conservative forces and pressure-dependent network change',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: runtime browser module is served from public scripts
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const md=new MonolayerWaterMD({count:32,temperatureKelvin:120,pressureGPa:.45,randomSeed:991});
+  const h=1e-6;
+  let maxError=0;
+  for(let i=0;i<8;i++)for(const axis of ['x','y'] as const){
+   md.computeForces();
+   const particle=md.molecules[i],force=axis==='x'?particle.fx:particle.fy,original=particle[axis];
+   particle[axis]=original+h;const up=md.totalEnergy();
+   particle[axis]=original-h;const down=md.totalEnergy();
+   particle[axis]=original;
+   const numerical=-(up-down)/(2*h);
+   maxError=Math.max(maxError,Math.abs(force-numerical)/Math.max(1,Math.abs(force),Math.abs(numerical)));
+  }
+  const before=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:.03,randomSeed:27182});
+  const after=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:3,randomSeed:27182});
+  for(let i=0;i<350;i++){before.integrateStep();after.integrateStep();}
+  const low=before.diagnostics(),high=after.diagnostics();
+  return{maxError,lowDensity:low.arealDensity,highDensity:high.arealDensity,
+   lowQ3:low.meanLocalQ3,highQ4:high.meanLocalQ4,
+   ring3Low:low.ring3,overLow:low.overCoordinatedFraction};
+ });
+ expect(result.maxError).toBeLessThan(1e-4);
+ expect(result.highDensity).toBeGreaterThan(result.lowDensity+.5);
+ expect(result.ring3Low).toBeLessThan(10);
+ expect(result.overLow).toBeLessThan(.15);
+});
+
+test('monolayer seeded trajectories are reproducible and independent',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser public module is outside TypeScript imports
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const a=new MonolayerWaterMD({count:24,randomSeed:27182});
+  const b=new MonolayerWaterMD({count:24,randomSeed:27182});
+  const c=new MonolayerWaterMD({count:24,randomSeed:31415});
+  for(let i=0;i<15;i++){a.integrateStep();b.integrateStep();}
+  return {
+   reproducible:a.molecules.every((m:any,i:number)=>
+    m.x===b.molecules[i].x&&m.y===b.molecules[i].y&&
+    m.q.w===b.molecules[i].q.w&&m.q.x===b.molecules[i].q.x),
+   independent:a.molecules.some((m:any,i:number)=>m.x!==c.molecules[i].x),
+  };
+ });
+ expect(result.reproducible).toBe(true);
+ expect(result.independent).toBe(true);
+});
+
+test('oxygen face counting distinguishes honeycomb and square periodic reference lattices',async({page})=>{
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser-served public module is not in the TypeScript module graph
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const honey=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:0});
+  const r=.30,root=Math.sqrt(3),nx=4,ny=5;
+  honey.cell={lx:nx*3*r,ly:ny*root*r,shear:0};
+  const basis=[[0,0],[1,0],[1.5,root/2],[2.5,root/2]];
+  let k=0;
+  for(let iy=0;iy<ny;iy++)for(let ix=0;ix<nx;ix++)for(const [x,y] of basis){
+   const m=honey.molecules[k++];
+   m.x=(3*ix+x)*r-honey.cell.lx/2;
+   m.y=(root*iy+y)*r-honey.cell.ly/2;
+  }
+  honey.neighborDirty=true;honey.rebuildNeighborList();honey.updateOxygenRingStatistics();
+  const square=new MonolayerWaterMD({count:64,temperatureKelvin:120,pressureGPa:0});
+  square.cell={lx:8*.30,ly:8*.30,shear:0};
+  for(let i=0;i<64;i++){
+   square.molecules[i].x=((i%8)+.5)*.30-square.cell.lx/2;
+   square.molecules[i].y=(Math.floor(i/8)+.5)*.30-square.cell.ly/2;
+  }
+  square.neighborDirty=true;square.rebuildNeighborList();square.updateOxygenRingStatistics();
+  return{honey:honey.ringCounts,square:square.ringCounts};
+ });
+ expect(result.honey.six).toBe(40);
+ expect(result.honey.four).toBe(0);
+ expect(result.honey.five).toBe(0);
+ expect(result.square.four).toBe(64);
+ expect(result.square.six).toBe(0);
+});
+
+test('reduced saturation improves low-temperature orientational memory without freezing hot rotations',async({page})=>{
+ test.setTimeout(60000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: public browser module is deliberately outside TypeScript imports
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  function run(temp:number){
+   const md=new MonolayerWaterMD({count:64,temperatureKelvin:temp,pressureGPa:.03});
+   for(let i=0;i<500;i++)md.integrateStep();
+   const before=md.molecularFrames();
+   for(let i=0;i<160;i++)md.integrateStep();
+   const after=md.molecularFrames();
+   let sum=0;
+   for(let i=0;i<md.count;i++)for(let h=0;h<2;h++){
+    const a=before[i].donors[h],b=after[i].donors[h];
+    sum+=a.x*b.x+a.y*b.y+a.z*b.z;
+   }
+   const d=md.diagnostics();
+   return{c1:sum/(md.count*2),quaternionError:d.maxQuaternionNormError};
+  }
+  return{cold:run(120),hot:run(500)};
+ });
+ expect(result.cold.c1).toBeGreaterThan(.25);
+ expect(result.hot.c1).toBeLessThan(result.cold.c1-.2);
+ expect(result.cold.quaternionError).toBeLessThan(1e-10);
+ expect(result.hot.quaternionError).toBeLessThan(1e-10);
+});
+
+test('blog archive uses a compact responsive card grid with instant topic filters',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/posts/');
+
+ await expect(page.locator('.blog-heading h1')).toHaveText('Ideas worth working through');
+ await expect(page.locator('.blog-heading > p:last-child')).toHaveText('Practical explanations, useful techniques, simulation notes and the occasional computational rabbit hole.');
+ const cards=page.locator('[data-post-card]');
+ const cardCount=await cards.count();
+ expect(cardCount).toBeGreaterThanOrEqual(2);
+ await expect(page.locator('.blog-card-visual')).toHaveCount(cardCount);
+ expect(await page.locator('.blog-card-visual').evaluateAll(nodes=>new Set(nodes.map(node=>node.className)).size)).toBeGreaterThan(1);
+ await expect(page.locator('[data-post-filter="all"] .filter-count')).toHaveText(String(cardCount));
+
+ const headingMetrics=await page.evaluate(()=>{
+   const heading=document.querySelector<HTMLElement>('.blog-heading h1')!;
+   const lede=document.querySelector<HTMLElement>('.blog-heading > p:last-child')!;
+   return{
+     headingLines:Math.round(heading.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(heading).lineHeight)),
+     ledeLines:Math.round(lede.getBoundingClientRect().height/Number.parseFloat(getComputedStyle(lede).lineHeight)),
+     headingSize:Number.parseFloat(getComputedStyle(heading).fontSize),
+   };
+ });
+ expect(headingMetrics.headingLines).toBe(1);
+ expect(headingMetrics.ledeLines).toBe(1);
+ expect(headingMetrics.headingSize).toBeLessThan(48);
+
+ const desktopColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(desktopColumns).toBe(4);
+
+ const buttons=page.locator('[data-post-filter]');
+ expect(await buttons.count()).toBeGreaterThan(2);
+ await expect(page.locator('[data-post-filter="all"]')).toHaveAttribute('aria-pressed','true');
+
+ await page.locator('[data-post-filter="n-body"]').click();
+ await expect(page.locator('[data-post-count]')).toHaveText('1 post');
+ await expect(page).toHaveURL(/\?topic=n-body$/);
+ expect(await cards.evaluateAll(nodes=>nodes.filter(node=>!(node as HTMLElement).hidden).length)).toBe(1);
+
+ await page.locator('[data-post-filter="tutorial"]').click();
+ await expect(page.locator('[data-post-count]')).toHaveText('2 posts');
+ expect(await cards.evaluateAll(nodes=>nodes.filter(node=>!(node as HTMLElement).hidden).length)).toBe(2);
+
+ const transition=await page.locator('.blog-card').first().evaluate(node=>getComputedStyle(node).transitionDuration);
+ expect(transition.split(',').every(value=>Number.parseFloat(value)<=.12)).toBe(true);
+
+ await page.setViewportSize({width:760,height:900});
+ await page.waitForTimeout(80);
+ const tabletColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(tabletColumns).toBe(2);
+
+ await page.setViewportSize({width:500,height:900});
+ await page.waitForTimeout(80);
+ const mobileColumns=await page.locator('[data-post-grid]').evaluate(node=>
+   getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length
+ );
+ expect(mobileColumns).toBe(1);
+});
+
+test('homepage navigation, section order and card labels use the revised UI typography',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/');
+
+ const navLabels=await page.locator('.site-nav a').allTextContents();
+ expect(navLabels.slice(0,4)).toEqual(['Research','Blog','Publications','Lecture Notes']);
+
+ const sectionOrder=await page.locator('.homepage-content > section').evaluateAll(nodes=>
+  nodes.map(node=>node.id).filter(id=>['research','posts','publications','courses'].includes(id))
+ );
+ expect(sectionOrder).toEqual(['research','posts','courses']);
+ await expect(page.locator('.homepage-content > #publications')).toHaveCount(0);
+ await expect(page.locator('#posts .section-header h2')).toHaveText('Blog posts');
+ await expect(page.locator('#research .section-header h2')).toHaveText('Research');
+ await expect(page.locator('#research .section-header > a')).toContainText('Research overview');
+
+ const typography=await page.evaluate(()=>{
+  const nav=document.querySelector<HTMLElement>('.site-nav')!;
+  const bio=document.querySelector<HTMLElement>('.hero-bio')!;
+  const viewAll=document.querySelector<HTMLElement>('#research .section-header > a')!;
+  const label=document.querySelector<HTMLElement>('.card-label')!;
+  const labelStyle=getComputedStyle(label);
+  return{
+    navSize:Number.parseFloat(getComputedStyle(nav).fontSize),
+    bioFamily:getComputedStyle(bio).fontFamily,
+    labelFamily:labelStyle.fontFamily,
+    labelDisplay:labelStyle.display,
+    labelAlign:labelStyle.alignItems,
+    labelLineHeight:Number.parseFloat(labelStyle.lineHeight),
+    viewAllSize:Number.parseFloat(getComputedStyle(viewAll).fontSize),
+  };
+ });
+ expect(typography.navSize).toBeGreaterThanOrEqual(13);
+ expect(typography.viewAllSize).toBeGreaterThanOrEqual(13);
+ expect(typography.labelFamily).toBe(typography.bioFamily);
+ expect(['flex','inline-flex']).toContain(typography.labelDisplay);
+ expect(typography.labelAlign).toBe('center');
+ expect(typography.labelLineHeight).toBeLessThanOrEqual(11);
+
+ const labelStyle=await page.locator('.card-label').first().evaluate(node=>{
+   const style=getComputedStyle(node);
+   return{textTransform:style.textTransform,fontWeight:Number(style.fontWeight)};
+ });
+ expect(labelStyle.textTransform).toBe('lowercase');
+ expect(labelStyle.fontWeight).toBeLessThanOrEqual(450);
+
+ const metadata=await page.locator('.card-foot span:first-child').evaluateAll(nodes=>nodes.map(node=>{
+   const style=getComputedStyle(node);
+   return{color:style.color,textTransform:style.textTransform,fontWeight:Number(style.fontWeight)};
+ }));
+ const signalColor=await page.evaluate(()=>{
+   const probe=document.createElement('span');
+   probe.style.color=getComputedStyle(document.documentElement).getPropertyValue('--signal').trim();
+   document.body.append(probe);
+   const color=getComputedStyle(probe).color;
+   probe.remove();
+   return color;
+ });
+ expect(metadata.length).toBeGreaterThan(0);
+ for(const item of metadata){
+   expect(item.color).toBe(signalColor);
+   expect(item.textTransform).toBe('lowercase');
+   expect(item.fontWeight).toBeLessThanOrEqual(450);
+ }
+});
+
+test('hero copy, typing roles and footer reflect the revised personal profile',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+
+ await expect(page.locator('.home-contact')).toHaveCount(0);
+ await expect(page.locator('.hero-identity h1')).toHaveText('Andreas Neophytou');
+ await expect(page.locator('.hero-bio')).toContainText('networked matter');
+ await expect(page.locator('.hero-bio')).toContainText('inverse materials design');
+ await expect(page.locator('.hero-themes li')).toHaveCount(4);
+ await expect(page.locator('.hero-themes')).toContainText('glassy matter');
+
+ const typed=page.locator('[data-hero-typed]');
+ await expect(typed).toHaveAttribute('data-roles',/computational scientist/);
+ await page.waitForTimeout(420);
+ expect((await typed.textContent())?.length).toBeGreaterThan(2);
+ await expect(page.locator('.hero-typed-cursor')).toHaveText('▍');
+
+ const sizes=await page.evaluate(()=>{
+   const name=document.querySelector<HTMLElement>('.hero-identity h1')!;
+   const footer=document.querySelector<HTMLElement>('.site-footer')!;
+   return{
+     nameSize:Number.parseFloat(getComputedStyle(name).fontSize),
+     bodyBg:getComputedStyle(document.body).backgroundColor,
+     footerBg:getComputedStyle(footer).backgroundColor,
+   };
+ });
+ expect(sizes.nameSize).toBeLessThan(65);
+ expect(sizes.footerBg).not.toBe(sizes.bodyBg);
+
+ const footerLinks=page.locator('.site-footer .footer-social');
+ await expect(footerLinks).toHaveCount(4);
+ await expect(page.locator('.site-footer a[href="mailto:andreas.neophytou@uniroma1.it"]')).toHaveAttribute('aria-label','Email');
+ await expect(page.locator('.site-footer a[aria-label="GitHub"]')).toBeVisible();
+ await expect(page.locator('.site-footer a[aria-label="Google Scholar"]')).toBeVisible();
+ await expect(page.locator('.site-footer a[aria-label="ORCID"]')).toBeVisible();
+ await expect(page.locator('.site-footer .footer-social svg')).toHaveCount(4);
+ expect(await footerLinks.evaluateAll(nodes=>nodes.every(node=>(node.textContent??'').trim()===''))).toBe(true);
+});
+
+
+test('detail layouts use the expanded header as their horizontal frame',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});
+ const cases=[
+  ['/posts/virial-theorem/','.reading-shell',850],
+  ['/publications/topological-nature-llpt/','.reading-shell',850],
+  ['/courses/numerical-methods/01-odes/','.course-shell',650],
+ ];
+
+ for(const [path,shellSelector,minMainWidth] of cases){
+  await page.goto(path as string);
+  await page.evaluate(()=>scrollTo(0,0));
+  const metrics=await page.evaluate(({shellSelector})=>{
+   const header=document.querySelector<HTMLElement>('[data-header-track]')!.getBoundingClientRect();
+   const shell=document.querySelector<HTMLElement>(shellSelector)!.getBoundingClientRect();
+   const main=document.querySelector<HTMLElement>(`${shellSelector} .reading-main`)!.getBoundingClientRect();
+   return{
+    headerLeft:header.left,headerRight:header.right,headerWidth:header.width,
+    shellLeft:shell.left,shellRight:shell.right,shellWidth:shell.width,
+    mainWidth:main.width,
+   };
+  },{shellSelector:shellSelector as string});
+  expect(Math.abs(metrics.shellLeft-metrics.headerLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.shellRight-metrics.headerRight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.shellWidth-metrics.headerWidth)).toBeLessThanOrEqual(2);
+  expect(metrics.mainWidth).toBeGreaterThan(minMainWidth as number);
+ }
+
+ await page.goto('/research/topology-networked-matter/');
+ await expect(page.locator('.reading-toc')).toHaveCount(0);
+ const researchFrame=await page.locator('.research-detail').boundingBox();
+ const researchMain=await page.locator('.research-detail-main').boundingBox();
+ const researchHeader=await page.locator('[data-header-track]').boundingBox();
+ expect(researchFrame).not.toBeNull();
+ expect(researchMain).not.toBeNull();
+ expect(researchHeader).not.toBeNull();
+ expect(Math.abs(researchFrame!.x-researchHeader!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(researchFrame!.width-researchHeader!.width)).toBeLessThanOrEqual(2);
+ expect(researchMain!.width).toBeGreaterThan(1200);
+
+ await page.goto('/about/');
+ const about=await page.locator('main .container--narrow').boundingBox();
+ const header=await page.locator('[data-header-track]').boundingBox();
+ expect(about).not.toBeNull();
+ expect(header).not.toBeNull();
+ expect(Math.abs(about!.x-header!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(about!.width-header!.width)).toBeLessThanOrEqual(2);
+
+ await page.goto('/cv/');
+ const cv=await page.locator('.cv-page').boundingBox();
+ const cvHeader=await page.locator('[data-header-track]').boundingBox();
+ expect(cv).not.toBeNull();
+ expect(cvHeader).not.toBeNull();
+ expect(Math.abs(cv!.x-cvHeader!.x)).toBeLessThanOrEqual(1);
+ expect(Math.abs(cv!.width-cvHeader!.width)).toBeLessThanOrEqual(2);
+});
+
+test('header expands at the top and compacts after scroll without overflow',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.goto('/');
+ const header=page.locator('[data-header]');const track=page.locator('[data-header-track]');
+ await expect(header).toHaveAttribute('data-shrunk','false');
+ const wide=await track.evaluate((node:HTMLElement)=>node.getBoundingClientRect().width);
+ await page.evaluate(()=>scrollTo(0,500));await expect(header).toHaveAttribute('data-shrunk','true');
+ await page.waitForTimeout(500);
+ const compact=await track.evaluate((node:HTMLElement)=>node.getBoundingClientRect().width);
+ expect(compact).toBeLessThan(wide);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.setViewportSize({width:390,height:800});await page.evaluate(()=>scrollTo(0,500));
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+test('homepage cards keep symmetric equal-height rows at desktop width',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.goto('/');
+ const themeHeights=await page.locator('.research-theme-grid > .research-theme-card').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().height)));
+ expect(themeHeights).toHaveLength(4);
+ expect(Math.abs(themeHeights[0]-themeHeights[1])).toBeLessThanOrEqual(2);
+ expect(Math.abs(themeHeights[2]-themeHeights[3])).toBeLessThanOrEqual(2);
+ const courseHeights=await page.locator('.course-grid > li').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().height)));
+ expect(courseHeights.length).toBeGreaterThan(0);
+ expect(Math.max(...courseHeights)-Math.min(...courseHeights)).toBeLessThanOrEqual(2);
+});

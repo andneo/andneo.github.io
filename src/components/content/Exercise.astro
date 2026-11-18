@@ -1,0 +1,6 @@
+---
+interface Props { title: string; id?: string; }
+const { title, id } = Astro.props;
+---
+<section class="exercise" id={id}><h3>{title}</h3><slot />{Astro.slots.has('solution') && <details><summary>Show solution</summary><slot name="solution" /></details>}</section>
+<style>.exercise{border:1px solid var(--border);padding:1rem 1.25rem;margin-block:2rem}.exercise h3{margin-top:0}</style>

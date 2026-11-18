@@ -1,0 +1,13 @@
+---
+interface Props { src: string; webm?: string; poster: string; caption: string; width?: number; height?: number; captions?: string; transcript?: string; }
+const { src, webm, poster, caption, width = 1280, height = 720, captions, transcript } = Astro.props;
+---
+<figure>
+  <video controls playsinline preload="none" poster={poster} width={width} height={height} aria-label={caption}>
+    {webm && <source src={webm} type="video/webm" />}
+    <source src={src} type="video/mp4" />
+    {captions && <track kind="captions" src={captions} srclang="en" label="English" default />}
+    <a href={src}>Download video</a>
+  </video>
+  <figcaption>{caption} <a href={src}>Download video</a>{transcript && <> · <a href={transcript}>Transcript</a></>}</figcaption>
+</figure>

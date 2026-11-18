@@ -6,7 +6,9 @@ const { id } = Astro.props;
 ---
 
 <div class="iplot-wrap">
-  <div id={id} class="iplot-canvas"></div>
+  <div id={id} class="iplot-canvas"><p>Optional interactive orbit plot. The numerical example above is available without it.</p></div>
+  <button id={`${id}-load`} type="button">Load interactive plot</button>
+  <p id={`${id}-status`} role="status"></p>
   <div class="iplot-controls">
     <label class="iplot-ctrl-label">
       Eccentricity: <strong id={`${id}-val`}>0.00</strong>
@@ -23,11 +25,12 @@ const { id } = Astro.props;
 
 <script define:vars={{ plotId: id }}>
   function loadPlotly() {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       if (window.Plotly) return resolve(window.Plotly);
       const s = document.createElement('script');
       s.src = 'https://cdn.plot.ly/plotly-2.32.0.min.js';
       s.onload = () => resolve(window.Plotly);
+      s.onerror = () => reject(new Error("Plot library unavailable"));
       document.head.appendChild(s);
     });
   }
@@ -96,12 +99,14 @@ const { id } = Astro.props;
       .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
-  // Lazy-init on scroll into view
-  const el = document.getElementById(plotId);
-  if (el) {
-    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { init(); io.disconnect(); } }, { threshold: 0.1 });
-    io.observe(el);
-  }
+  const loadButton = document.getElementById(`${plotId}-load`);
+  loadButton?.addEventListener('click', async () => {
+    loadButton.disabled = true;
+    const status = document.getElementById(`${plotId}-status`);
+    status.textContent = 'Loading plot…';
+    try { await init(); loadButton.hidden = true; status.textContent = ''; }
+    catch { status.textContent = 'The plot could not load. The numerical example remains available.'; loadButton.disabled = false; }
+  });
 </script>
 
 <style>

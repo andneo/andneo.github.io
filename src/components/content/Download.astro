@@ -1,0 +1,5 @@
+---
+interface Props { href: string; label: string; format?: string; size?: string; }
+const { href, label, format, size } = Astro.props;
+---
+<p class="download"><a href={href} download>{label}</a>{(format || size) && <small> ({[format,size].filter(Boolean).join(', ')})</small>}</p>
