@@ -103,8 +103,10 @@ export class MonolayerWaterMD{
     this.cell={lx:side,ly:side,shear:0};
     this.minArea=this.count/20;
     this.maxArea=this.count/6.5;
-    this.maxAspect=1.62;
-    this.maxShearFraction=.34;
+    // The live demonstrator starts square. Published/reference crystals
+    // may use other initial cell shapes, which scale isotropically too.
+    this.cellShapeMode='fixed-shape-isotropic';
+    this.initialArea=initialArea;
 
     // The pressure control is reported as inferred confinement pressure.
     // P_conf * A * w is the work term corresponding to w = 5 A.
@@ -113,13 +115,9 @@ export class MonolayerWaterMD{
 
     // Continuous weak-coupling flexible-cell barostat. It uses the
     // configurational pressure -dU/dA plus the ideal kinetic contribution.
-    this.barostatInterval=24;
-    this.barostatGain=.008;
-    this.maxAreaLogChange=.012;
-    this.shapeGain=.0010;
-    this.maxShapeLogChange=.0025;
-    this.shearGain=.0009;
-    this.maxShearChange=.0025;
+    this.barostatInterval=16;
+    this.barostatGain=.010;
+    this.maxAreaLogChange=.014;
     this.cellFiniteDifference=.0016;
     this.barostatUpdates=0;
     this.pressureEstimateGPa=this.pressureGPa;
@@ -758,107 +756,46 @@ export class MonolayerWaterMD{
   }
 
   evaluateCellResponse(){
-    const oldCell={...this.cell};
-    const fractions=this.fractionalSnapshot(oldCell);
-    const oldArea=this.area(oldCell);
+    // Compute the isotropic configurational pressure, keeping the
+    // periodic-cell shape (aspect ratio and lattice angle) fixed.
+    const previous={...this.cell};
+    const fractions=this.fractionalSnapshot(previous);
+    const area=this.area(previous);
     const eps=this.cellFiniteDifference;
-
-    const isoPlusScale=Math.sqrt(1+eps);
-    const isoMinusScale=Math.sqrt(1-eps);
-    const plusIso={
-      lx:oldCell.lx*isoPlusScale,
-      ly:oldCell.ly*isoPlusScale,
-      shear:oldCell.shear*isoPlusScale,
-    };
-    const minusIso={
-      lx:oldCell.lx*isoMinusScale,
-      ly:oldCell.ly*isoMinusScale,
-      shear:oldCell.shear*isoMinusScale,
-    };
-    const uPlus=this.energyInCell(plusIso,fractions);
-    const aPlus=this.area();
-    const uMinus=this.energyInCell(minusIso,fractions);
-    const aMinus=this.area();
-    const dUdA=(uPlus-uMinus)/(aPlus-aMinus);
-
-    const shapeEps=eps;
-    const plusShape={
-      lx:oldCell.lx*Math.exp(shapeEps),
-      ly:oldCell.ly*Math.exp(-shapeEps),
-      shear:oldCell.shear,
-    };
-    const minusShape={
-      lx:oldCell.lx*Math.exp(-shapeEps),
-      ly:oldCell.ly*Math.exp(shapeEps),
-      shear:oldCell.shear,
-    };
-    const usPlus=this.energyInCell(plusShape,fractions);
-    const usMinus=this.energyInCell(minusShape,fractions);
-    const dUdShape=(usPlus-usMinus)/(2*shapeEps);
-
-    const shearEps=eps*oldCell.ly;
-    const plusShear={...oldCell,shear:oldCell.shear+shearEps};
-    const minusShear={...oldCell,shear:oldCell.shear-shearEps};
-    const uhPlus=this.energyInCell(plusShear,fractions);
-    const uhMinus=this.energyInCell(minusShear,fractions);
-    const dUdShear=(uhPlus-uhMinus)/(2*eps);
-
-    this.applyCell(oldCell,fractions);
+    const sp=Math.sqrt(1+eps),sm=Math.sqrt(1-eps);
+    const Uplus=this.energyInCell({
+      lx:previous.lx*sp,ly:previous.ly*sp,shear:previous.shear*sp,
+    },fractions);
+    const Uminus=this.energyInCell({
+      lx:previous.lx*sm,ly:previous.ly*sm,shear:previous.shear*sm,
+    },fractions);
+    const dUdA=(Uplus-Uminus)/(2*eps*area);
+    this.applyCell(previous,fractions);
     this.potentialEnergy=this.totalEnergy();
-
-    const pressure2D=this.count*this.kBT/oldArea-dUdA;
-    const pGPa=pressure2D/(this.confinementWidthNm*GPA_NM3_TO_KJ_MOL);
-    return{pGPa,dUdShape,dUdShear,oldArea};
+    const pressure2D=this.count*this.kBT/area-dUdA;
+    return{pGPa:pressure2D/this.pressureWorkScale,oldArea:area};
   }
 
   updateBarostat(){
     const response=this.evaluateCellResponse();
-    const error=response.pGPa-this.pressureGPa;
     this.pressureEstimateGPa=response.pGPa;
     this.pressureEstimateEMA=.82*this.pressureEstimateEMA+.18*response.pGPa;
-    this.shapeGradient=response.dUdShape/this.count;
-    this.shearGradient=response.dUdShear/this.count;
-
+    this.shapeGradient=0;this.shearGradient=0;
+    // Weak-coupling area relaxation; the target pressure never
+    // determines cell area directly. No independent shear drift.
     const dlnA=clamp(
-      error*this.barostatGain,
-      -this.maxAreaLogChange,
-      this.maxAreaLogChange
-    );
-    const dshape=clamp(
-      -this.shapeGradient*this.shapeGain,
-      -this.maxShapeLogChange,
-      this.maxShapeLogChange
-    );
-    const dshearFraction=clamp(
-      -this.shearGradient*this.shearGain,
-      -this.maxShearChange,
-      this.maxShearChange
-    );
-
-    const oldCell={...this.cell};
-    const fractions=this.fractionalSnapshot(oldCell);
-    const areaScale=Math.exp(.5*dlnA);
-    let lx=oldCell.lx*areaScale*Math.exp(dshape);
-    let ly=oldCell.ly*areaScale*Math.exp(-dshape);
-    let shear=oldCell.shear*areaScale+dshearFraction*ly;
-
-    const aspect=lx/ly;
-    if(aspect>this.maxAspect){
-      const area=lx*ly;
-      lx=Math.sqrt(area*this.maxAspect);
-      ly=area/lx;
-    }else if(aspect<1/this.maxAspect){
-      const area=lx*ly;
-      ly=Math.sqrt(area*this.maxAspect);
-      lx=area/ly;
-    }
-    shear=clamp(shear,-this.maxShearFraction*lx,this.maxShearFraction*lx);
-
-    const newArea=lx*ly;
-    if(newArea>=this.minArea&&newArea<=this.maxArea){
-      this.applyCell({lx,ly,shear},fractions);
-    }else{
-      this.applyCell(oldCell,fractions);
+      (response.pGPa-this.pressureGPa)*this.barostatGain,
+      -this.maxAreaLogChange,this.maxAreaLogChange);
+    const nextArea=clamp(response.oldArea*Math.exp(dlnA),this.minArea,this.maxArea);
+    const scale=Math.sqrt(nextArea/response.oldArea);
+    this.lastAreaChangeFraction=nextArea/response.oldArea-1;
+    if(Math.abs(scale-1)>1e-12){
+      const previous={...this.cell};
+      const fractions=this.fractionalSnapshot(previous);
+      this.applyCell({
+        lx:previous.lx*scale,ly:previous.ly*scale,
+        shear:previous.shear*scale,
+      },fractions);
     }
     this.barostatUpdates++;
   }
@@ -1137,6 +1074,9 @@ class MonolayerExplorer{
     this.pressureOutput=this.host?.querySelector('[data-monolayer-pressure-output]');
     this.measuredPressureOutput=this.host?.querySelector('[data-monolayer-measured-pressure]');
     this.densityOutput=this.host?.querySelector('[data-monolayer-density]');
+    this.areaOutput=this.host?.querySelector('[data-monolayer-area]');
+    this.densityChangeOutput=this.host?.querySelector('[data-monolayer-density-change]');
+    this.densityBar=this.host?.querySelector('[data-monolayer-density-meter]');
     this.status=this.host?.querySelector('[data-monolayer-status]');
     this.md=null;
     this.width=1;this.height=1;this.dpr=1;this.visible=true;this.frameCount=0;
@@ -1150,12 +1090,14 @@ class MonolayerExplorer{
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v7';
+    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v8';
     this.canvas.dataset.moleculeCount='250';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
-    this.canvas.dataset.boundary='periodic-flexible-cell';
-    this.canvas.dataset.ensemble='langevin-md-weak-coupling-npt';
-    this.canvas.dataset.barostat='continuous-flexible-cell-weak-coupling';
+    this.canvas.dataset.boundary='periodic-fixed-shape-cell';
+    this.canvas.dataset.cellShapeMode='fixed-shape-isotropic';
+    this.canvas.dataset.renderScale='fixed-physical-scale';
+    this.canvas.dataset.ensemble='langevin-md-weak-pressure-control';
+    this.canvas.dataset.barostat='isotropic-area-weak-coupling';
     this.canvas.dataset.pressureCoupling='configurational-pressure-plus-ideal-term';
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
     this.canvas.dataset.temperatureCoupling='langevin-kbt';
@@ -1202,12 +1144,13 @@ class MonolayerExplorer{
 
   view(){
     const mobile=this.width<760;
-    const c=this.md?.cell??{lx:4.93,ly:4.93,shear:0};
-    const spanX=c.lx+Math.abs(c.shear);
-    const spanY=c.ly;
-    const maxWidth=this.width*(mobile?.92:.60);
-    const maxHeight=this.height*(mobile?.62:.94);
-    const scale=Math.min(maxWidth/spanX,maxHeight/spanY);
+    // Constant pixels per nanometre: autoscaling by the current box
+    // would hide pressure-driven densification as the box contracted.
+    // Reserve enough space for the *largest* allowed cell area.
+    const referenceSpan=Math.sqrt(this.md?.maxArea??(250/6.5));
+    const maxWidth=this.width*(mobile?.92:.62);
+    const maxHeight=this.height*(mobile?.62:.90);
+    const scale=Math.min(maxWidth/referenceSpan,maxHeight/referenceSpan);
     const cx=mobile?this.width*.5:this.width*.70;
     const cy=mobile?this.height*.62:this.height*.50;
     return{cx,cy,scale};
@@ -1347,6 +1290,8 @@ class MonolayerExplorer{
     this.canvas.dataset.arealDensity=d.arealDensity.toFixed(4);
     this.canvas.dataset.cellAspect=d.cellAspect.toFixed(4);
     this.canvas.dataset.cellShear=d.cellShear.toFixed(4);
+    this.canvas.dataset.densityChangePct=(100*(d.arealDensity/(this.md.count/this.md.initialArea)-1)).toFixed(2);
+    this.canvas.dataset.cellAreaChangePct=(100*(d.area/this.md.initialArea-1)).toFixed(2);
     this.canvas.dataset.temperatureK=String(Math.round(d.temperatureKelvin));
     this.canvas.dataset.kbt=d.kBT.toFixed(5);
     this.canvas.dataset.pressureGpa=d.pressureGPa.toFixed(2);
@@ -1362,7 +1307,20 @@ class MonolayerExplorer{
     if(this.measuredPressureOutput){
       this.measuredPressureOutput.textContent=d.pressureEstimateGPa.toFixed(2)+' GPa';
     }
-    if(this.densityOutput)this.densityOutput.textContent=d.arealDensity.toFixed(2);
+    if(this.densityOutput)this.densityOutput.textContent=d.arealDensity.toFixed(2)+' nm⁻²';
+    if(this.areaOutput)this.areaOutput.textContent=d.area.toFixed(2)+' nm²';
+    const referenceDensity=this.md.count/this.md.initialArea;
+    const deltaPct=100*(d.arealDensity/referenceDensity-1);
+    if(this.densityChangeOutput){
+      this.densityChangeOutput.textContent=(deltaPct>0?'+':'')+deltaPct.toFixed(1)+'%';
+    }
+    if(this.densityBar){
+      const minDensity=this.md.count/this.md.maxArea;
+      const maxDensity=this.md.count/this.md.minArea;
+      const normalized=clamp((d.arealDensity-minDensity)/(maxDensity-minDensity),0,1);
+      this.densityBar.style.width=(100*normalized).toFixed(1)+'%';
+      this.densityBar.parentElement?.setAttribute('aria-valuenow',d.arealDensity.toFixed(2));
+    }
     if(this.status){
       this.status.textContent=
         d.bonds+' H-bonds · degree '+d.meanDegree.toFixed(2)+
