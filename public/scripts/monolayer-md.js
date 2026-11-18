@@ -36,7 +36,13 @@ export class MonolayerWaterMD{
     // without rewarding 5-6 fold close packing.
     this.dt=.004;
     this.mass=18.015;
-    this.gamma=1.15;
+    // The noisy Langevin bath remains fluctuation-dissipation consistent.
+    // Higher temporary friction dissipates the large strain energy
+    // present in randomly seeded initial configurations.
+    this.gamma=8.0;
+    this.thermalizationGamma=32.0;
+    this.thermalizationLength=160;
+    this.thermalizationRemaining=this.thermalizationLength;
     // 2D centre-of-mass translations, but full SO(3) rigid rotations.
     // Isotropic effective inertia is phenomenological, not a water tensor.
     this.rotInertia=.012;
@@ -157,6 +163,9 @@ export class MonolayerWaterMD{
     this.potentialEnergy=0;
 
     this.seed();
+    this.measuredTranslationalK=0;
+    this.measuredRotationalK=0;
+    this.updateKineticTemperatureEMA(true);
     this.rotationReference=this.molecularFrames().map(f=>f.donors.map(v=>({...v})));
     this.rebuildNeighborList();
     this.computeForces();
@@ -180,15 +189,9 @@ export class MonolayerWaterMD{
   setTemperatureKelvin(value){
     const next=clamp(Number(value)||240,120,500);
     if(Math.abs(next-this.temperatureKelvin)>1){
-      const old=this.kBT;
-      const nextKBT=KB_KJ_MOL_K*next;
-      if(old>0){
-        const scale=Math.sqrt(nextKBT/old);
-        for(const m of this.molecules){
-          m.vx*=scale;m.vy*=scale;
-          m.wx*=scale;m.wy*=scale;m.wz*=scale;
-        }
-      }
+      // No instantaneous velocity rescaling: the OU stochastic bath
+      // relaxes the kinetic energy naturally after a temperature change.
+      this.thermalizationRemaining=this.thermalizationLength;
       this.boostFrames=Math.max(this.boostFrames,180);
     }
     this.temperatureKelvin=next;
@@ -227,6 +230,32 @@ export class MonolayerWaterMD{
       donors:[rotateVector(m.q,co,-si,0),rotateVector(m.q,co,si,0)],
     }));
   }
+  kineticTemperatures(){
+    // Temperature estimates from kinetic equipartition. Remove the
+    // instantaneous centre-of-mass velocity for the 2(N-1) translational
+    // DOFs; each nonlinear rigid water has 3 rotational DOFs.
+    let vx=0,vy=0,v2=0,w2=0;
+    for(const m of this.molecules){
+      vx+=m.vx;vy+=m.vy;
+      v2+=m.vx*m.vx+m.vy*m.vy;
+      w2+=m.wx*m.wx+m.wy*m.wy+m.wz*m.wz;
+    }
+    const relative=Math.max(0,v2-(vx*vx+vy*vy)/this.count);
+    return{
+      translationKelvin:this.mass*relative/(2*Math.max(1,this.count-1)*KB_KJ_MOL_K),
+      rotationKelvin:this.rotInertia*w2/(3*this.count*KB_KJ_MOL_K),
+    };
+  }
+
+  updateKineticTemperatureEMA(reset=false){
+    const measurement=this.kineticTemperatures();
+    const alpha=reset?1:.18;
+    this.measuredTranslationalK+=
+      alpha*(measurement.translationKelvin-this.measuredTranslationalK);
+    this.measuredRotationalK+=
+      alpha*(measurement.rotationKelvin-this.measuredRotationalK);
+  }
+
   setPressureGPa(value){
     const next=clamp(Number(value)||0,0,6);
     if(Math.abs(next-this.pressureGPa)>.02)this.boostFrames=Math.max(this.boostFrames,220);
@@ -830,7 +859,10 @@ export class MonolayerWaterMD{
 
     this.drift(half);
 
-    const c=Math.exp(-this.gamma*this.dt),cr=Math.exp(-this.rotGamma*this.dt);
+    const fraction=this.thermalizationRemaining/this.thermalizationLength;
+    const effectiveGamma=this.gamma+(this.thermalizationGamma-this.gamma)*fraction;
+    const c=Math.exp(-effectiveGamma*this.dt),cr=Math.exp(-this.rotGamma*this.dt);
+    this.thermalizationRemaining=Math.max(0,this.thermalizationRemaining-1);
     const sigma=Math.sqrt(this.kBT*(1-c*c)/this.mass);
     const sigmaRot=Math.sqrt(this.kBT*(1-cr*cr)/this.rotInertia);
     for(const m of this.molecules){
@@ -860,6 +892,7 @@ export class MonolayerWaterMD{
     // Rebuild the rendered contact graph after every rotational MD step;
     // otherwise visually stale links can connect misoriented molecules.
     if(updateBonds)this.updateBondNetwork();
+    if(this.stepCount%8===0)this.updateKineticTemperatureEMA();
     if(this.stepCount%72===0)this.updateOxygenRingStatistics();
     if(this.stepCount%this.rotationCorrelationLagSteps===0)this.updateRotationCorrelation();
     if(this.stepCount%18===0)this.potentialEnergy=this.totalEnergy();
@@ -1052,6 +1085,9 @@ export class MonolayerWaterMD{
       cellLx:this.cell.lx,cellLy:this.cell.ly,cellShear:this.cell.shear,
       cellAspect:this.cell.lx/this.cell.ly,
       temperatureKelvin:this.temperatureKelvin,kBT:this.kBT,
+      kineticTranslationK:this.measuredTranslationalK,
+      kineticRotationK:this.measuredRotationalK,
+      thermalizationRemaining:this.thermalizationRemaining,
       pressureGPa:this.pressureGPa,
       pressureEstimateGPa:this.pressureEstimateEMA,
       potentialEnergyPerMolecule:this.potentialEnergy/this.count,
@@ -1085,6 +1121,12 @@ class MonolayerExplorer{
     this.areaOutput=this.host?.querySelector('[data-monolayer-area]');
     this.densityChangeOutput=this.host?.querySelector('[data-monolayer-density-change]');
     this.densityBar=this.host?.querySelector('[data-monolayer-density-meter]');
+    this.translationalTemperatureOutput=this.host?.querySelector('[data-monolayer-kinetic-translation]');
+    this.rotationalTemperatureOutput=this.host?.querySelector('[data-monolayer-kinetic-rotation]');
+    this.thermalStateOutput=this.host?.querySelector('[data-monolayer-thermal-state]');
+    this.thermoPanel=this.host?.querySelector('[data-monolayer-controls]');
+    this.stageControls=this.host?.querySelector('.water-story__controls');
+    this.cachedSimulationFrame=null;
     this.status=this.host?.querySelector('[data-monolayer-status]');
     this.md=null;
     this.width=1;this.height=1;this.dpr=1;this.visible=true;this.frameCount=0;
@@ -1092,24 +1134,27 @@ class MonolayerExplorer{
     this.resize=this.resize.bind(this);this.frame=this.frame.bind(this);
     this.tempInput?.addEventListener('input',()=>this.updateControls());
     this.pressureInput?.addEventListener('input',()=>this.updateControls());
-    this.ro=new ResizeObserver(this.resize);if(this.stage)this.ro.observe(this.stage);
+    this.ro=new ResizeObserver(this.resize);
+    if(this.stage)this.ro.observe(this.stage);
+    if(this.thermoPanel)this.ro.observe(this.thermoPanel);
+    if(this.stageControls)this.ro.observe(this.stageControls);
     this.io=new IntersectionObserver(entries=>{this.visible=entries[0]?.isIntersecting??true;},{threshold:.01});
     this.io.observe(this.canvas);
 
     this.resize();this.paintIdle();
     this.canvas.dataset.renderer='monolayer-network-md';
-    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v8';
+    this.canvas.dataset.model='pseudo-2d-cooperative-network-water-md-v9';
     this.canvas.dataset.moleculeCount='400';
     this.canvas.dataset.initialAspectMode='viewport-fit-at-initialization';
     this.canvas.dataset.spatialIndex='verlet-neighbor-list';
     this.canvas.dataset.boundary='periodic-fixed-shape-cell';
     this.canvas.dataset.cellShapeMode='fixed-shape-isotropic';
-    this.canvas.dataset.renderScale='fixed-physical-scale';
+    this.canvas.dataset.renderScale='container-fit-uniform';
     this.canvas.dataset.ensemble='langevin-md-weak-pressure-control';
     this.canvas.dataset.barostat='isotropic-area-weak-coupling';
     this.canvas.dataset.pressureCoupling='configurational-pressure-plus-ideal-term';
     this.canvas.dataset.pressureEstimator='finite-difference-configurational';
-    this.canvas.dataset.temperatureCoupling='langevin-kbt';
+    this.canvas.dataset.temperatureCoupling='langevin-staged-friction-kbt';
     this.canvas.dataset.potential='directional-hbond-plus-cooperative-oxygen-network';
     this.canvas.dataset.dynamics='planar-translation-3d-rigid-rotation';
     this.canvas.dataset.translation='planar-xy';
@@ -1152,38 +1197,57 @@ class MonolayerExplorer{
     this.canvas.height=Math.round(this.height*this.dpr);
     this.canvas.style.width=this.width+'px';this.canvas.style.height=this.height+'px';
     this.ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
-    if(this.md)this.draw();else this.paintIdle();
+    this.cachedSimulationFrame=this.calculateSimulationFrame();
+    if(this.md){this.draw();this.updateDiagnostics();}else this.paintIdle();
+  }
+
+  calculateSimulationFrame(){
+    // Reserve the measured slider panel and bottom navigation, not
+    // approximate fractions of the stage, when finding free canvas space.
+    const width=this.width,height=this.height;
+    const margin=clamp(Math.min(width,height)*.027,12,22);
+    const gap=Math.max(12,margin);
+    const stageRect=this.stage?.getBoundingClientRect();
+    const panel=this.thermoPanel?.getBoundingClientRect();
+    const controls=this.stageControls?.getBoundingClientRect();
+    const panelRight=stageRect&&panel?panel.right-stageRect.left:width*.30;
+    const panelBottom=stageRect&&panel?panel.bottom-stageRect.top:height*.40;
+    const navTop=stageRect&&controls?controls.top-stageRect.top:height*.94;
+    const bottom=Math.min(height-margin,navTop-gap);
+    const candidates=[
+      {left:Math.max(margin,panelRight+gap),right:width-margin,
+       top:margin,bottom},
+      {left:margin,right:width-margin,
+       top:Math.max(margin,panelBottom+gap),bottom},
+    ].filter(r=>r.right-r.left>=90&&r.bottom-r.top>=80);
+    if(!candidates.length){
+      const top=Math.min(height-margin,panelBottom+gap);
+      return{left:margin,right:width-margin,top,bottom:Math.max(top,bottom)};
+    }
+    const maxArea=this.md?.maxArea??400/8.5;
+    const aspect=this.md?.initialAspect??1;
+    const maxLx=Math.sqrt(maxArea*aspect),maxLy=Math.sqrt(maxArea/aspect);
+    const fit=r=>Math.min((r.right-r.left)/maxLx,(r.bottom-r.top)/maxLy);
+    return candidates.reduce((best,r)=>fit(r)>fit(best)?r:best);
   }
 
   simulationFrame(){
-    // On desktop the controls use the upper-left part of the stage;
-    // reserve that region. On mobile place the box beneath the controls.
-    // Coordinates are stage-local CSS pixels, with explicit outer margins.
-    const mobile=this.width<760;
-    return mobile?{
-      left:this.width*.04,right:this.width*.96,
-      top:this.height*.43,bottom:this.height*.95,
-    }:{
-      left:this.width*.32,right:this.width*.975,
-      top:this.height*.045,bottom:this.height*.955,
-    };
+    return this.cachedSimulationFrame??this.calculateSimulationFrame();
   }
 
   view(){
-    // A fixed physical scale, chosen from the LARGEST allowed cell size,
-    // makes pressure-induced compression visually apparent. We use the
-    // initial aspect ratio, never stretch x and y independently.
+    // A resize changes only pixels per nm and camera position; neither
+    // physical area nor molecular geometry or target pressure is changed.
     const region=this.simulationFrame();
     const maxArea=this.md?.maxArea??400/8.5;
-    const aspect=this.md?.initialAspect??1.2;
+    const aspect=this.md?.initialAspect??1;
     const maxLx=Math.sqrt(maxArea*aspect);
     const maxLy=Math.sqrt(maxArea/aspect);
-    const availableWidth=region.right-region.left;
-    const availableHeight=region.bottom-region.top;
-    const scale=Math.min(availableWidth/maxLx,availableHeight/maxLy);
-    const cx=region.right-.5*maxLx*scale;
-    const cy=(region.top+region.bottom)/2;
-    return{cx,cy,scale};
+    const scale=Math.max(0,Math.min(
+      (region.right-region.left)/maxLx,
+      (region.bottom-region.top)/maxLy));
+    return{cx:(region.left+region.right)/2,
+      cy:(region.top+region.bottom)/2,scale};
   }
 
   toCanvas(x,y,view){return{x:view.cx+x*view.scale,y:view.cy-y*view.scale};}
@@ -1328,6 +1392,9 @@ class MonolayerExplorer{
     this.canvas.dataset.cellAreaChangePct=(100*(d.area/this.md.initialArea-1)).toFixed(2);
     this.canvas.dataset.temperatureK=String(Math.round(d.temperatureKelvin));
     this.canvas.dataset.kbt=d.kBT.toFixed(5);
+    this.canvas.dataset.kineticTranslationK=d.kineticTranslationK.toFixed(2);
+    this.canvas.dataset.kineticRotationK=d.kineticRotationK.toFixed(2);
+    this.canvas.dataset.thermalizationRemaining=String(d.thermalizationRemaining);
     this.canvas.dataset.pressureGpa=d.pressureGPa.toFixed(2);
     this.canvas.dataset.measuredPressureGpa=d.pressureEstimateGPa.toFixed(2);
     this.canvas.dataset.pressureWorkScale=d.pressureWorkScale.toFixed(6);
@@ -1338,6 +1405,16 @@ class MonolayerExplorer{
     this.canvas.dataset.barostatUpdates=String(d.barostatUpdates);
     this.canvas.dataset.boostFrames=String(d.boostFrames);
 
+    if(this.translationalTemperatureOutput){
+      this.translationalTemperatureOutput.textContent=Math.round(d.kineticTranslationK)+' K';
+    }
+    if(this.rotationalTemperatureOutput){
+      this.rotationalTemperatureOutput.textContent=Math.round(d.kineticRotationK)+' K';
+    }
+    if(this.thermalStateOutput){
+      this.thermalStateOutput.textContent=d.thermalizationRemaining>0?
+        'equilibrating':'kinetic T';
+    }
     if(this.measuredPressureOutput){
       this.measuredPressureOutput.textContent=d.pressureEstimateGPa.toFixed(2)+' GPa';
     }
