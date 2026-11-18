@@ -106,6 +106,16 @@ const scenes = [
           <output data-monolayer-temperature-output for="monolayer-temperature">240 K</output>
         </div>
         <input id="monolayer-temperature" data-monolayer-temperature type="range" min="120" max="500" step="10" value="240" />
+        <div class="water-story__kinetic-readout">
+          <div class="water-story__kinetic-heading">
+            <span>measured kinetic T</span>
+            <span data-monolayer-thermal-state>equilibrating</span>
+          </div>
+          <div class="water-story__kinetic-values" aria-live="off">
+            <span>translation <strong data-monolayer-kinetic-translation>— K</strong></span>
+            <span>rotation <strong data-monolayer-kinetic-rotation>— K</strong></span>
+          </div>
+        </div>
         <div class="water-story__thermo-row water-story__thermo-row--pressure">
           <label for="monolayer-pressure">lateral pressure</label>
           <output data-monolayer-pressure-output for="monolayer-pressure">1.00 GPa</output>
@@ -181,6 +191,12 @@ const scenes = [
   .water-story[data-scene="1"] .water-story__thermo{opacity:1;visibility:visible;pointer-events:auto}
   .water-story__thermo-row{display:flex;align-items:baseline;justify-content:space-between;gap:.8rem}
   .water-story__thermo-row--pressure{margin-top:.62rem}
+  .water-story__kinetic-readout{margin-top:.38rem;padding:.4rem .48rem;border-radius:.45rem;background:color-mix(in srgb,var(--cool-soft) 32%,transparent)}
+  .water-story__kinetic-heading{display:flex;align-items:center;justify-content:space-between;gap:.4rem;font:500 .52rem/1.2 var(--font-sans);color:var(--text-3)}
+  .water-story__kinetic-heading span:last-child{font-size:.5rem;color:var(--cool)}
+  .water-story__kinetic-values{display:flex;justify-content:space-between;gap:.5rem;margin-top:.3rem;font:500 .51rem/1.25 var(--font-sans);color:var(--text-3)}
+  .water-story__kinetic-values span{display:flex;align-items:baseline;gap:.26rem;flex-wrap:wrap}
+  .water-story__kinetic-values strong{font:600 .62rem/1.15 var(--font-mono);color:var(--text-1)}
   .water-story__thermo label{color:var(--text-3);font:600 .57rem/1 var(--font-sans);letter-spacing:.11em;text-transform:uppercase}
   .water-story__thermo output{color:var(--text-1);font:600 .7rem/1 var(--font-mono)}
   .water-story__thermo input{width:100%;margin:.48rem 0 0;accent-color:var(--cool)}
@@ -203,6 +219,9 @@ const scenes = [
 
   @media(max-width:760px){
     .water-story__stage{height:70svh;min-height:520px;border-radius:18px}
+    /* Scene 02 needs physical vertical space for both the actual controls
+       and the oxygen network. Do not squeeze the cell behind the sliders. */
+    .water-story[data-scene="1"] .water-story__stage{height:max(82svh,700px);min-height:700px}
     .water-story__wash{background:linear-gradient(0deg,color-mix(in srgb,var(--bg) 86%,transparent) 0%,color-mix(in srgb,var(--bg) 30%,transparent) 43%,transparent 70%)}
     .water-story__copy{left:1.1rem;right:1.1rem;top:auto;bottom:5.2rem;width:auto;transform:none}
     .water-story__copy h3{max-width:11ch;font-size:clamp(2rem,11vw,3.6rem)}
