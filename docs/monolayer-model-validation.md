@@ -82,3 +82,22 @@ To fill the available screen without scaling the physics anisotropically, the li
 For a 1200×700 CSS-pixel stage the proposed initial box is approximately 715×579 pixels, with the region's maximum expansion fitting inside about 786×637 pixels. A 390×550 stage receives an initial projected box of about 326×260 pixels beneath the controls, with maximum expansion about 359×286 pixels.
 
 Benchmark: one full MD step with 250 particles took about 16.8 ms versus 29.1 ms with 400 particles in the same JavaScript execution environment (45 timed steps after warmup). **This is not a browser frame-rate benchmark.** The adaptive 1–3-substep rendering policy remains unchanged; the 400-particle version may run slower, particularly on mobile hardware. Validation of all browsers and complete Playwright/Astro builds is still outstanding. The larger system does not by itself demonstrate spontaneous hexagonal or pentagonal crystallization.
+
+## Temperature control and responsive layout correction
+
+The stochastic BAOAB update uses the fluctuation–dissipation-consistent Ornstein–Uhlenbeck noise amplitude `sqrt(kBT (1 - exp(-2 gamma dt)) / mass)` for translational velocities and the corresponding moment-of-inertia expression for rotational velocities. The user-reported anomalous appearance was traced partly to transient **potential-energy release** from strained random initial states. With the former translational friction `gamma=1.15`, a test initially targeting 120 K exceeded 1900 K translational kinetic temperature after 30 steps; the rotational kinetic temperature was much closer to its target. This is **not** evidence that the OU noise formula is wrong.
+
+The model now uses translational `gamma=8` after a 160-step damping ramp starting at `gamma=32`. The noise amplitude is recalculated with that same instantaneous friction, preserving the intended Langevin stationary kinetic distribution for each constant-friction segment. Direct rescaling of all linear/angular velocities when a user changes temperature was removed. The model exposes separate instantaneous kinetic-temperature estimators and smoothed readouts for **2(N−1)** relative planar translational and **3N** rigid rotational DOFs. Values can fluctuate around the target; an `equilibrating` indicator identifies the temporary friction ramp. This improves the early kinetic transient but is not proof of full configurational equilibration.
+
+Focused numerical check, **400 molecules**, initial aspect ratio 1.25, pressure target 1 GPa, 300 MD steps, random seed 1717, kinetic statistics averaged over 12 samples after step 200:
+
+| Bath target | Mean translational kinetic T | Mean rotational kinetic T |
+| --- | ---: | ---: |
+| 120 K | 132.3 K | 120.6 K |
+| 500 K | 500.0 K | 499.1 K |
+
+These are short, correlated measurements, not independent uncertainty estimates or long-time thermodynamic averages. The simulated melting/crystallization phase behavior remains unvalidated.
+
+The camera now uses the **actual current bounding rectangles** of the thermo panel and chapter-navigation controls to choose an unobstructed region within the responsive stage. It takes the largest allowed physical box area, uses one uniform pixels-per-nm scale, and adjusts only camera translation/scale when the browser window changes. Molecular coordinates, number density, cell shape, barostat state and Hamiltonian are not modified on window resize. A mobile Scene 02 stage minimum height of 700 CSS px prevents the panel from squeezing the simulation into a very narrow area. Geometry spot-checks with synthetic stage/control rectangles from 375 to 1440 CSS px width found no overlap or box clipping in the tested cases.
+
+**Limitations:** These checks were performed using source-level JavaScript and simulated viewport geometry; the complete browser Playwright suite and Astro production build have not been run. The friction ramp is a transient equilibration aid, not exact NPT/NVT sampling, and a dynamic resizing camera does not resize the *physical* simulation cell.
