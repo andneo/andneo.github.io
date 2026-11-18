@@ -569,12 +569,12 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(lens).toHaveCSS('opacity','0');
  await expect(story).toHaveAttribute('data-monolayer-ready','true');
  await expect(monolayerCanvas).toHaveAttribute('data-renderer','monolayer-network-md');
- await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v7');
+ await expect(monolayerCanvas).toHaveAttribute('data-model','pseudo-2d-cooperative-network-water-md-v8');
  await expect(monolayerCanvas).toHaveAttribute('data-molecule-count','250');
  await expect(monolayerCanvas).toHaveAttribute('data-spatial-index','verlet-neighbor-list');
- await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-flexible-cell');
- await expect(monolayerCanvas).toHaveAttribute('data-ensemble','langevin-md-weak-coupling-npt');
- await expect(monolayerCanvas).toHaveAttribute('data-barostat','continuous-flexible-cell-weak-coupling');
+ await expect(monolayerCanvas).toHaveAttribute('data-boundary','periodic-fixed-shape-cell');
+ await expect(monolayerCanvas).toHaveAttribute('data-ensemble','langevin-md-weak-pressure-control');
+ await expect(monolayerCanvas).toHaveAttribute('data-barostat','isotropic-area-weak-coupling');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-coupling','configurational-pressure-plus-ideal-term');
  await expect(monolayerCanvas).toHaveAttribute('data-pressure-estimator','finite-difference-configurational');
  await expect(monolayerCanvas).toHaveAttribute('data-temperature-coupling','langevin-kbt');
@@ -584,6 +584,8 @@ test('water network story is contained, button-driven and replaces the old topol
  await expect(monolayerCanvas).toHaveAttribute('data-bond-criterion','donor-acceptor-orientation');
  await expect(monolayerCanvas).toHaveAttribute('data-translation','planar-xy');
  await expect(monolayerCanvas).toHaveAttribute('data-orientation','quaternion-3d');
+ await expect(monolayerCanvas).toHaveAttribute('data-cell-shape-mode','fixed-shape-isotropic');
+ await expect(monolayerCanvas).toHaveAttribute('data-render-scale','fixed-physical-scale');
  await expect(monolayerCanvas).toHaveAttribute('data-oxygen-ring-cutoff','0.350');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-md-substeps')),{timeout:15000})
   .toBeGreaterThanOrEqual(1);
@@ -633,6 +635,12 @@ test('water network story is contained, button-driven and replaces the old topol
  expect(Number(await monolayerCanvas.getAttribute('data-confinement-width-nm'))).toBeCloseTo(.5,3);
 
  const initialDensity=Number(await monolayerCanvas.getAttribute('data-areal-density'));
+ const initialArea=Number(await monolayerCanvas.getAttribute('data-box-area'));
+ expect(initialArea*initialDensity).toBeCloseTo(250,1);
+ await expect(story.locator('[data-monolayer-density]')).toContainText('nm⁻²');
+ await expect(story.locator('[data-monolayer-area]')).toContainText('nm²');
+ await expect(story.locator('[data-monolayer-density-change]')).toContainText('%');
+ await expect(story.locator('[data-monolayer-density-meter]')).toHaveAttribute('style',/width:/);
  const initialDegree4=Number(await monolayerCanvas.getAttribute('data-degree4-fraction'));
  expect(initialDegree4).toBeGreaterThanOrEqual(0);
  const initialSpeed=Number(await monolayerCanvas.getAttribute('data-mean-speed'));
@@ -653,7 +661,10 @@ test('water network story is contained, button-driven and replaces the old topol
  await pressure.fill('6');
  await expect(story.locator('[data-monolayer-pressure-output]')).toHaveText('6.00 GPa');
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-pressure-gpa'))).toBeCloseTo(6,1);
- await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+1);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-areal-density')),{timeout:25000}).toBeGreaterThan(initialDensity+.25);
+ await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-box-area')),{timeout:25000}).toBeLessThan(initialArea);
+ expect(Number(await monolayerCanvas.getAttribute('data-cell-shear'))).toBe(0);
+ expect(Number(await monolayerCanvas.getAttribute('data-cell-aspect'))).toBeCloseTo(1,3);
  // Degree-four occupancy is a phase observable, not guaranteed during a
  // short, stochastic parameter sweep. Check the underlying uncapped structure.
  await expect.poll(async()=>Number(await monolayerCanvas.getAttribute('data-mean-degree')),{timeout:25000}).toBeGreaterThan(.4);
@@ -755,6 +766,53 @@ test('monolayer Hamiltonian forces and sheared periodic geometry are numerically
  expect(result.maxRelativeError).toBeLessThan(1e-4);
  expect(result.maxImageError).toBeLessThan(1e-9);
 });
+test('monolayer pressure changes area isotropically, preserves shape, and reverses on decompression',async({page})=>{
+ test.setTimeout(120000);
+ await page.goto('/research/topology-networked-matter/');
+ const result=await page.evaluate(async()=>{
+  // @ts-ignore: browser runtime module is served from public
+  const {MonolayerWaterMD}=await import('/scripts/monolayer-md.js');
+  const responses=[];
+  for(const seed of [27182,31415]){
+   const md=new MonolayerWaterMD({count:80,temperatureKelvin:120,pressureGPa:1,randomSeed:seed});
+   const snapshots=[];
+   for(const [pressure,steps] of [[1,300],[6,550],[.03,900]] as const){
+    md.setPressureGPa(pressure);
+    for(let i=0;i<steps;i++)md.integrateStep(false);
+    const d=md.diagnostics();
+    snapshots.push({rho:d.arealDensity,area:d.area,aspect:d.cellAspect,shear:d.cellShear,
+      measuredPressure:d.pressureEstimateGPa});
+   }
+   responses.push(snapshots);
+  }
+  const probe=new MonolayerWaterMD({count:32,randomSeed:23});
+  probe.cell={lx:5.2,ly:3.1,shear:.65};
+  const fractions=probe.fractionalSnapshot();
+  probe.applyCell(probe.cell,fractions);
+  const original={...probe.cell},initialAspect=probe.cell.lx/probe.cell.ly;
+  const initialShear=probe.cell.shear/probe.cell.lx;
+  probe.evaluateCellResponse();
+  const probeRestored=JSON.stringify(original)===JSON.stringify(probe.cell);
+  probe.updateBarostat();
+  const invariantShape=Math.abs(probe.cell.lx/probe.cell.ly-initialAspect)<1e-10&&
+    Math.abs(probe.cell.shear/probe.cell.lx-initialShear)<1e-10;
+  return{responses,probeRestored,invariantShape};
+ });
+ for(const snapshots of result.responses){
+  expect(snapshots[1].rho).toBeGreaterThan(snapshots[0].rho+1.0);
+  expect(snapshots[2].rho).toBeLessThan(snapshots[1].rho-1.0);
+  expect(snapshots[1].area).toBeLessThan(snapshots[0].area);
+  expect(snapshots[2].area).toBeGreaterThan(snapshots[1].area);
+  for(const sample of snapshots){
+   expect(sample.aspect).toBeCloseTo(1,8);
+   expect(sample.shear).toBe(0);
+   expect(Number.isFinite(sample.measuredPressure)).toBe(true);
+  }
+ }
+ expect(result.probeRestored).toBe(true);
+ expect(result.invariantShape).toBe(true);
+});
+
 test('monolayer donor-acceptor bonds follow actual molecular orientation',async({page})=>{
  await page.goto('/research/topology-networked-matter/');
  const result=await page.evaluate(async()=>{
